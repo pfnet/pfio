@@ -19,7 +19,7 @@ learning training with batteries included. It supports
 Installation
 
 ```shell
-$ git clone git:github.com:pfnet/chainerio.git
+$ git clone git@github.com:chainer/chainerio.git
 $ cd chainerio
 $ pip install .
 ```
