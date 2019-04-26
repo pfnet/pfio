@@ -38,4 +38,22 @@ setup(
                       'numpy<1.16.3,>1.16.0'],
     include_package_data=True,
     zip_safe=False,
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Build Tools',
+
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: POSIX',
+        'Operating System :: POSIX :: Linux',
+
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+
+        'Topic :: System :: Filesystems',
+    ],
+
+    keywords='filesystem hdfs chainer development',  # Optional
 )
