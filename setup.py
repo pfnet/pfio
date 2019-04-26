@@ -27,7 +27,6 @@ setup(
     author='Tianqi Xu',
     author_email='tianqi@preferred.jp',
     url='http://github.com/pfnet/chainerio',
-    classifiers=[],
     packages=find_packages(),
     package_data={'chainerio' : package_data},
     extras_require={'test':['pytest', 'flake8']},
