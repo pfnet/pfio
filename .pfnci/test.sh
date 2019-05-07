@@ -8,7 +8,7 @@ docker run --interactive --rm \
        tianqixu/chainerio \
        sh -ex << EOD
 pip3 install --user -e .
-py.test tests
+py.test tests -s -v
 flake8 chainerio
 flake8 tests
 autopep8 -r chainerio tests --diff | tee check_autopep8
