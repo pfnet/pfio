@@ -1,0 +1,13 @@
+configs {
+  # Project name.
+  key: "chainerio"
+  value {
+    requirement {
+      cpu: 1
+      memory: 6
+      disk: 10
+    }
+    command:
+        "sh .pfnci/test.sh"
+  }
+}
