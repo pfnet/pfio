@@ -1,1 +1,1 @@
-from chainerio.chainer_extensions.snapshot import load_snapshot # NOQA
+from chainerio.chainer_extensions.snapshot import load_snapshot  # NOQA
