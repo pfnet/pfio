@@ -1,11 +1,49 @@
 configs {
   # Project name.
-  key: "chainerio"
+  key: "chainerio.py35"
   value {
     requirement {
       cpu: 1
       memory: 6
       disk: 10
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "3.5.7"
+    }
+    command:
+        "sh .pfnci/test.sh"
+  }
+}
+configs {
+  # Project name.
+  key: "chainerio.py36"
+  value {
+    requirement {
+      cpu: 1
+      memory: 6
+      disk: 10
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "3.6.8"
+    }
+    command:
+        "sh .pfnci/test.sh"
+  }
+}
+configs {
+  # Project name.
+  key: "chainerio.py37"
+  value {
+    requirement {
+      cpu: 1
+      memory: 6
+      disk: 10
+    }
+    environment_variables {
+      key: "PYTHON"
+      value: "3.7.2"
     }
     command:
         "sh .pfnci/test.sh"
