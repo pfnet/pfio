@@ -84,7 +84,7 @@ class TestContext(unittest.TestCase):
         zip_file_name = "test"
         zip_file_path = zip_file_name + ".zip"
 
-        # TODO(tianqi): add functionality ot chainerio 
+        # TODO(tianqi): add functionality ot chainerio
         from pyarrow import hdfs
 
         conn = hdfs.connect()
