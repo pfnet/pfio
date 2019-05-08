@@ -13,4 +13,4 @@ COPY install.sh /tmp/install.sh
 
 RUN bash -c /tmp/install.sh
 
-RUN apt-get remove -y gcc g++ cmake make libreadline-dev python-openssl && apt-get -y autoremove
+RUN apt-get remove -y gcc g++ cmake libreadline-dev python-openssl && apt-get -y autoremove
