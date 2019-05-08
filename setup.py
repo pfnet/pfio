@@ -32,10 +32,7 @@ setup(
     package_data={'chainerio' : package_data},
     extras_require={'test':['pytest', 'flake8']},
     python_requires=">=3.5",
-    install_requires=['krbticket', 'pyarrow',
-                      # Workaround until https://github.com/chainer/chainer/pull/4534 gets released
-                      # See also: https://nvd.nist.gov/vuln/detail/CVE-2019-6446
-                      'numpy<1.16.3,>1.16.0'],
+    install_requires=['krbticket', 'pyarrow', 'numpy'],
     include_package_data=True,
     zip_safe=False,
 )
