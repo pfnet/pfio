@@ -3,6 +3,7 @@ import unittest
 import chainerio
 import os
 import shutil
+import tempfile
 
 
 class TestContext(unittest.TestCase):
@@ -32,13 +33,10 @@ class TestContext(unittest.TestCase):
         with chainerio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
-    def test_open_as_container(self):
-        # Create a container for testing
-        chainerio.set_root("posix")
-        zip_file_name = "test"
-        zip_file_path = zip_file_name + ".zip"
-
-        shutil.make_archive(zip_file_name, "zip", base_dir=self.dir_name)
+    def check_archive(self, zip_file_name, format, root_dir, base_dir):
+        chainerio.make_archive(zip_file_name, format,
+                               root_dir=root_dir, base_dir=base_dir)
+        zip_file_path = os.path.join(root_dir, zip_file_name + "." + format)
 
         with chainerio.open_as_container(zip_file_path) as container:
             file_generator = container.list()
@@ -62,6 +60,24 @@ class TestContext(unittest.TestCase):
                     f.read(), self.test_string_str)
 
         chainerio.remove(zip_file_path)
+
+    def test_archive_posix(self):
+        zip_file_name = "test"
+        self.check_archive(zip_file_name, "zip", ".", self.dir_name)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            shutil.copytree(self.dir_name, os.path.join(tmpdir, self.dir_name))
+            self.check_archive(zip_file_name, "zip", tmpdir, self.dir_name)
+
+    @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
+    def test_archive_hdfs(self):
+        zip_file_name = "test"
+        from pyarrow import hdfs
+        conn = hdfs.connect()
+        hdfs_home = conn.info(".")["path"]
+        conn.close()
+
+        self.check_archive(zip_file_name, "zip", hdfs_home, self.dir_name)
 
     def test_root_local_override(self):
         chainerio.set_root('file://' + self.dir_name)

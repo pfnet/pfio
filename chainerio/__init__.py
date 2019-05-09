@@ -3,6 +3,8 @@ from chainerio.version import __version__  # NOQA
 
 from chainerio.io import IO
 from typing import Optional, Iterator, Any, Callable
+import shutil
+import os
 
 from chainerio.fileobject import FileObject
 
@@ -144,3 +146,37 @@ def get_root_dir() -> str:
     default_context = _DEFAULT_CONTEXT
 
     return default_context.get_root_dir()
+
+
+def make_archive(base_name: str, format: str,
+                 root_dir: Optional[str] = None,
+                 base_dir: Optional[str] = None,
+                 verbose: int = 0,
+                 dry_run: int = 0,
+                 owner: Optional[str] = None,
+                 group: Optional[str] = None,
+                 logger: Optional[Any] = None) -> None:
+
+    global _DEFAULT_CONTEXT
+    default_context = _DEFAULT_CONTEXT
+
+    if None is root_dir:
+        root_dir = "."
+
+    zip_file_name = os.path.join(root_dir, base_name + "." + format)
+    (handler, actual_path) = default_context.get_handler(zip_file_name)
+    tmp_archive_name = ".chainerio_archive_tmp"
+    tmp_archive_path = tmp_archive_name + "." + format
+
+    # Limitation: The base_dir needs to be on a posix-compliant filesystem.
+    # TODO(tianqi): support the base_dir on all filesystem e.g. hdfs
+    shutil.make_archive(tmp_archive_name, format=format,
+                        base_dir=base_dir, verbose=verbose,
+                        dry_run=dry_run, owner=owner, group=group,
+                        logger=logger)
+    if not dry_run:
+        with open(tmp_archive_path, "rb") as src:
+            with handler.open(zip_file_name, "wb") as des:
+                des.write(src.read())
+
+        os.remove(tmp_archive_path)
