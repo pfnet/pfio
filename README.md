@@ -27,7 +27,6 @@ $ pip install .
 Documentation
 ```sh
 $ cd chainerio/docs
-$ sphinx-apidoc -o source/api ../chainerio
 $ make html
 $ open build/html/index.html
 ```
