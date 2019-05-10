@@ -19,24 +19,29 @@ class Cache(six.with_metaclass(abc.ABCMeta)):
 
     @abstractmethod
     def __len__(self) -> int:
+        "Returns the length of the cache data"
         raise NotImplementedError()
 
     @property
     @abstractmethod
     def multiprocess_safe(self) -> bool:
+        "Returns multiprocess safety."
         raise NotImplementedError()
 
     @property
     @abstractmethod
     def multithread_safe(self) -> bool:
+        "Returns multithread safety."
         raise NotImplementedError()
 
     @abstractmethod
     def put(self, i: int, data: bytes) -> bool:
+        "Puts the bytes to the cache. No overwrite nor deletion supported."
         raise NotImplementedError()
 
     @abstractmethod
     def get(self, i: int) -> Optional[bytes]:
+        "Tries to get the data from cache."
         raise NotImplementedError()
 
     def get_and_cache(self, i, backend_get: Callable[[int], bytes]) -> bytes:

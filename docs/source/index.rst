@@ -11,7 +11,7 @@ Welcome to ChainerIO's documentation!
    :caption: Contents:
 
    design
-   api/modules
+   reference
 
 Indices and tables
 ==================
