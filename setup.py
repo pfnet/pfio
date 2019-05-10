@@ -30,7 +30,7 @@ setup(
     classifiers=[],
     packages=find_packages(),
     package_data={'chainerio' : package_data},
-    extras_require={'test':['pytest', 'flake8']},
+    extras_require={'test':['pytest', 'flake8', 'autopep8']},
     python_requires=">=3.5",
     install_requires=['krbticket', 'pyarrow',
                       # Workaround until https://github.com/chainer/chainer/pull/4534 gets released
