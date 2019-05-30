@@ -198,7 +198,7 @@ File-like Objects
 Abstraction of binary objects or files, typically returned by
 ``fs.open`` method. It is an implementation of ``RawIOBase`` class
 (See `RawIOBase
-<https://docs.python.org/3/library/io.html#io.RawIOBase>`_ in Python
+<https://docs.python.org/3/library/io.html#io.RawIOBase>`__ in Python
 document). It supports
 
 - Read to underlying file or binary in a container
