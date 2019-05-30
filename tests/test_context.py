@@ -63,6 +63,50 @@ class TestContext(unittest.TestCase):
 
         chainerio.remove(zip_file_path)
 
+    def test_fs_detection_on_container_posix(self):
+        # Create a container for testing
+        zip_file_name = "test"
+        zip_file_path = zip_file_name + ".zip"
+        posix_file_path = "file://" + zip_file_path
+
+        shutil.make_archive(zip_file_name, "zip", base_dir=self.dir_name)
+
+        with chainerio.open_as_container(posix_file_path) as container:
+            with container.open(self.tmpfile_path, "r") as f:
+                self.assertEqual(
+                    f.read(), self.test_string_str)
+
+        chainerio.remove(zip_file_path)
+
+    @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
+    def test_fs_detection_on_container_hdfs(self):
+        # Create a container for testing
+        zip_file_name = "test"
+        zip_file_path = zip_file_name + ".zip"
+
+        # TODO(tianqi): add functionality ot chainerio
+        from pyarrow import hdfs
+
+        conn = hdfs.connect()
+        hdfs_home = conn.info('.')['path']
+        conn.close()
+
+        hdfs_file_path = os.path.join(hdfs_home, zip_file_path)
+
+        shutil.make_archive(zip_file_name, "zip", base_dir=self.dir_name)
+
+        with chainerio.open(hdfs_file_path, "wb") as hdfs_file:
+            with chainerio.open(zip_file_path, "rb") as posix_file:
+                hdfs_file.write(posix_file.read())
+
+        with chainerio.open_as_container(hdfs_file_path) as container:
+            with container.open(self.tmpfile_path, "r") as f:
+                self.assertEqual(
+                    f.read(), self.test_string_str)
+
+        chainerio.remove(zip_file_path)
+        chainerio.remove(hdfs_file_path)
+
     def test_root_local_override(self):
         chainerio.set_root('file://' + self.dir_name)
         print(self.tmpfile_name)
