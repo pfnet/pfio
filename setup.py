@@ -20,6 +20,9 @@ here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
 exec(open(os.path.join(here, 'chainerio', 'version.py')).read())
 
+with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+        long_description = f.read()
+
 setup(
     name='chainerio',
     version=__version__,
@@ -28,6 +31,8 @@ setup(
     author_email='tianqi@preferred.jp, kota@preferred.jp',
     url='http://github.com/chainer/chainerio',
     classifiers=[],
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={'chainerio' : package_data},
     extras_require={'test':['pytest', 'flake8', 'autopep8']},
