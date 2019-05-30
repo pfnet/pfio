@@ -30,7 +30,22 @@ setup(
     author='Tianqi Xu, Kota Uenishi',
     author_email='tianqi@preferred.jp, kota@preferred.jp',
     url='http://github.com/chainer/chainerio',
-    classifiers=[],
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Build Tools',
+
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: POSIX',
+        'Operating System :: POSIX :: Linux',
+
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+
+        'Topic :: System :: Filesystems',
+    ],
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=find_packages(),
@@ -40,4 +55,6 @@ setup(
     install_requires=['krbticket', 'pyarrow'],
     include_package_data=True,
     zip_safe=False,
+
+    keywords='filesystem hdfs chainer development',
 )
