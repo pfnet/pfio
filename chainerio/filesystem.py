@@ -1,13 +1,13 @@
 from chainerio.io import IO
-from chainerio.profiler import IOProfiler
+from chainerio.profiler import Profiler
 
 import os
-from typing import Optional
+from typing import Optional, Type
 
 
 class FileSystem(IO):
 
-    def __init__(self, io_profiler: Optional[IOProfiler] = None,
+    def __init__(self, io_profiler: Optional[Type[Profiler]],
                  root: str = ""):
         IO.__init__(self, io_profiler, root)
 
