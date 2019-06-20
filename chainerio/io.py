@@ -3,7 +3,7 @@ from abc import abstractmethod
 from importlib import import_module
 
 from chainerio.fileobject import FileObject
-from chainerio.profiler import IOProfiler
+from chainerio.profiler import Profiler
 
 from typing import Type, Optional, Callable, Iterator, Any
 from types import TracebackType
@@ -26,9 +26,12 @@ def open_wrapper(func):
 
 
 class IO(abc.ABC):
-    def __init__(self, io_profiler: Optional[IOProfiler] = None,
-                 root: str = ""):
-        self.io_profiler = io_profiler
+    def __init__(self, io_profiler: Optional[Type[Profiler]], root):
+        if None is io_profiler:
+            self.io_profiler = Profiler()
+        else:
+            self.io_profiler = io_profiler
+
         self.type = "BASEIO"
         self.root = root
         self.fileobj_class = FileObject

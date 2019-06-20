@@ -1,17 +1,16 @@
-from chainerio._context import DefaultContext
+from chainerio._context import context
+from chainerio._context import using_config  # NOQA
 from chainerio.version import __version__  # NOQA
+from chainerio.profiler import profiling  # NOQA
 
 from chainerio.io import IO
 from typing import Optional, Iterator, Any, Callable
 
 from chainerio.fileobject import FileObject
 
-_DEFAULT_CONTEXT = DefaultContext()
-
 
 def open_as_container(path: str) -> IO:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     return default_context.open_as_container(path)
 
@@ -29,8 +28,7 @@ def list(path_or_prefix: Optional[str] = None) -> Iterator:
     then it shows all the files that start with `path_or_prefix`
     """
 
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     if None is path_or_prefix:
         path_or_prefix = ""
@@ -40,8 +38,8 @@ def list(path_or_prefix: Optional[str] = None) -> Iterator:
 
 
 def info() -> str:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    global context
+    default_context = context
 
     (handler, dummy_path) = default_context.get_handler()
     return handler.info()
@@ -53,8 +51,7 @@ def open(file_path: str, mode: str = 'rb',
          closefd: bool = True,
          opener: Optional[Callable[
              [str, int], Any]] = None) -> FileObject:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler, actual_path) = default_context.get_handler(file_path)
     return handler.open(
@@ -63,15 +60,13 @@ def open(file_path: str, mode: str = 'rb',
 
 
 def set_root(uri_or_handler: str) -> None:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     default_context.set_root(uri_or_handler)
 
 
 def create_handler(uri: str) -> IO:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(uri)
@@ -79,8 +74,7 @@ def create_handler(uri: str) -> IO:
 
 
 def isdir(file_path: str) -> bool:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(file_path)
@@ -88,8 +82,7 @@ def isdir(file_path: str) -> bool:
 
 
 def mkdir(file_path: str, mode: int = 0o777, **kwargs) -> None:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(file_path)
@@ -98,8 +91,7 @@ def mkdir(file_path: str, mode: int = 0o777, **kwargs) -> None:
 
 def makedirs(file_path: str, mode: int = 0o777,
              exist_ok: bool = False) -> None:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(file_path)
@@ -107,8 +99,7 @@ def makedirs(file_path: str, mode: int = 0o777,
 
 
 def exists(file_path: str) -> bool:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(file_path)
@@ -116,8 +107,7 @@ def exists(file_path: str) -> bool:
 
 
 def rename(src: str, dst: str) -> None:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler_src, actual_src, _is_URI1) = \
         default_context.get_handler_by_name(src)
@@ -131,8 +121,7 @@ def rename(src: str, dst: str) -> None:
 
 
 def remove(path: str, recursive: bool = False) -> None:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(path)
@@ -140,7 +129,6 @@ def remove(path: str, recursive: bool = False) -> None:
 
 
 def get_root_dir() -> str:
-    global _DEFAULT_CONTEXT
-    default_context = _DEFAULT_CONTEXT
+    default_context = context
 
     return default_context.get_root_dir()

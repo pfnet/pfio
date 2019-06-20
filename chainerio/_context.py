@@ -4,7 +4,7 @@ from chainerio.io import IO
 import os
 import re
 
-from typing import Tuple, Union
+from typing import Tuple, Union, Any
 
 
 class FileSystemDriverList(object):
@@ -68,6 +68,7 @@ class DefaultContext(object):
     def __init__(self):
         self._fs_handler_list = FileSystemDriverList()
         self._root = ""
+        self._profiling = False
 
         self._default_context = \
             self._fs_handler_list.get_handler_for_root("posix")[0]
@@ -116,3 +117,45 @@ class DefaultContext(object):
 
     def get_root_dir(self) -> str:
         return self._root
+
+
+context = DefaultContext()
+
+
+class _ConfigContext(object):
+
+    old_value = None
+
+    def __init__(self, config, name, value):
+        self.config = config
+        self.name = name
+        self.value = value
+
+    def __enter__(self):
+        name = self.name
+        value = self.value
+        config = self.config
+
+        setattr(config, name, value)
+
+    def __exit__(self, typ, value, traceback):
+        setattr(self.config, self.name, self.old_value)
+
+
+def using_config(name: str, value: Any,
+                 config=context) -> '_ConfigContext':
+    """using_config(name, value, config=chainer.config)
+
+    Context manager to temporarily change the thread-local configuration.
+
+    Args:
+        name (str): Name of the configuration to change.
+        value: Temporary value of the configuration entry.
+        config (~chainer.configuration.LocalConfig): Configuration object.
+            Chainer's thread-local configuration is used by default.
+
+    .. seealso::
+        :ref:`configuration`
+
+    """
+    return _ConfigContext(config, name, value)

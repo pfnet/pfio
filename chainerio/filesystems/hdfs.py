@@ -1,6 +1,9 @@
 from chainerio.fileobject import FileObject
 from chainerio.filesystem import FileSystem
 from chainerio.io import open_wrapper
+from chainerio.profiler import profiler_decorator
+from chainerio.profiler import Profiler
+
 from krbticket import KrbTicket
 
 import getpass
@@ -23,6 +26,7 @@ class HdfsFileObject(FileObject):
                             io_profiler, path, mode, buffering, encoding,
                             errors, newline, closefd, opener)
 
+    @profiler_decorator
     def readline(self):
         if (not isinstance(self.base_file_object, io.BytesIO) and
                 'b' in self.mode):
@@ -69,6 +73,7 @@ class HdfsFileSystem(FileSystem):
         return
 
     @open_wrapper
+    @profiler_decorator
     def open(self, file_path, mode='rb',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
@@ -84,14 +89,17 @@ class HdfsFileSystem(FileSystem):
         except pyarrow.lib.ArrowIOError as e:
             raise IOError("open file error :{}".format(str(e)))
 
+    @profiler_decorator
     def close(self):
         self._close_connection()
 
+    @profiler_decorator
     def info(self):
         # a placeholder
         info_str = "using hdfs"
         return info_str
 
+    @profiler_decorator
     def list(self, path_or_prefix: str = None):
         if not path_or_prefix or None is path_or_prefix:
             path_or_prefix = "/user/{}".format(self.username)
@@ -101,32 +109,40 @@ class HdfsFileSystem(FileSystem):
         for _dir in dir_list:
             yield os.path.basename(_dir)
 
+    @profiler_decorator
     def stat(self, path):
         self._create_connection()
         return self.connection.stat(path)
 
+    @profiler_decorator
     def __enter__(self):
         return self
 
+    @profiler_decorator
     def __exit__(self, type, value, traceback):
         self._close_connection()
 
+    @profiler_decorator
     def _close_connection(self):
         if None is not self.connection:
             self.connection.close()
             self.connection = None
 
+    @profiler_decorator
     def isdir(self, file_path: str):
         stat = self.stat(file_path)
         return "directory" == stat["kind"]
 
+    @profiler_decorator
     def mkdir(self, file_path: str, *args, dir_fd=None):
         self._create_connection()
         return self.connection.mkdir(file_path)
 
+    @profiler_decorator
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
         return self.mkdir(file_path, mode, exist_ok)
 
+    @profiler_decorator
     def exists(self, file_path: str):
         self._create_connection()
         return self.connection.exists(file_path)
@@ -145,10 +161,12 @@ class HdfsFileSystem(FileSystem):
         with self.open(file_path, "wb") as file_obj:
             return file_obj.write(content)
 
+    @profiler_decorator
     def rename(self, src, dst):
         self._create_connection()
         return self.connection.rename(src, dst)
 
+    @profiler_decorator
     def remove(self, path, recursive=False):
         self._create_connection()
         return self.connection.delete(path, recursive)
