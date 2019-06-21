@@ -7,7 +7,7 @@ from typing import Optional, Type
 class Container(IO):
 
     def __init__(self, base_handler: IO, base: str,
-                 io_profiler: Optional[Type[Profiler]], root: str = ""):
+                 io_profiler: Optional[Type[Profiler]] = None, root: str = ""):
         IO.__init__(self, io_profiler, root)
         self.base_handler = base_handler
         self.base = base

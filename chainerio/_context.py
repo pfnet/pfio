@@ -1,8 +1,10 @@
 from chainerio.container import Container
 from chainerio.io import create_fs_handler
 from chainerio.io import IO
+from chainerio.profilers.chrome_profiler import ChromeProfiler
 import os
 import re
+import threading
 
 from typing import Tuple, Union, Any
 
@@ -66,64 +68,100 @@ class FileSystemDriverList(object):
 
 class DefaultContext(object):
     def __init__(self):
-        self._fs_handler_list = FileSystemDriverList()
-        self._root = ""
-        self._profiling = False
+        self.reset()
+
+    def reset(self):
+        self.fs_handler_list = FileSystemDriverList()
+        self.root = ""
+        self.profiling = False
+        self.profiler = ChromeProfiler()
 
         self._default_context = \
-            self._fs_handler_list.get_handler_for_root("posix")[0]
+            self.fs_handler_list.get_handler_for_root("posix")[0]
 
     def set_root(self, uri_or_handler: Union[str, IO]) -> None:
         # TODO(check) if root is directory
         if isinstance(uri_or_handler, IO):
             handler = uri_or_handler
-            self._root = ""
+            self.root = ""
         else:
-            (handler, self._root, is_URI) = \
+            (handler, self.root, is_URI) = \
                 self.get_handler_by_name(uri_or_handler)
         assert handler is not None
 
-        if self._root:
-            if not handler.isdir(self._root):
+        if self.root:
+            if not handler.isdir(self.root):
                 raise RuntimeError("the URI does not point to a directory")
 
         self._default_context = handler
 
     def get_handler(self, path: str = "") -> Tuple[IO, str]:
         (handler, formatted_path,
-         is_URI) = self._fs_handler_list.get_handler_from_path(path)
+         is_URI) = self.fs_handler_list.get_handler_from_path(path)
 
         if not is_URI:
-            actual_path = os.path.join(self._root, formatted_path)
+            actual_path = os.path.join(self.root, formatted_path)
             return (self._default_context, actual_path)
         else:
             return (handler, formatted_path)
 
     def open_as_container(self, path: str) -> Container:
         (handler, formatted_path,
-         is_URI) = self._fs_handler_list.get_handler_from_path(path)
+         is_URI) = self.fs_handler_list.get_handler_from_path(path)
 
         if not is_URI:
-            actual_path = os.path.join(self._root, formatted_path)
+            actual_path = os.path.join(self.root, formatted_path)
             handler = self._default_context
         else:
             actual_path = formatted_path
 
-        self._root = ""
+        self.root = ""
         return handler.open_as_container(actual_path)
 
     def get_handler_by_name(self, path: str) -> Tuple[IO, str, bool]:
-        return self._fs_handler_list.get_handler_for_root(path)
+        return self.fs_handler_list.get_handler_for_root(path)
 
     def get_root_dir(self) -> str:
-        return self._root
+        return self.root
 
 
-context = DefaultContext()
+class LocalContext(object):
+
+    """Thread-local configuration of ChainerIO.
+    This is majorly based on the same class from Chainer.
+
+    This class implements the local configuration. When a value is set to this
+    object, the configuration is only updated in the current thread. When a
+    user tries to access an attribute and there is no local value, it
+    automatically retrieves a value from the global configuration.
+
+    """
+
+    def __init__(self, global_config):
+        super(LocalContext, self).__setattr__('_global', global_context)
+        super(LocalContext, self).__setattr__('_local', threading.local())
+
+    def __delattr__(self, name):
+        delattr(self._local, name)
+
+    def __getattr__(self, name):
+        dic = self._local.__dict__
+        if name in dic:
+            return dic[name]
+        return getattr(self._global, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._local, name, value)
+
+
+global_context = DefaultContext()
+
+context = LocalContext(global_context)
 
 
 class _ConfigContext(object):
 
+    is_local = False
     old_value = None
 
     def __init__(self, config, name, value):
@@ -135,15 +173,22 @@ class _ConfigContext(object):
         name = self.name
         value = self.value
         config = self.config
+        is_local = hasattr(config._local, name)
+        if is_local:
+            self.old_value = getattr(config, name)
+            self.is_local = is_local
 
         setattr(config, name, value)
 
     def __exit__(self, typ, value, traceback):
-        setattr(self.config, self.name, self.old_value)
+        if self.is_local:
+            setattr(self.config, self.name, self.old_value)
+        else:
+            delattr(self.config, self.name)
 
 
 def using_config(name: str, value: Any,
-                 config=context) -> '_ConfigContext':
+                 context=context) -> '_ConfigContext':
     """using_config(name, value, config=chainer.config)
 
     Context manager to temporarily change the thread-local configuration.
@@ -158,4 +203,4 @@ def using_config(name: str, value: Any,
         :ref:`configuration`
 
     """
-    return _ConfigContext(config, name, value)
+    return _ConfigContext(context, name, value)

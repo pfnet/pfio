@@ -19,18 +19,18 @@ def open_wrapper(func):
         file_obj = func(self, file_path, mode, buffering, encoding,
                         errors, newline, closefd, opener)
         return self.fileobj_class(
-            file_obj, self, self.io_profiler,
-            file_path, mode, buffering, encoding,
-            errors, newline, closefd, opener)
+            file_obj, self,
+            io_profiler=self.io_profiler,
+            file_path=file_path,
+            mode=mode, buffering=buffering, encoding=encoding,
+            errors=errors, newline=newline, closefd=closefd, opener=opener)
     return wrapper
 
 
 class IO(abc.ABC):
-    def __init__(self, io_profiler: Optional[Type[Profiler]], root):
-        if None is io_profiler:
-            self.io_profiler = Profiler()
-        else:
-            self.io_profiler = io_profiler
+    def __init__(self, io_profiler: Optional[Type[Profiler]] = None,
+                 root=""):
+        self.io_profiler = io_profiler
 
         self.type = "BASEIO"
         self.root = root

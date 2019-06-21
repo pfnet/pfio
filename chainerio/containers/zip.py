@@ -9,7 +9,7 @@ import zipfile
 
 class ZipFileObject(FileObject):
     def __init__(self, base_file_object, base_filesystem_handler,
-                 io_profiler, path: str, mode: str = "r", buffering=-1,
+                 io_profiler, file_path: str, mode: str = "r", buffering=-1,
                  encoding=None, errors=None, newline=None,
                  closefd=True, opener=None):
         if 'b' not in mode:
@@ -17,13 +17,13 @@ class ZipFileObject(FileObject):
                                                 encoding, errors, newline)
 
         FileObject.__init__(self, base_file_object, base_filesystem_handler,
-                            path, mode, buffering, encoding, errors, newline,
-                            closefd, opener)
+                            file_path, mode, buffering, encoding,
+                            errors, newline, closefd, opener)
 
 
 class ZipContainer(Container):
-    def __init__(self, base_handler, base):
-        Container.__init__(self, base_handler, base)
+    def __init__(self, base_handler, base, io_profiler=None):
+        Container.__init__(self, base_handler, base, io_profiler=io_profiler)
         self._check_zip_file_name(base)
 
         logging.info("using zip container for {}".format(base))
