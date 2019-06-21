@@ -1,15 +1,16 @@
 import unittest
 
-import chainerio.profiler
-from chainerio.profiler import Profiler
-import os
+from chainerio.profilers import NaiveProfiler
+import chainerio
 
 
-class TestProfiler(unittest.TestCase):
+class TestNaiveProfiler(unittest.TestCase):
 
     def setUp(self):
         self.test_dict = {"key1": "value1", "key2": "value2"}
         self.dummy_loop = 100
+        self.test_file = "testfile.txt"
+        self.test_content = "this is a test content"
 
     def dummy_cal(self):
         _sum = 0
@@ -17,8 +18,13 @@ class TestProfiler(unittest.TestCase):
             _sum += i
         return _sum
 
+    def dummy_fileio(self):
+        with chainerio.open(self.test_file, "w") as f:
+            f.write(self.test_content)
+        chainerio.remove(self.test_file)
+
     def test_profiler(self):
-        profiler = Profiler()
+        profiler = NaiveProfiler()
 
         with profiler:
             self.dummy_cal()
@@ -32,32 +38,25 @@ class TestProfiler(unittest.TestCase):
                 time = profiler.recorded_time
                 self.assertNotEqual(time, 0.0)
 
+                profiler.dump()
+                profiler_path = profiler.get_profile_file_path()
+
+                self.assertTrue(chainerio.exists(profiler_path))
+                chainerio.remove(profiler_path)
+
         profiler.reset()
         with profiler:
             self.dummy_cal()
             time = profiler.recorded_time
             self.assertEqual(time, 0.0)
 
-    def test_log_dict(self):
-        profiler = Profiler()
+    def test_matrix(self):
+        profiler = NaiveProfiler()
 
         with chainerio.profiling():
             for key, value in self.test_dict.items():
-                profiler.add_log_value(key, value)
+                profiler.add_matrix(key, value)
 
             for key in self.test_dict.keys():
-                self.assertIn(key, profiler.generate_log())
+                self.assertIn(key, profiler.generate_profile_dict())
             profiler.reset()
-
-    def test_func_profiling(self):
-        testfile = "test.file"
-        with chainerio.profiling():
-
-            with chainerio.open(testfile, "w") as f:
-                log_path = f.io_profiler.get_log_file_path()
-                f.write("this is a test string")
-
-            self.assertTrue(os.path.exists(log_path))
-
-        chainerio.remove(testfile)
-        chainerio.remove(log_path)
