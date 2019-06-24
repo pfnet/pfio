@@ -2,6 +2,7 @@ from chainerio.container import Container
 from chainerio.io import create_fs_handler
 from chainerio.io import IO
 from chainerio.profilers.chrome_profiler import ChromeProfiler
+from chainerio.profilers.chrome_profile_writer import ChromeProfileWriter
 import os
 import re
 import threading
@@ -74,7 +75,8 @@ class DefaultContext(object):
         self.fs_handler_list = FileSystemDriverList()
         self.root = ""
         self.profiling = False
-        self.profiler = ChromeProfiler()
+        self.profile_writer = ChromeProfileWriter()
+        self.profiler = ChromeProfiler(self.profile_writer)
 
         self._default_context = \
             self.fs_handler_list.get_handler_for_root("posix")[0]

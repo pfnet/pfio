@@ -34,12 +34,14 @@ class NaiveProfiler(Profiler):
         if _context.context.profiling:
             self.end_time = time.time()
 
-    def generate_profile_dict(self) -> dict:
+    def generate_profile_dict(self, ts: float = 0,
+                              event_type: str = "X") -> dict:
         if _context.context.profiling:
             self.matrix_dict["ts"] = self.start_time
             self.matrix_dict["pid"] = os.getpid()
             self.matrix_dict["tid"] = threading.get_ident()
             self.matrix_dict["time"] = self.recorded_time
+            self.matrix_dict["event_type"] = event_type
             return self.matrix_dict
         else:
             return dict()
@@ -54,6 +56,7 @@ class NaiveProfiler(Profiler):
         if _context.context.profiling:
             self.profile_writer.dump_profile(self.profile_list, filepath)
 
-    def __exit__(self, typ, value, traceback):
+    def __exit__(self, type, value, traceback):
+        self.stop_recording()
         self.save_profile()
         self.reset()

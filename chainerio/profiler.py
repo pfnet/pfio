@@ -40,12 +40,10 @@ class Profiler(abc.ABC):
         self.reset_matrix()
 
     def reset_matrix(self) -> None:
-        if chainerio.context.profiling:
-            self.matrix_dict = dict()
+        self.matrix_dict = dict()
 
     def add_matrix(self, key: Any, value: Any) -> None:
-        if chainerio.context.profiling:
-            self.matrix_dict[key] = value
+        self.matrix_dict[key] = value
 
     def get_matrix(self) -> dict:
         return self.matrix_dict
@@ -65,7 +63,8 @@ class Profiler(abc.ABC):
         return self.profile_list
 
     @abstractmethod
-    def generate_profile_dict(self) -> dict:
+    def generate_profile_dict(self, ts: float = 0,
+                              event_type: str = "X") -> dict:
         raise NotImplementedError()
 
     @abstractmethod
@@ -88,11 +87,11 @@ def profiling_decorator(func):
     @functools.wraps(func)
     def inner(self, *args, **kwargs):
         profiler = chainerio.context.profiler
-        with profiler:
-            profiler.add_matrix("name", func.__name__)
-            profiler.add_matrix("args", args)
-            profiler.add_matrix("kwargs", kwargs)
+        profiler.add_matrix("name", func.__name__)
+        profiler.add_matrix("args", args)
+        profiler.add_matrix("kwargs", kwargs)
 
+        with profiler:
             ret = func(self, *args, **kwargs)
 
         return ret
@@ -102,6 +101,7 @@ def profiling_decorator(func):
 
 def profiling():
     return chainerio.using_config('profiling', True)
+
 
 def dump_profile() -> None:
     chainerio.context.profiler.dump()

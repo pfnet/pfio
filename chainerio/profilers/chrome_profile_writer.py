@@ -17,7 +17,8 @@ class ChromeProfileWriter(ProfileWriter):
         self.profile_dir = profile_dir
 
         if None is profile_filename:
-            self.profile_filename = "chrome_profile.{}".format(os.getpid())
+            self.profile_filename = "chrome_profile.{}.json".format(
+                os.getpid())
         else:
             self.profile_filename = profile_filename
 
@@ -38,7 +39,7 @@ class ChromeProfileWriter(ProfileWriter):
         self._create_profile_dir(file_path)
 
         trace = {"traceEvents": profile_list,
-                 "displayTimeUnit": "s",
+                 "displayTimeUnit": "ms",
                  "systemTraceEvents": "ChainerIOEventTrace",
                  "otherData": {"app": "ChainerIO profile"}, }
 
