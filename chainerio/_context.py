@@ -206,3 +206,11 @@ def using_config(name: str, value: Any,
 
     """
     return _ConfigContext(context, name, value)
+
+
+def profiling():
+    return using_config('profiling', True)
+
+
+def dump_profile() -> None:
+    context.profiler.dump()

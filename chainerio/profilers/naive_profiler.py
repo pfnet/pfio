@@ -46,11 +46,8 @@ class NaiveProfiler(Profiler):
         else:
             return dict()
 
-    def get_profile_file_path(self) -> Union[str, None]:
-        if _context.context.profiling:
-            return self.profile_writer.profile_file_path
-        else:
-            return None
+    def get_profile_file_path(self) -> str:
+        return self.profile_writer.profile_file_path
 
     def dump(self, filepath: Optional[str] = None) -> None:
         if _context.context.profiling:

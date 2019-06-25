@@ -1,8 +1,8 @@
 from chainerio._context import context
 from chainerio._context import using_config  # NOQA
+from chainerio._context import profiling  # NOQA
+from chainerio._context import dump_profile  # NOQA
 from chainerio.version import __version__  # NOQA
-from chainerio.profiler import profiling  # NOQA
-from chainerio.profiler import dump_profile  # NOQA
 
 from chainerio.io import IO
 from typing import Optional, Iterator, Any, Callable
