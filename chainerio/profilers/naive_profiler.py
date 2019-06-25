@@ -4,7 +4,7 @@ from chainerio.profiler import Profiler
 from chainerio import _context
 
 
-from typing import Optional, Union, Type
+from typing import Optional, Type
 import time
 import os
 import threading

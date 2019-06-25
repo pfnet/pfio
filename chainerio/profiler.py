@@ -3,7 +3,7 @@ from abc import abstractmethod
 from chainerio import _context
 from chainerio.profile_writer import ProfileWriter
 
-from typing import Optional, Any, Union, Type
+from typing import Optional, Any, Type
 
 import functools
 
