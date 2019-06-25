@@ -1,11 +1,10 @@
 from chainerio.filesystem import FileSystem
 from chainerio.io import open_wrapper
+from chainerio.profiler import profiling_decorator
 
 import io
 import sys
 from urllib import request
-
-from chainerio.profiler import profiling_decorator
 
 
 class HttpFileSystem(FileSystem):

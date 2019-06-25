@@ -1,6 +1,8 @@
 from chainerio.container import Container
 from chainerio.fileobject import FileObject
 from chainerio.io import open_wrapper
+from chainerio.profiler import profiling_decorator
+
 import io
 import logging
 import os
@@ -48,6 +50,7 @@ class ZipContainer(Container):
             self.zip_file_obj = None
 
     @open_wrapper
+    @profiling_decorator
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
@@ -58,23 +61,28 @@ class ZipContainer(Container):
         nested_file = self.zip_file_obj.open(file_path, "r")
         return nested_file
 
+    @profiling_decorator
     def close(self):
         self._close_zip_file()
 
+    @profiling_decorator
     def info(self):
         info_str = \
             "this is zip container with filename {} on {} filesystem".format(
                 self.base, self.base_handler.type)
         return info_str
 
+    @profiling_decorator
     def stat(self, path):
         self._open_zip_file()
         return self.zip_file_obj.getinfo(path)
 
+    @profiling_decorator
     def list(self, path_or_prefix: str = None):
         self._open_zip_file()
         return self._list(path_or_prefix)
 
+    @profiling_decorator
     def _list(self, path_or_prefix: str = None):
         _list = set()
         for name in self.zip_file_obj.namelist():
@@ -86,6 +94,7 @@ class ZipContainer(Container):
                 _list.add(first_level_file_name)
                 yield first_level_file_name
 
+    @profiling_decorator
     def set_base(self, base):
         Container.reset_base_handler(self, base)
 
@@ -93,6 +102,7 @@ class ZipContainer(Container):
             self.zip_file_obj.close()
             self.zip_file_obj = None
 
+    @profiling_decorator
     def isdir(self, file_path: str):
         stat = self.stat(file_path)
         # The `is_dir` function under `ZipInfo` object
@@ -100,23 +110,29 @@ class ZipContainer(Container):
         # Copied the code from the `zipfile.py`
         return "/" == stat.filename[-1]
 
+    @profiling_decorator
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         raise io.UnsupportedOperation("zip does not support mkdir")
 
+    @profiling_decorator
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
         raise io.UnsupportedOperation("zip does not support makedirs")
 
+    @profiling_decorator
     def exists(self, file_path: str):
         self._open_zip_file()
         return file_path in self.zip_file_obj.namelist()
 
+    @profiling_decorator
     def __enter__(self):
         return self
 
+    @profiling_decorator
     def __exit__(self, exc_type, exc_value, traceback):
         if None is not self.zip_file_obj:
             self.zip_file_obj.close()
             self.zip_file_obj = None
 
+    @profiling_decorator
     def remove(self, file_path, recursive=False):
         raise io.UnsupportedOperation
