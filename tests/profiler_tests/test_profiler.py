@@ -17,10 +17,11 @@ class TestProfiler(unittest.TestCase):
         chainerio.remove(self.test_file)
 
     def test_decorator(self):
-        chainerio.context.reset()
         profiler = chainerio.context.profiler
+        profiler.clean()
 
         self.dummy_fileio()
+        print(profiler.show())
         self.assertEqual(len(profiler.show()), 0)
 
         with chainerio.profiling():
@@ -31,8 +32,8 @@ class TestProfiler(unittest.TestCase):
         self.assertNotEqual(len(profiler.show()), 0)
 
     def test_func_profiling(self):
-        chainerio.context.reset()
         profiler = chainerio.context.profiler
+        profiler.clean()
 
         with chainerio.profiling():
             with chainerio.open(self.test_file, "w") as f:

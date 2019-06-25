@@ -1,6 +1,6 @@
 import unittest
 
-from chainerio.profilers.chrome_tracing_writer import ChromeProfileWriter
+from chainerio.profilers.chrome_profile_writer import ChromeProfileWriter
 import chainerio
 import json
 

@@ -32,6 +32,8 @@ class TestContext(unittest.TestCase):
         with chainerio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
+        chainerio.set_root('')
+
     def test_open_as_container(self):
         # Create a container for testing
         chainerio.set_root("posix")
@@ -118,6 +120,8 @@ class TestContext(unittest.TestCase):
             with chainerio.open('file://' + __file__) as fp:
                 self.assertEqual(fp.read(), my_script.read().encode("utf-8"))
 
+        chainerio.set_root('')
+
     # override with different filesystem
     @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
     def test_root_fs_override(self):
@@ -151,6 +155,8 @@ class TestContext(unittest.TestCase):
         with urllib.request.urlopen(text_url) as validate_data:
             with chainerio.open(text_url) as http_content:
                 self.assertEqual(validate_data.read(), http_content.read())
+
+        chainerio.set_root('')
 
     def test_isdir(self):
         self.assertTrue(chainerio.isdir("file://" + self.dir_name))
