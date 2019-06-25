@@ -1,6 +1,6 @@
 import abc
 from abc import abstractmethod
-import chainerio
+from chainerio import _context
 from chainerio.profile_writer import ProfileWriter
 
 from typing import Optional, Any, Union, Type
@@ -49,7 +49,7 @@ class Profiler(abc.ABC):
         return self.matrix_dict
 
     def save_profile(self, matrix: Optional[dict] = None) -> None:
-        if not chainerio.context.profiling:
+        if not _context.context.profiling:
             return
 
         if None is matrix:
@@ -68,7 +68,7 @@ class Profiler(abc.ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_profile_file_path(self) -> Union[str, None]:
+    def get_profile_file_path(self) -> str:
         raise NotImplementedError()
 
     @abstractmethod
@@ -86,10 +86,14 @@ class Profiler(abc.ABC):
 def profiling_decorator(func):
     @functools.wraps(func)
     def inner(self, *args, **kwargs):
-        profiler = chainerio.context.profiler
+        profiler = _context.context.profiler
         profiler.add_matrix("name", func.__name__)
-        profiler.add_matrix("args", args)
-        profiler.add_matrix("kwargs", kwargs)
+        args_list = [arg for arg in args]
+        if "write" == func.__name__:
+            args_list.pop(0)
+
+        args_list.insert(0, str(self))
+        profiler.add_matrix("args", args_list)
 
         with profiler:
             ret = func(self, *args, **kwargs)
@@ -97,11 +101,3 @@ def profiling_decorator(func):
         return ret
 
     return inner
-
-
-def profiling():
-    return chainerio.using_config('profiling', True)
-
-
-def dump_profile() -> None:
-    chainerio.context.profiler.dump()
