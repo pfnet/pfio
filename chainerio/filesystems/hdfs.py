@@ -10,6 +10,9 @@ import os
 import pyarrow
 from pyarrow import hdfs
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+
 
 class HdfsFileObject(FileObject):
     def __init__(self, base_file_object, base_filesystem_handler,
@@ -45,7 +48,7 @@ class HdfsFileSystem(FileSystem):
 
     def _create_connection(self):
         if None is self.connection:
-            logging.debug('creating connection')
+            logger.debug('creating connection')
 
             if None is not self.keytab_path:
                 self.ticket = KrbTicket.init(

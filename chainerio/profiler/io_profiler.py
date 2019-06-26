@@ -2,6 +2,9 @@ import logging
 import os
 import time
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+
 
 class IOProfiler(object):
     def __init__(self,
@@ -21,9 +24,9 @@ class IOProfiler(object):
         if self.profiling\
                 and not os.path.exists(self.log_base_path):
             self.log_base_path = "/tmp/"
-            logging.info("profile I/O")
+            logger.info("profile I/O")
         else:
-            logging.info("do not profile I/O")
+            logger.info("do not profile I/O")
 
     def start_record(self, mode="READ"):
         if self.profiling:
