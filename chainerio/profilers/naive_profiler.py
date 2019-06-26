@@ -34,7 +34,7 @@ class NaiveProfiler(Profiler):
         if _context.context.profiling:
             self.end_time = time.time()
 
-    def generate_profile_dict(self, ts: float = 0,
+    def generate_profile_dict(self, ts: float = -1,
                               event_type: str = "X") -> dict:
         if _context.context.profiling:
             self.matrix_dict["ts"] = self.start_time

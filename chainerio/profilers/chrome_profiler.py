@@ -18,9 +18,10 @@ class ChromeProfiler(NaiveProfiler):
 
         self.name = "ChromeProfiler"
         self.init_time = time.time()
+        self.ms = 1000000
 
     def _get_timestamp(self, time: float) -> int:
-        return int((time - self.init_time) * 1000000)
+        return int((time - self.init_time) * self.ms)
 
     def generate_profile_dict(self, ts: float = -1,
                               event_type: str = "X") -> dict:
@@ -33,7 +34,7 @@ class ChromeProfiler(NaiveProfiler):
             self.matrix_dict["ph"] = event_type
             if "X" == event_type:
                 self.matrix_dict["dur"] = \
-                    (self.end_time - self.start_time) * 1000000
+                    (self.end_time - self.start_time) * self.ms
             return self.matrix_dict
         else:
             return dict()

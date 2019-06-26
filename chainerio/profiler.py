@@ -63,7 +63,7 @@ class Profiler(abc.ABC):
         return self.profile_list
 
     @abstractmethod
-    def generate_profile_dict(self, ts: float = 0,
+    def generate_profile_dict(self, ts: float = -1,
                               event_type: str = "X") -> dict:
         raise NotImplementedError()
 
@@ -87,13 +87,15 @@ def profiling_decorator(func):
     @functools.wraps(func)
     def inner(self, *args, **kwargs):
         profiler = _context.context.profiler
-        profiler.add_matrix("name", func.__name__)
-        args_list = [arg for arg in args]
-        if "write" == func.__name__:
-            args_list.pop(0)
 
-        args_list.insert(0, str(self))
-        profiler.add_matrix("args", args_list)
+        if _context.profiling:
+            profiler.add_matrix("name", func.__name__)
+            args_list = [arg for arg in args]
+            if "write" == func.__name__:
+                args_list.pop(0)
+
+            args_list.insert(0, str(self))
+            profiler.add_matrix("args", args_list)
 
         with profiler:
             ret = func(self, *args, **kwargs)
