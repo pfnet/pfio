@@ -6,6 +6,9 @@ import logging
 import os
 import zipfile
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+
 
 class ZipFileObject(FileObject):
     def __init__(self, base_file_object, base_filesystem_handler,
@@ -26,7 +29,7 @@ class ZipContainer(Container):
         Container.__init__(self, base_handler, base)
         self._check_zip_file_name(base)
 
-        logging.info("using zip container for {}".format(base))
+        logger.info("using zip container for {}".format(base))
         self.zip_file_obj = None
         self.type = "zip"
         self.fileobj_class = ZipFileObject
