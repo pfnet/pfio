@@ -7,10 +7,12 @@ from typing import Optional
 class Container(IO):
 
     def __init__(self, base_handler: IO, base: str,
-                 io_profiler: Optional[IOProfiler] = None, root: str = ""):
+                 io_profiler: Optional[IOProfiler] = None, root: str = "",
+                 eager_open=False):
         IO.__init__(self, io_profiler, root)
         self.base_handler = base_handler
         self.base = base
+        self.eager_open = eager_open
 
     def reset_base_handler(self, handler: IO) -> None:
         self.base_handler = handler

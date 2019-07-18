@@ -25,14 +25,17 @@ class ZipFileObject(FileObject):
 
 
 class ZipContainer(Container):
-    def __init__(self, base_handler, base):
-        Container.__init__(self, base_handler, base)
+    def __init__(self, base_handler, base, eager_open=False):
+        Container.__init__(self, base_handler, base, eager_open)
         self._check_zip_file_name(base)
 
         logger.info("using zip container for {}".format(base))
         self.zip_file_obj = None
         self.type = "zip"
         self.fileobj_class = ZipFileObject
+
+        if self.eager_open:
+            self._open_zip_file()
 
     def _check_zip_file_name(self, base):
         assert not "" == base and None is not base,\
