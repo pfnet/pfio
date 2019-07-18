@@ -51,7 +51,7 @@ setup(
     packages=find_packages(),
     package_data={'chainerio' : package_data},
     extras_require={'test':['pytest', 'flake8', 'autopep8']},
-    python_requires=">=3.5",
+    python_requires=">=3.5.3",
     install_requires=['krbticket', 'pyarrow'],
     include_package_data=True,
     zip_safe=False,
