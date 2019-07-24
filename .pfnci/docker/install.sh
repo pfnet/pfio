@@ -19,10 +19,8 @@ export PATH=$PYENV_ROOT/bin:$PATH
 export MAKE_OPTS=-j16
 $PYENV_ROOT/plugins/python-build/install.sh
 eval "$(pyenv init -)"
-echo "export PATH=$PYENV_ROOT/bin:$PATH" >> /root/.bashrc
-echo "eval '$(pyenv init -)'" >> /root/.bashrc
-# remove the return on non-interactive bash
-sed -i '6d' /root/.bashrc
+echo "export PATH=$PYENV_ROOT/bin:$PATH" >> /root/.bash_docker
+echo "eval '$(pyenv init -)'" >> /root/.bash_docker
 
 for version in "${python_versions[@]}"
 do
