@@ -25,6 +25,9 @@ class FileObject(io.IOBase):
         self.closefd = closefd
         self.opener = opener
 
+    def seekable(self) -> bool:
+        return self.base_file_object.seekable()
+
     def seek(self, pos: int, whence: int = 0) -> int:
         return self.base_file_object.seek(pos, whence)
 
