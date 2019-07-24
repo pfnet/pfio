@@ -27,6 +27,9 @@ class FileObject(io.IOBase):
 
     def seekable(self) -> bool:
         return self.base_file_object.seekable()
+    
+    def readable(self) -> bool:
+        return self.base_file_object.readable()
 
     def seek(self, pos: int, whence: int = 0) -> int:
         return self.base_file_object.seek(pos, whence)
