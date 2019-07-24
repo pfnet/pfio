@@ -127,7 +127,7 @@ class IO(abc.ABC):
     # Python version to >=3.7
     def open_as_container(self, container_file: str) -> 'IO':
         container_class = self._get_container_handler(container_file)
-        return container_class(self, container_file)
+        return container_class(self, container_file, eager_open=True)
 
 
 # TODO(tianqi) need to be changed to annotaion when we bump the
