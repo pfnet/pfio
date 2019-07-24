@@ -13,24 +13,45 @@ class TestZipHandler(unittest.TestCase):
     def setUp(self):
 
         self.test_string = "this is a test string\n"
+        self.nested_test_string = \
+            "this is a test string for nested zip\n"
         self.test_string_b = self.test_string.encode("utf-8")
+        self.nested_test_string_b = \
+            self.nested_test_string.encode("utf-8")
         self.zip_file_name = "test"
         self.zip_file_path = self.zip_file_name + ".zip"
+        self.nested_zipped_file_name = "nested"
+        self.nested_zip_file_name = "nested.zip"
         self.dir_name = "testdir/"
         self.zipped_file_name = "testfile"
         self.zipped_file_path = os.path.join(
             self.dir_name, self.zipped_file_name)
+        self.nested_zip_path = os.path.join(
+            self.dir_name, self.nested_zip_file_name)
+        self.nested_zipped_file_path = os.path.join(
+            self.dir_name, self.nested_zipped_file_name)
         self.fs_handler = chainerio.create_handler("posix")
 
+        if os.path.exists(self.dir_name):
+            shutil.rmtree(self.dir_name)
         os.mkdir(self.dir_name)
         with open(self.zipped_file_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
+
+        with open(self.nested_zipped_file_path, "w") as tmpfile:
+            tmpfile.write(self.nested_test_string)
+
+        with ZipFile(self.nested_zip_path, "w") as tmpzip:
+            tmpzip.write(self.nested_zipped_file_path)
+
+        os.remove(self.nested_zipped_file_path)
 
         shutil.make_archive(self.zip_file_name, "zip", base_dir=self.dir_name)
 
     def tearDown(self):
         os.remove(self.zipped_file_path)
         os.remove(self.zip_file_path)
+        os.remove(self.nested_zip_path)
         os.rmdir(self.dir_name)
 
     def test_read_bytes(self):
@@ -116,6 +137,16 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             self.assertRaises(io.UnsupportedOperation,
                               handler.remove, "test/test", False)
+
+    def test_nested_zip(self):
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            with handler.open_as_container(
+                    self.nested_zip_path) as nested_zip:
+                with nested_zip.open(self.nested_zipped_file_path) as f:
+                    self.assertEqual(f.read(), self.nested_test_string_b)
+
+                with nested_zip.open(self.nested_zipped_file_path, "r") as f:
+                    self.assertEqual(f.read(), self.nested_test_string)
 
     def test_stat(self):
         # pass for now
