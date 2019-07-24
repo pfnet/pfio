@@ -5,6 +5,7 @@ import io
 import logging
 import os
 import zipfile
+import sys
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -18,6 +19,12 @@ class ZipFileObject(FileObject):
         if 'b' not in mode:
             base_file_object = io.TextIOWrapper(base_file_object,
                                                 encoding, errors, newline)
+        elif sys.version_info < (3, 7, ):
+            # In the old implemetaion of zipfile before Python 3.7, 
+            # the ZipExtFile was not seekable, which makes nested zip 
+            # difficult since making a zip requires the file to be seekable.
+            # As a workaround we put the data into BytesIO object.
+            base_file_object = io.BytesIO(base_file_object.read()) 
 
         FileObject.__init__(self, base_file_object, base_filesystem_handler,
                             path, mode, buffering, encoding, errors, newline,
