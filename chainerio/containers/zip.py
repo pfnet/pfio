@@ -26,8 +26,9 @@ class ZipFileObject(FileObject):
             # difficult since making a zip requires the file to be seekable.
             # As a workaround we put the data into BytesIO object.
 
-            warnings.warn('Chainerio reads the whole file content from zip '
-                          'on opening, which might cause performance or '
+            warnings.warn('In the current Python, Chainerio has to read '
+                          'the whole file content from the zip '
+                          'on open, which might cause performance or '
                           'memory issues. '
                           'Use Python >= 3.7 to avoid.',
                            RuntimeWarning)
