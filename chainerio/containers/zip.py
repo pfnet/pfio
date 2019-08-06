@@ -1,27 +1,14 @@
 from chainerio.container import Container
-from chainerio.fileobject import FileObject
 from chainerio.io import open_wrapper
 import io
 import logging
 import os
 import zipfile
 
+from typing import Type, Optional, Callable, Any
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
-
-
-class ZipFileObject(FileObject):
-    def __init__(self, base_file_object, base_filesystem_handler,
-                 io_profiler, path: str, mode: str = "r", buffering=-1,
-                 encoding=None, errors=None, newline=None,
-                 closefd=True, opener=None):
-        if 'b' not in mode:
-            base_file_object = io.TextIOWrapper(base_file_object,
-                                                encoding, errors, newline)
-
-        FileObject.__init__(self, base_file_object, base_filesystem_handler,
-                            path, mode, buffering, encoding, errors, newline,
-                            closefd, opener)
 
 
 class ZipContainer(Container):
@@ -32,7 +19,6 @@ class ZipContainer(Container):
         logger.info("using zip container for {}".format(base))
         self.zip_file_obj = None
         self.type = "zip"
-        self.fileobj_class = ZipFileObject
 
     def _check_zip_file_name(self, base):
         assert not "" == base and None is not base,\
@@ -41,14 +27,28 @@ class ZipContainer(Container):
 
     def _open_zip_file(self, mode='r'):
         mode = mode.replace("b", "")
+        zip_file = self.base_handler.open(self.base, "rb")
+
         if self.zip_file_obj is None:
-            zip_file = self.base_handler.open(self.base, "rb")
             self.zip_file_obj = zipfile.ZipFile(zip_file, mode)
 
     def _close_zip_file(self):
         if None is not self.zip_file_obj:
             self.zip_file_obj.close()
             self.zip_file_obj = None
+
+    def _fileobject_returner(self, file_obj: Type['IOBase'],
+                             file_path: str, mode: str = 'rb',
+                             buffering: int = -1,
+                             encoding: Optional[str] = None,
+                             errors: Optional[str] = None,
+                             newline: Optional[str] = None,
+                             closefd: bool = True,
+                             opener: Optional[Callable[
+                                 [str, int], Any]] = None) -> Type['IOBase']:
+        if 'b' not in mode:
+            file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
+        return file_obj
 
     @open_wrapper
     def open(self, file_path, mode='r',
