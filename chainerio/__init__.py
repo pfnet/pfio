@@ -2,9 +2,8 @@ from chainerio._context import DefaultContext
 from chainerio.version import __version__  # NOQA
 
 from chainerio.io import IO
-from typing import Optional, Iterator, Any, Callable
+from typing import Optional, Iterator, Any, Callable, Type
 
-from chainerio.fileobject import FileObject
 
 _DEFAULT_CONTEXT = DefaultContext()
 
@@ -52,7 +51,7 @@ def open(file_path: str, mode: str = 'rb',
          errors: Optional[str] = None, newline: Optional[str] = None,
          closefd: bool = True,
          opener: Optional[Callable[
-             [str, int], Any]] = None) -> FileObject:
+             [str, int], Any]] = None) -> Type['IOBase']:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
