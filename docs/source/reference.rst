@@ -24,9 +24,6 @@ Toplevel Functions
 .. autoclass:: IO
    :members:
 
-.. autoclass:: FileObject
-   :members:
-
 Cache API
 ---------
 
