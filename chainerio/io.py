@@ -45,7 +45,7 @@ class IO(abc.ABC):
         replace the file object returned by underly system.
         Derived class overrides this function in order to
         add functionalities when needed or match the behaviour.
-        In the default case, just forward the given file object.
+        In the default case, just return the given file object.
         '''
 
         return file_obj
