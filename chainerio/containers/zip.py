@@ -37,15 +37,15 @@ class ZipContainer(Container):
             self.zip_file_obj.close()
             self.zip_file_obj = None
 
-    def _fileobject_returner(self, file_obj: Type['IOBase'],
-                             file_path: str, mode: str = 'rb',
-                             buffering: int = -1,
-                             encoding: Optional[str] = None,
-                             errors: Optional[str] = None,
-                             newline: Optional[str] = None,
-                             closefd: bool = True,
-                             opener: Optional[Callable[
-                                 [str, int], Any]] = None) -> Type['IOBase']:
+    def _wrap_fileobject(self, file_obj: Type['IOBase'],
+                         file_path: str, mode: str = 'rb',
+                         buffering: int = -1,
+                         encoding: Optional[str] = None,
+                         errors: Optional[str] = None,
+                         newline: Optional[str] = None,
+                         closefd: bool = True,
+                         opener: Optional[Callable[
+                             [str, int], Any]] = None) -> Type['IOBase']:
         if 'b' not in mode:
             file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
         return file_obj

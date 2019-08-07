@@ -17,7 +17,7 @@ def open_wrapper(func):
                     [str, int], Any]] = None) -> Type['IOBase']:
         file_obj = func(self, file_path, mode, buffering, encoding,
                         errors, newline, closefd, opener)
-        return self._fileobject_returner(
+        return self._wrap_fileobject(
             file_obj, file_path, mode, buffering, encoding,
             errors, newline, closefd, opener)
     return wrapper
@@ -30,15 +30,15 @@ class IO(abc.ABC):
         self.type = "BASEIO"
         self.root = root
 
-    def _fileobject_returner(self, file_obj: Type['IOBase'],
-                             file_path: str, mode: str = 'rb',
-                             buffering: int = -1,
-                             encoding: Optional[str] = None,
-                             errors: Optional[str] = None,
-                             newline: Optional[str] = None,
-                             closefd: bool = True,
-                             opener: Optional[Callable[
-                                 [str, int], Any]] = None) -> Type['IOBase']:
+    def _wrap_fileobject(self, file_obj: Type['IOBase'],
+                         file_path: str, mode: str = 'rb',
+                         buffering: int = -1,
+                         encoding: Optional[str] = None,
+                         errors: Optional[str] = None,
+                         newline: Optional[str] = None,
+                         closefd: bool = True,
+                         opener: Optional[Callable[
+                             [str, int], Any]] = None) -> Type['IOBase']:
         ''' Replace the file object from the underly system
 
         This function is called by the open wrapper to check and
