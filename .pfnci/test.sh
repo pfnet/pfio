@@ -1,15 +1,14 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -eux
 
-gcloud auth configure-docker
-
-docker run --interactive --rm \
-       --volume "$(pwd):/repo/" --workdir /repo/ \
-       chainer/chainerio:latest \
-       bash << EOD
-source /root/.bashrc
-pyenv global 3.5.7 3.6.8 3.7.2
-tox
+source /root/.bash_docker
 pip install sphinx
-cd docs && make html
-EOD
+pyenv global 3.5.7 3.6.8 3.7.2
+tox && :
+tox_status=$?
+cd docs && make html && :
+sphinx_status=$?
+echo "tox_status=${tox_status}"
+echo "sphinx_status=${sphinx_status}"
+
+exit $((tox_status || sphinx_status))

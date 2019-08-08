@@ -8,6 +8,6 @@ configs {
       disk: 10
     }
     command:
-        "sh .pfnci/test.sh"
+        "bash .pfnci/script.sh"
   }
 }
