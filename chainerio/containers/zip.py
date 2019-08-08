@@ -27,9 +27,9 @@ class ZipContainer(Container):
 
     def _open_zip_file(self, mode='r'):
         mode = mode.replace("b", "")
-        zip_file = self.base_handler.open(self.base, "rb")
 
         if self.zip_file_obj is None:
+            zip_file = self.base_handler.open(self.base, "rb")
             self.zip_file_obj = zipfile.ZipFile(zip_file, mode)
 
     def _close_zip_file(self):
