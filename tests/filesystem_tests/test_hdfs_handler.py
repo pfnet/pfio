@@ -24,8 +24,6 @@ class TestHdfsHandler(unittest.TestCase):
                 tmpfile.write(self.test_string_b)
             with handler.open(self.tmpfile_name, "rb") as f:
                 self.assertEqual(self.test_string_b, f.read())
-            with handler.open(self.tmpfile_name, "rb") as f:
-                self.assertEqual(self.test_string_b, f.readline())
 
     def test_read_string(self):
 

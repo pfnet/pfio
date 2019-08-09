@@ -2,7 +2,6 @@ import abc
 from abc import abstractmethod
 from importlib import import_module
 
-from chainerio.fileobject import FileObject
 from chainerio.profiler import IOProfiler
 
 from typing import Type, Optional, Callable, Iterator, Any
@@ -15,12 +14,11 @@ def open_wrapper(func):
                 errors: Optional[str] = None, newline: Optional[str] = None,
                 closefd: bool = True,
                 opener: Optional[Callable[
-                    [str, int], Any]] = None) -> FileObject:
+                    [str, int], Any]] = None) -> Type['IOBase']:
         file_obj = func(self, file_path, mode, buffering, encoding,
                         errors, newline, closefd, opener)
-        return self.fileobj_class(
-            file_obj, self, self.io_profiler,
-            file_path, mode, buffering, encoding,
+        return self._wrap_fileobject(
+            file_obj, file_path, mode, buffering, encoding,
             errors, newline, closefd, opener)
     return wrapper
 
@@ -31,7 +29,26 @@ class IO(abc.ABC):
         self.io_profiler = io_profiler
         self.type = "BASEIO"
         self.root = root
-        self.fileobj_class = FileObject
+
+    def _wrap_fileobject(self, file_obj: Type['IOBase'],
+                         file_path: str, mode: str = 'rb',
+                         buffering: int = -1,
+                         encoding: Optional[str] = None,
+                         errors: Optional[str] = None,
+                         newline: Optional[str] = None,
+                         closefd: bool = True,
+                         opener: Optional[Callable[
+                             [str, int], Any]] = None) -> Type['IOBase']:
+        ''' Replace the file object from the underly system
+
+        This function is called by the open wrapper to check and
+        replace the file object returned by underly system.
+        Derived class overrides this function in order to
+        add functionalities when needed or match the behaviour.
+        In the default case, it just returns the given file object.
+        '''
+
+        return file_obj
 
     @abstractmethod
     def open(self, file_path: str, mode: str = 'rb',
@@ -40,7 +57,7 @@ class IO(abc.ABC):
              newline: Optional[str] = None,
              closefd: bool = True,
              opener: Optional[Callable[
-                 [str, int], Any]] = None) -> FileObject:
+                 [str, int], Any]] = None) -> Type["IOBase"]:
         raise NotImplementedError()
 
     @property

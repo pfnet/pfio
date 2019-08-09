@@ -1,4 +1,3 @@
-from chainerio.fileobject import FileObject
 from chainerio.filesystem import FileSystem
 from chainerio.io import open_wrapper
 from krbticket import KrbTicket
@@ -10,29 +9,10 @@ import os
 import pyarrow
 from pyarrow import hdfs
 
+from typing import Type, Optional, Callable, Any
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
-
-
-class HdfsFileObject(FileObject):
-    def __init__(self, base_file_object, base_filesystem_handler,
-                 io_profiler, path: str, mode: str = "r", buffering=-1,
-                 encoding=None, errors=None, newline=None,
-                 closefd=True, opener=None):
-        if 'b' not in mode:
-            base_file_object = io.TextIOWrapper(base_file_object,
-                                                encoding, errors, newline)
-        FileObject.__init__(self, base_file_object, base_filesystem_handler,
-                            io_profiler, path, mode, buffering, encoding,
-                            errors, newline, closefd, opener)
-
-    def readline(self):
-        if (not isinstance(self.base_file_object, io.BytesIO) and
-                'b' in self.mode):
-            # supporting the readline in bytes mode
-            self.base_file_object = io.BytesIO(
-                self.base_file_object.read())
-        return self.base_file_object.readline()
 
 
 class HdfsFileSystem(FileSystem):
@@ -44,7 +24,6 @@ class HdfsFileSystem(FileSystem):
         self.username = getpass.getuser()
         self.userid = os.getuid()
         self.keytab_path = keytab_path
-        self.fileobj_class = HdfsFileObject
 
     def _create_connection(self):
         if None is self.connection:
@@ -70,6 +49,21 @@ class HdfsFileSystem(FileSystem):
         with open(abs_path, 'wb') as dump_file:
             dump_file.write(content)
         return
+
+    def _wrap_fileobject(self, file_obj: Type['IOBase'],
+                         file_path: str, mode: str = 'rb',
+                         buffering: int = -1,
+                         encoding: Optional[str] = None,
+                         errors: Optional[str] = None,
+                         newline: Optional[str] = None,
+                         closefd: bool = True,
+                         opener: Optional[Callable[
+                             [str, int], Any]] = None) -> Type['IOBase']:
+
+        if 'b' not in mode:
+            file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
+
+        return file_obj
 
     @open_wrapper
     def open(self, file_path, mode='rb',
