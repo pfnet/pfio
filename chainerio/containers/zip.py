@@ -79,15 +79,22 @@ class ZipContainer(Container):
         return self._list(path_or_prefix)
 
     def _list(self, path_or_prefix: str = None):
-        _list = set()
-        for name in self.zip_file_obj.namelist():
-            if path_or_prefix and name.startswith(path_or_prefix):
-                name = name[len(path_or_prefix):]
+        if path_or_prefix is None:
+            # in defult case, print the whole list
+            for name in self.zip_file_obj.namelist():
+                yield name
 
-            first_level_file_name = name.split("/")[0]
-            if first_level_file_name and first_level_file_name not in _list:
-                _list.add(first_level_file_name)
-                yield first_level_file_name
+        else:
+            _list = set()
+            for name in self.zip_file_obj.namelist():
+                if path_or_prefix and name.startswith(path_or_prefix):
+                    name = name[len(path_or_prefix):]
+
+                first_level_file_name = name.split("/")[0]
+                if first_level_file_name and \
+                        first_level_file_name not in _list:
+                    _list.add(first_level_file_name)
+                    yield first_level_file_name
 
     def set_base(self, base):
         Container.reset_base_handler(self, base)

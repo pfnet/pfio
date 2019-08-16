@@ -43,8 +43,8 @@ class TestContext(unittest.TestCase):
         with chainerio.open_as_container(zip_file_path) as container:
             file_generator = container.list()
             file_list = list(file_generator)
-            self.assertIn(self.dir_name[:-1], file_list)
-            self.assertNotIn(self.tmpfile_path, file_list)
+            self.assertIn(self.dir_name, file_list)
+            self.assertIn(self.tmpfile_path, file_list)
             self.assertNotIn("", file_list)
 
             file_generator = container.list(self.dir_name)
