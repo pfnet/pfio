@@ -62,6 +62,8 @@ class HdfsFileSystem(FileSystem):
 
         if 'b' not in mode:
             file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
+        elif 'r' in mode:
+            file_obj = io.BufferedReader(file_obj)
 
         return file_obj
 
