@@ -63,11 +63,10 @@ class HdfsFileSystem(FileSystem):
         if 'b' not in mode:
             file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
         elif 'r' in mode:
-            # wrap the file_obj with io.BufferedReader to add `peek` support,
-            # which signiciantly improve pickle performance.
+            # Wrapping file_obj with io.BufferedReader to add `peek` support,
+            # which signiciantly improves unpickle performance.
             file_obj = io.BufferedReader(file_obj)
         else:
-            # wrap the file_obj with io.BufferedWriter
             file_obj = io.BufferedWriter(file_obj)
 
         return file_obj
