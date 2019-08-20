@@ -65,8 +65,10 @@ class HdfsFileSystem(FileSystem):
         elif 'r' in mode:
             # wrap the file_obj with io.BufferedReader to add `peek` support,
             # which signiciantly improve pickle performance.
-
             file_obj = io.BufferedReader(file_obj)
+        else:
+            # wrap the file_obj with io.BufferedWriter
+            file_obj = io.BufferedWriter(file_obj)
 
         return file_obj
 
