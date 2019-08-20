@@ -74,20 +74,23 @@ class ZipContainer(Container):
         self._open_zip_file()
         return self.zip_file_obj.getinfo(path)
 
-    def list(self, path_or_prefix: str = None):
+    def list(self, path_or_prefix: str = "", recursive=False):
         self._open_zip_file()
-        return self._list(path_or_prefix)
 
-    def _list(self, path_or_prefix: str = None):
-        _list = set()
-        for name in self.zip_file_obj.namelist():
-            if path_or_prefix and name.startswith(path_or_prefix):
-                name = name[len(path_or_prefix):]
+        if recursive:
+            for name in self.zip_file_obj.namelist():
+                yield name
+        else:
+            _list = set()
+            for name in self.zip_file_obj.namelist():
+                if name.startswith(path_or_prefix):
+                    name = name[len(path_or_prefix):]
 
-            first_level_file_name = name.split("/")[0]
-            if first_level_file_name and first_level_file_name not in _list:
-                _list.add(first_level_file_name)
-                yield first_level_file_name
+                first_level_file_name = name.split("/")[0]
+                if first_level_file_name and \
+                        first_level_file_name not in _list:
+                    _list.add(first_level_file_name)
+                    yield first_level_file_name
 
     def set_base(self, base):
         Container.reset_base_handler(self, base)
