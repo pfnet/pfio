@@ -73,7 +73,8 @@ class IO(abc.ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def list(self, path_or_prefix: Optional[str] = None) -> Iterator:
+    def list(self, path_or_prefix: Optional[str] = None,
+             recursive=False) -> Iterator:
         raise NotImplementedError()
 
     @abstractmethod
