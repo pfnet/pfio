@@ -66,6 +66,13 @@ class TestZipHandler(unittest.TestCase):
             self.assertIn(self.zipped_file_name, zip_list)
             self.assertNotIn("", zip_list)
 
+            zip_generator = handler.list(recursive=True)
+            zip_list = list(zip_generator)
+            self.assertIn(self.dir_name, zip_list)
+            self.assertIn(os.path.join(self.dir_name, self.zipped_file_name),
+                          zip_list)
+            self.assertNotIn("", zip_list)
+
     def test_info(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             self.assertIsInstance(handler.info(), str)
