@@ -47,7 +47,42 @@ class TestHdfsHandler(unittest.TestCase):
             file_generator = handler.list()
             self.assertIsInstance(file_generator, Iterable)
             file_list = list(file_generator)
-            self.assertIn(self.tmpfile_name, file_list)
+            self.assertIn(self.tmpfile_name, file_list, self.tmpfile_name)
+
+            # An exception is raised when the given path is not a directory
+            self.assertRaises(NotADirectoryError, list,
+                              handler.list(self.tmpfile_name))
+            for test_dir_name in ["testmkdir", "testmkdir/"]:
+                nested_dir_name1 = "nested_dir1"
+                nested_dir_name2 = "nested_dir2"
+                nested_file_name = "file"
+                nested_dir1 = os.path.join(test_dir_name, nested_dir_name1)
+                nested_dir2 = os.path.join(test_dir_name, nested_dir_name2)
+                nested_file = os.path.join(nested_dir2,  nested_file_name)
+                nested_file_relative = os.path.join(nested_dir_name2,
+                                                    nested_file_name)
+                handler.makedirs(nested_dir1)
+                handler.makedirs(nested_dir2)
+
+                with handler.open(nested_file, "w") as f:
+                    f.write(self.test_string)
+
+                recursive_file_generator = handler.list(test_dir_name,
+                                                        recursive=True)
+                self.assertIsInstance(recursive_file_generator, Iterable)
+                file_list = list(recursive_file_generator)
+                self.assertIn(nested_dir_name1, file_list)
+                self.assertIn(nested_dir_name2, file_list)
+                self.assertIn(nested_file_relative, file_list)
+
+                normal_file_generator = handler.list(test_dir_name)
+                self.assertIsInstance(recursive_file_generator, Iterable)
+                file_list = list(normal_file_generator)
+                self.assertIn(nested_dir_name1, file_list)
+                self.assertIn(nested_dir_name2, file_list)
+                self.assertNotIn(nested_file_relative, file_list)
+
+                handler.remove(test_dir_name, True)
 
     def test_info(self):
         with chainerio.create_handler(self.fs) as handler:
