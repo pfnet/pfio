@@ -95,14 +95,25 @@ class HdfsFileSystem(FileSystem):
         info_str = "using hdfs"
         return info_str
 
-    def list(self, path_or_prefix: str = None):
-        if not path_or_prefix or None is path_or_prefix:
+    def list(self, path_or_prefix: str = None, recursive=False):
+        if path_or_prefix is None:
             path_or_prefix = "/user/{}".format(self.username)
 
         self._create_connection()
-        dir_list = self.connection.ls(path_or_prefix)
-        for _dir in dir_list:
-            yield os.path.basename(_dir)
+
+        if recursive:
+            yield from self._recursive_list(path_or_prefix, path_or_prefix)
+        else:
+            dir_list = self.connection.ls(path_or_prefix)
+            for _dir in dir_list:
+                yield os.path.basename(_dir)
+
+    def _recursive_list(self, prefix, path):
+        for _file in self.connection.ls(path):
+            yield _file[_file.find(prefix):]
+
+            if self.isdir(_file):
+                yield from self._recursive_list(prefix, _file)
 
     def stat(self, path):
         self._create_connection()
