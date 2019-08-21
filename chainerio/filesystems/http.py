@@ -36,7 +36,7 @@ class HttpFileSystem(FileSystem):
             info_str += ', the URL is {}'.format(self.url)
         return info_str
 
-    def list(self, path_or_prefix: str = None):
+    def list(self, path_or_prefix: str = None, recursive=False):
         raise io.UnsupportedOperation("http filesystem does not support list")
 
     def stat(self, path):
