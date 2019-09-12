@@ -15,17 +15,24 @@ def open_as_container(path: str) -> IO:
     return default_context.open_as_container(path)
 
 
-def list(path_or_prefix: Optional[str] = None) -> Iterator:
+def list(path_or_prefix: Optional[str] = None,
+         recursive: bool = True) -> Iterator:
     """list all the files under the given path_or_prefix
 
-    The default value for parameter of list is None
-    When we get the default value None, list behave similar to
-    the default os.listdir: it shows the content under the root directory,
-    which is set to local $HOME, as the default value.
-    Please note that the meaning of $HOME depends on each filesystem.
-    For example in case of any containers, it behaves like the namelist().
-    However, if a `path_or_prefix` is given,
-    then it shows all the files that start with `path_or_prefix`
+    Args:
+       path_or_prefix (str): The path to list against.
+           When we get the default value, list behave similar to
+           the default os.listdir: it shows the content under
+           the root directory, which is set to local $HOME,
+           as the default value.
+           Please note that the meaning of $HOME depends on each filesystem.
+           However, if a `path_or_prefix` is given,
+           then it shows all the files that start with `path_or_prefix`
+
+       recursive (bool): When set, list files and directories
+           recursively. Performance issues might occur for huge directories.
+           Mostly useful for containers such as zip.
+
     """
 
     global _DEFAULT_CONTEXT
