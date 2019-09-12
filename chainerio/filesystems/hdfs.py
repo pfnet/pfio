@@ -108,12 +108,13 @@ class HdfsFileSystem(FileSystem):
             for _dir in dir_list:
                 yield os.path.basename(_dir)
 
-    def _recursive_list(self, prefix, path):
-        for _file in self.connection.ls(path):
-            yield _file[_file.find(prefix):]
+    def _recursive_list(self, path_or_prefix, path):
+        for _file in self.connection.ls(path, detail=True):
+            file_name = _file['name']
+            yield file_name[file_name.find(path_or_prefix):]
 
-            if self.isdir(_file):
-                yield from self._recursive_list(prefix, _file)
+            if 'directory' == _file['kind']:
+                yield from self._recursive_list(path_or_prefix, file_name)
 
     def stat(self, path):
         self._create_connection()
