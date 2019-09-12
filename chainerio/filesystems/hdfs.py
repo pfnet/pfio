@@ -111,6 +111,10 @@ class HdfsFileSystem(FileSystem):
     def _recursive_list(self, path_or_prefix, path):
         for _file in self.connection.ls(path, detail=True):
             file_name = _file['name']
+            # convert the full URI to relative path from path_or_prefix
+            # to align with posix
+            # e.g. "hdfs://nameservice/prefix_dir/testfile"
+            # => "prefix_dir/testfile"
             yield file_name[file_name.find(path_or_prefix):]
 
             if 'directory' == _file['kind']:
