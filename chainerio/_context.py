@@ -13,9 +13,7 @@ class FileSystemDriverList(object):
 
         self.posix_pattern = re.compile(r"file:\/\/(?P<path>.+)")
         self.hdfs_pattern = re.compile(r"(?P<path>hdfs:\/\/.+)")
-        self.http_pattern = re.compile(r"(?P<path>(http:\/\/|https:\/\/).+)")
         self.pattern_list = {"hdfs": self.hdfs_pattern,
-                             "http": self.http_pattern,
                              "posix": self.posix_pattern, }
 
     def _determine_fs_type(self, path: str) -> Tuple[str, str, bool]:
