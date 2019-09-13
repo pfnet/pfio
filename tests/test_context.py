@@ -145,13 +145,6 @@ class TestContext(unittest.TestCase):
         conn.delete(hdfs_tmpfile)
         conn.close()
 
-        import urllib.request
-        # TODO(kuenishi): replace this with mock to prevent web access in test
-        text_url = "https://www.preferred-networks.jp/"
-        with urllib.request.urlopen(text_url) as validate_data:
-            with chainerio.open(text_url) as http_content:
-                self.assertEqual(validate_data.read(), http_content.read())
-
     def test_isdir(self):
         self.assertTrue(chainerio.isdir("file://" + self.dir_name))
 
