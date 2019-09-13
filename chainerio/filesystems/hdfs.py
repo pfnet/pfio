@@ -24,6 +24,7 @@ class HdfsFileSystem(FileSystem):
         self.username = getpass.getuser()
         self.userid = os.getuid()
         self.keytab_path = keytab_path
+        self.nameservice = None
 
     def _create_connection(self):
         if None is self.connection:
@@ -38,6 +39,10 @@ class HdfsFileSystem(FileSystem):
             connection = hdfs.connect()
             assert connection is not None
             self.connection = connection
+
+            # set nameservice
+            _file_in_root = self.connection.ls("/")[0]
+            self.nameservice = _file_in_root[:_file_in_root.rfind("/")]
 
     def _dump_read_file(self, filepath, content):
         abs_path = os.path.join(self.local_dump_dir, filepath)
@@ -100,25 +105,34 @@ class HdfsFileSystem(FileSystem):
             path_or_prefix = "/user/{}".format(self.username)
 
         self._create_connection()
+        target_dir = self.connection.info(path_or_prefix)
+        if "directory" != target_dir['kind']:
+            return None
+
+        target_path = target_dir['path'] + "/"
+        if not path_or_prefix.endswith("/"):
+            path_or_prefix = path_or_prefix + "/"
+
+        prefix_index = len(target_path[:-len(path_or_prefix)])
 
         if recursive:
-            yield from self._recursive_list(path_or_prefix, path_or_prefix)
+            yield from self._recursive_list(prefix_index, path_or_prefix)
         else:
             dir_list = self.connection.ls(path_or_prefix)
             for _dir in dir_list:
                 yield os.path.basename(_dir)
 
-    def _recursive_list(self, path_or_prefix, path):
+    def _recursive_list(self, prefix_index, path):
         for _file in self.connection.ls(path, detail=True):
             file_name = _file['name']
             # convert the full URI to relative path from path_or_prefix
             # to align with posix
             # e.g. "hdfs://nameservice/prefix_dir/testfile"
             # => "prefix_dir/testfile"
-            yield file_name[file_name.find(path_or_prefix):]
+            yield file_name[prefix_index:]
 
             if 'directory' == _file['kind']:
-                yield from self._recursive_list(path_or_prefix, file_name)
+                yield from self._recursive_list(prefix_index, file_name)
 
     def stat(self, path):
         self._create_connection()
