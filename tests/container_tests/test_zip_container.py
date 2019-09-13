@@ -11,30 +11,43 @@ from zipfile import ZipFile
 class TestZipHandler(unittest.TestCase):
 
     def setUp(self):
-
+        # The following zip layout is created for all the tests
+        # outside.zip
+        # | - testdir
+        # |   | - nested.zip
+        # |   |   | - nested_dir
+        # |   |   |   | - nested
+        # |   | - testfile
         self.test_string = "this is a test string\n"
         self.nested_test_string = \
             "this is a test string for nested zip\n"
         self.test_string_b = self.test_string.encode("utf-8")
         self.nested_test_string_b = \
             self.nested_test_string.encode("utf-8")
-        self.zip_file_name = "test"
+
+        # the most outside zip
+        self.zip_file_name = "outside"
         self.zip_file_path = self.zip_file_name + ".zip"
+
+        # nested zip and nested file
         self.nested_zipped_file_name = "nested"
+        self.nested_dir_name = "nested_dir/"
         self.nested_zip_file_name = "nested.zip"
+
+        # directory and file
         self.dir_name = "testdir/"
         self.zipped_file_name = "testfile"
+
         self.zipped_file_path = os.path.join(
             self.dir_name, self.zipped_file_name)
         self.nested_zip_path = os.path.join(
             self.dir_name, self.nested_zip_file_name)
         self.nested_zipped_file_path = os.path.join(
-            self.dir_name, self.nested_zipped_file_name)
+            self.nested_dir_name, self.nested_zipped_file_name)
         self.fs_handler = chainerio.create_handler("posix")
 
-        if os.path.exists(self.dir_name):
-            shutil.rmtree(self.dir_name)
         os.mkdir(self.dir_name)
+        os.mkdir(self.nested_dir_name)
         with open(self.zipped_file_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
 
@@ -49,10 +62,9 @@ class TestZipHandler(unittest.TestCase):
         shutil.make_archive(self.zip_file_name, "zip", base_dir=self.dir_name)
 
     def tearDown(self):
-        os.remove(self.zipped_file_path)
         os.remove(self.zip_file_path)
-        os.remove(self.nested_zip_path)
-        os.rmdir(self.dir_name)
+        shutil.rmtree(self.dir_name)
+        shutil.rmtree(self.nested_dir_name)
 
     def test_read_bytes(self):
         with self.fs_handler.open_as_container(
