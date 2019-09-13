@@ -47,12 +47,11 @@ class ZipContainer(Container):
                 # for user.
 
                 warnings.warn('In Python < 3.7, '
-                              'To support opeing nested zip as container, '
-                              'Chainerio has to read '
+                              'To support opening nested zip as container, '
+                              'ChainerIO has to read '
                               'the entire nested zip upon open, '
                               'which might cause performance or '
-                              'memory issues when the nested zip is huge.'
-                              'Use Python >= 3.7 to avoid.',
+                              'memory issues when the nested zip is huge.',
                               category=RuntimeWarning)
                 zip_file = io.BytesIO(zip_file.read())
 
