@@ -1,7 +1,7 @@
 from chainerio.io import IO
 from chainerio.profiler import IOProfiler
 
-from typing import Optional
+from chainerio._typing import Optional
 
 
 class Container(IO):

@@ -4,7 +4,7 @@ from importlib import import_module
 
 from chainerio.profiler import IOProfiler
 
-from typing import Type, Optional, Callable, Iterator, Any
+from chainerio._typing import Type, Optional, Callable, Iterator, Any
 from types import TracebackType
 
 

@@ -4,7 +4,7 @@ from chainerio.io import IO
 import os
 import re
 
-from typing import Tuple, Union
+from chainerio._typing import Tuple, Union
 
 
 class FileSystemDriverList(object):

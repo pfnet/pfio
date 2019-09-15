@@ -2,7 +2,7 @@ from chainerio._context import DefaultContext
 from chainerio.version import __version__  # NOQA
 
 from chainerio.io import IO
-from typing import Optional, Iterator, Any, Callable, Type
+from chainerio._typing import Optional, Iterator, Any, Callable, Type
 
 
 _DEFAULT_CONTEXT = DefaultContext()

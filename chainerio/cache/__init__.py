@@ -2,7 +2,7 @@ import abc
 from abc import abstractmethod
 import six
 
-from typing import Optional, Callable
+from chainerio._typing import Optional, Callable
 
 
 class Cache(six.with_metaclass(abc.ABCMeta)):
