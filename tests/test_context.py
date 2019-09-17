@@ -145,6 +145,28 @@ class TestContext(unittest.TestCase):
         conn.delete(hdfs_tmpfile)
         conn.close()
 
+    def test_list(self):
+        nested_dir_name1 = "nested_dir1"
+        nested_dir_name2 = "nested_dir2"
+
+        nested_dir_path1 = os.path.join(self.dir_name, nested_dir_name1)
+        nested_dir_path2 = os.path.join(nested_dir_path1,
+                                        nested_dir_name2)
+        nested_dir_path2_relative = os.path.join(nested_dir_name1,
+                                                 nested_dir_name2)
+        chainerio.makedirs(nested_dir_path1)
+        chainerio.makedirs(nested_dir_path2)
+
+        file_list = list(chainerio.list(self.dir_name))
+        self.assertIn(nested_dir_name1, file_list)
+        self.assertIn(self.tmpfile_name, file_list)
+        self.assertNotIn(nested_dir_path2_relative, file_list)
+
+        file_list = list(chainerio.list(self.dir_name, recursive=True))
+        self.assertIn(nested_dir_name1, file_list)
+        self.assertIn(self.tmpfile_name, file_list)
+        self.assertIn(nested_dir_path2_relative, file_list)
+
     def test_isdir(self):
         self.assertTrue(chainerio.isdir("file://" + self.dir_name))
 
