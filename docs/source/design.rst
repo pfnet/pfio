@@ -36,7 +36,7 @@ array.
 
 Opmization in deep learning model training is also important as the
 model training usually takes long time and even 1% speedup is
-important.  benefit. Modern external non-Posix filesystem is based on
+important. Modern external non-Posix filesystem is based on
 complex communication protocol between multiple data nodes and its
 performance metrics are not simply observable. *Built-in tracing
 system,* would be the first step for optimization, mitigating the
