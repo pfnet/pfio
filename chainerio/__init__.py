@@ -16,7 +16,7 @@ def open_as_container(path: str) -> IO:
 
 
 def list(path_or_prefix: Optional[str] = None,
-         recursive: bool = True) -> Iterator:
+         recursive: bool = False) -> Iterator:
     """list all the files under the given path_or_prefix
 
     Args:
@@ -42,7 +42,7 @@ def list(path_or_prefix: Optional[str] = None,
         path_or_prefix = ""
 
     (handler, actual_path) = default_context.get_handler(path_or_prefix)
-    return handler.list(actual_path)
+    return handler.list(actual_path, recursive)
 
 
 def info() -> str:
