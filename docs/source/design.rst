@@ -161,7 +161,7 @@ UTF-8 strings. Containers can be nested, e.g. ZIP in ZIP. It supports:
     with chainerio.open_as_container('some/many-files-dataset.zip') as container:
         print(container.info())
         # List all keys in the container
-        for name in container.namelist():
+        for name in container.list(recursive=True):
             print(name)
 
         # Obtains a file object to access binary content that
