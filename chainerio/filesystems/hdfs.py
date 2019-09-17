@@ -109,30 +109,30 @@ class HdfsFileSystem(FileSystem):
         if "directory" != target_dir['kind']:
             return None
 
-        target_path = target_dir['path'] + "/"
-        if not path_or_prefix.endswith("/"):
-            path_or_prefix = path_or_prefix + "/"
-
-        prefix_index = len(target_path[:-len(path_or_prefix)])
+        target_dir_path = target_dir['path']
+        # +1 to include the "/"
+        full_uri_prefix_offset = len(target_dir_path) + 1
 
         if recursive:
-            yield from self._recursive_list(prefix_index, path_or_prefix)
+            yield from self._recursive_list(full_uri_prefix_offset,
+                                            path_or_prefix)
         else:
             dir_list = self.connection.ls(path_or_prefix)
             for _dir in dir_list:
                 yield os.path.basename(_dir)
 
-    def _recursive_list(self, prefix_index, path):
+    def _recursive_list(self, full_uri_prefix_offset, path):
         for _file in self.connection.ls(path, detail=True):
             file_name = _file['name']
             # convert the full URI to relative path from path_or_prefix
             # to align with posix
             # e.g. "hdfs://nameservice/prefix_dir/testfile"
-            # => "prefix_dir/testfile"
-            yield file_name[prefix_index:]
+            # => "testfile"
+            yield file_name[full_uri_prefix_offset:]
 
             if 'directory' == _file['kind']:
-                yield from self._recursive_list(prefix_index, file_name)
+                yield from self._recursive_list(full_uri_prefix_offset,
+                                                file_name)
 
     def stat(self, path):
         self._create_connection()
