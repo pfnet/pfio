@@ -24,9 +24,18 @@ class PosixFileSystem(FileSystem):
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
-    def list(self, path_or_prefix: str = None):
-        for file in os.scandir(path_or_prefix):
-            yield file.name
+    def list(self, path_or_prefix: str = None, recursive=False):
+        if recursive:
+            path_or_prefix.rstrip("/")
+            # use len instead of len + 1 as root in os.walk does not end
+            # with "/"
+            prefix_end_index = len(path_or_prefix)
+            for root, dirs, files in os.walk(path_or_prefix):
+                for name in files + dirs:
+                    yield os.path.join(root[prefix_end_index:], name)
+        else:
+            for file in os.scandir(path_or_prefix):
+                yield file.name
 
     def stat(self, path):
         return os.stat(path)
