@@ -106,8 +106,8 @@ class HdfsFileSystem(FileSystem):
 
         self._create_connection()
         target_dir = self.connection.info(path_or_prefix)
-        if "directory" != target_dir['kind']:
-            return None
+        if target_dir['kind'] != "directory":
+            raise NotADirectoryError(path_or_prefix)
 
         target_dir_path = target_dir['path']
         # +1 to include the "/"
