@@ -36,13 +36,12 @@ class PosixFileSystem(FileSystem):
                 yield file.name
 
     def _recursive_list(self, prefix_end_index: int, path: str):
-        with os.scandir(path) as dir_it:
-            for entry in dir_it:
-                yield entry.path[prefix_end_index:]
+        for file in os.scandir(path):
+            yield file.path[prefix_end_index:]
 
-                if entry.is_dir():
-                    yield from self._recursive_list(prefix_end_index,
-                                                    entry.path)
+            if file.is_dir():
+                yield from self._recursive_list(prefix_end_index,
+                                                file.path)
 
     def stat(self, path):
         return os.stat(path)
