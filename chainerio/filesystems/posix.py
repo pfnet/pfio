@@ -30,12 +30,19 @@ class PosixFileSystem(FileSystem):
             # use len instead of len + 1 as root in os.walk does not end
             # with "/"
             prefix_end_index = len(path_or_prefix)
-            for root, dirs, files in os.walk(path_or_prefix):
-                for name in files + dirs:
-                    yield os.path.join(root[prefix_end_index:], name)
+            yield from self._recursive_list(prefix_end_index, path_or_prefix)
         else:
             for file in os.scandir(path_or_prefix):
                 yield file.name
+
+    def _recursive_list(self, prefix_end_index: int, path: str):
+        with os.scandir(path) as dir_it:
+            for entry in dir_it:
+                yield entry.path[prefix_end_index:]
+
+                if entry.is_dir():
+                    yield from self._recursive_list(prefix_end_index,
+                                                    entry.path)
 
     def stat(self, path):
         return os.stat(path)
