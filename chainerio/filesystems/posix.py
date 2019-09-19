@@ -26,10 +26,9 @@ class PosixFileSystem(FileSystem):
 
     def list(self, path_or_prefix: str = None, recursive=False):
         if recursive:
-            path_or_prefix.rstrip("/")
-            # use len instead of len + 1 as root in os.walk does not end
-            # with "/"
-            prefix_end_index = len(path_or_prefix)
+            path_or_prefix = path_or_prefix.rstrip("/")
+            # plus 1 to include the trailing slash
+            prefix_end_index = len(path_or_prefix) + 1
             yield from self._recursive_list(prefix_end_index, path_or_prefix)
         else:
             for file in os.scandir(path_or_prefix):
