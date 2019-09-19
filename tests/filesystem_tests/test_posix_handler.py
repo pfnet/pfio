@@ -58,35 +58,35 @@ class TestPosixHandler(unittest.TestCase):
         # | - nested_dir1
         # |   | - nested_dir3
         # | _ nested_dir2
-        test_dir_name = "testlsdir/"
-        nested_dir_name1 = "nested_dir1"
-        nested_dir_name2 = "nested_dir2"
-        nested_dir_name3 = "nested_dir3"
-        nested_dir_path1 = os.path.join(test_dir_name, nested_dir_name1)
-        nested_dir_path2 = os.path.join(test_dir_name, nested_dir_name2)
-        nested_dir_path3 = os.path.join(nested_dir_path1, nested_dir_name3)
-        nested_dir_relative_path3 = os.path.join(nested_dir_name1,
-                                                 nested_dir_name3)
+        for test_dir_name in ["testlsdir", "testlsdir/"]:
+            nested_dir_name1 = "nested_dir1"
+            nested_dir_name2 = "nested_dir2"
+            nested_dir_name3 = "nested_dir3"
+            nested_dir_path1 = os.path.join(test_dir_name, nested_dir_name1)
+            nested_dir_path2 = os.path.join(test_dir_name, nested_dir_name2)
+            nested_dir_path3 = os.path.join(nested_dir_path1, nested_dir_name3)
+            nested_dir_relative_path3 = os.path.join(nested_dir_name1,
+                                                     nested_dir_name3)
 
-        with chainerio.create_handler(self.fs) as handler:
-            handler.makedirs(nested_dir_path1)
-            handler.makedirs(nested_dir_path2)
-            handler.makedirs(nested_dir_path3)
+            with chainerio.create_handler(self.fs) as handler:
+                handler.makedirs(nested_dir_path1)
+                handler.makedirs(nested_dir_path2)
+                handler.makedirs(nested_dir_path3)
 
-            self.assertIsInstance(handler.list(), Iterable)
-            full_list_of_file = list(handler.list(test_dir_name,
-                                                  recursive=True))
-            self.assertIn(nested_dir_name1, full_list_of_file)
-            self.assertIn(nested_dir_name2, full_list_of_file)
-            self.assertIn(nested_dir_relative_path3, full_list_of_file)
+                self.assertIsInstance(handler.list(), Iterable)
+                full_list_of_file = list(handler.list(test_dir_name,
+                                                      recursive=True))
+                self.assertIn(nested_dir_name1, full_list_of_file)
+                self.assertIn(nested_dir_name2, full_list_of_file)
+                self.assertIn(nested_dir_relative_path3, full_list_of_file)
 
-            first_level_list_of_file = list(handler.list(test_dir_name))
-            self.assertIn(nested_dir_name1, first_level_list_of_file)
-            self.assertIn(nested_dir_name2, first_level_list_of_file)
-            self.assertNotIn(nested_dir_relative_path3,
-                             first_level_list_of_file)
+                first_level_list_of_file = list(handler.list(test_dir_name))
+                self.assertIn(nested_dir_name1, first_level_list_of_file)
+                self.assertIn(nested_dir_name2, first_level_list_of_file)
+                self.assertNotIn(nested_dir_relative_path3,
+                                 first_level_list_of_file)
 
-            handler.remove(test_dir_name, True)
+                handler.remove(test_dir_name, True)
 
     def test_info(self):
         with chainerio.create_handler(self.fs) as handler:
