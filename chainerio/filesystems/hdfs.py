@@ -9,7 +9,8 @@ import os
 import pyarrow
 from pyarrow import hdfs
 
-from chainerio._typing import Type, Optional, Callable, Any
+from chainerio._typing import Optional
+from typing import Type, Callable, Any
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
