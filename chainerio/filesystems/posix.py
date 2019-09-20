@@ -24,9 +24,23 @@ class PosixFileSystem(FileSystem):
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
-    def list(self, path_or_prefix: str = None):
-        for file in os.scandir(path_or_prefix):
-            yield file.name
+    def list(self, path_or_prefix: str = None, recursive=False):
+        if recursive:
+            path_or_prefix = path_or_prefix.rstrip("/")
+            # plus 1 to include the trailing slash
+            prefix_end_index = len(path_or_prefix) + 1
+            yield from self._recursive_list(prefix_end_index, path_or_prefix)
+        else:
+            for file in os.scandir(path_or_prefix):
+                yield file.name
+
+    def _recursive_list(self, prefix_end_index: int, path: str):
+        for file in os.scandir(path):
+            yield file.path[prefix_end_index:]
+
+            if file.is_dir():
+                yield from self._recursive_list(prefix_end_index,
+                                                file.path)
 
     def stat(self, path):
         return os.stat(path)
