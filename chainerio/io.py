@@ -59,6 +59,33 @@ class IO(abc.ABC):
              closefd: bool = True,
              opener: Optional[Callable[
                  [str, int], Any]] = None) -> Type["IOBase"]:
+        """Opens a regular file with ``mode``
+
+        The function returns a file object, and the type depends on
+        the filesystem of the file and ``mode``.
+
+        Args:
+            file_path (str): the target file path
+
+            mode (str): the open mode of the file. Currently, the
+            following modes are supported:
+
+            +----+-----------------------+
+            |mode|      Meaning          |
+            +====+=======================+
+            | r  | read as a text file   |
+            +----+-----------------------+
+            | w  | write as a text file  |
+            +----+-----------------------+
+            | rb | read as a binary file |
+            +----+-----------------------+
+            | wb | write as a binary file|
+            +----+-----------------------+
+
+        Returns:
+            A file object according to the ``mode``.
+
+        """
         raise NotImplementedError()
 
     @property
@@ -71,11 +98,36 @@ class IO(abc.ABC):
 
     @abstractmethod
     def info(self) -> str:
+        """Shows the detail of the current handler
+
+        Returns:
+        A string that describes the details of the default handler.
+
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def list(self, path_or_prefix: Optional[str] = None,
-             recursive=False) -> Iterator:
+             recursive=False) -> Iterator[str]:
+        """Lists all the files and directories under
+           the given ``path_or_prefix``
+
+        Args:
+            path_or_prefix (str): The path to list against.
+                When we get the default value, ``list`` shows the content under
+                the root path, as the default value.
+                Refer to :func:`set_root` for details about the root path of
+                each filesystem. However, if a ``path_or_prefix`` is given,
+                then it shows only the files and directories
+                under the ``path_or_prefix``.
+
+            recursive (bool): When this is ``True``, list files and directories
+                recursively.
+
+        Returns:
+            An Iterator that iterates though the files and directories.
+
+        """
         raise NotImplementedError()
 
     @abstractmethod
@@ -100,38 +152,94 @@ class IO(abc.ABC):
 
     @abstractmethod
     def isdir(self, file_path: str) -> bool:
+        """Returns ``True`` if the path is an existing directory
+
+        Args:
+            path (str): the path to the target directory
+
+        Returns:
+            ``True`` when the path points to a directory,
+            ``False`` when it is not
+
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def mkdir(self, file_path: str, mode: int = 0o777,
               *args, dir_fd: Optional[int] = None) -> None:
+        """Makes a directory with mode
+
+        Args:
+            path (str): the path to the directory to make
+
+            mode (int): the mode of the new directory
+
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def makedirs(self, file_path: str, mode: int = 0o777,
                  exist_ok: bool = False) -> None:
+        """Makes directories recursively with mode
+
+        Also creates all the missing parents of the given path.
+
+        Args:
+            path (str): the path to the directory to make.
+
+            mode (int): the mode of the directory
+
+            exist_ok (bool): In default case, a ``FileExitsError`` will be
+                raised when the target directory exists.
+
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def exists(self, file_path: str) -> bool:
+        """Returns ``True`` when the given ``path`` exists
+
+        When the ``file_path`` points to a symlink, the return value
+        depends on the actual file instead of the link itself.
+
+        Args:
+            path (str): the ``path`` to the target file. The ``path`` can be an
+            Unix path or an URI.
+
+        Returns:
+            ``True`` when the file or directory exists,
+            ``False`` when it is not.
+
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def rename(self, src: str, dst: str) -> None:
+        """Renames the file from ``src`` to ``dst``
+
+        Args:
+            src (str): the current name of the file or directory.
+
+            dst (str): the name to rename to.
+
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def remove(self, file_path: str, recursive: bool = False) -> None:
-        '''
-        Remove the file pointed by the file_path
+        """Removes a file or directory
 
-        Args:
-            file_path (str): file path to be removed.
-                          It can be a file or a directory.
-            recursive (boolean): When set, the remove deletes all the
-                          files and directories under the given file_path,
-                          includes the given file_path itself.
-        '''
+           A combination of :func:`os.remove` and :func:`os.rmtree`.
+
+           Args:
+               path (str): the target path to remove. The ``path`` can be a
+               regular file or a directory.
+
+               recursive (bool): When the given path is a directory,
+                   all the files and directories under it will be removed.
+                   When the path is a file, this option is ignored.
+
+        """
         raise NotImplementedError()
 
     # TODO(tianqi) need to be changed to annotaion when we bump the
@@ -145,6 +253,26 @@ class IO(abc.ABC):
     # TODO(tianqi) need to be changed to annotaion when we bump the
     # Python version to >=3.7
     def open_as_container(self, container_file: str) -> 'IO':
+        """Opens a container and returns the handler
+
+        This function opens a container, e.g. zip, instead of a regular file.
+        For more details about the container, please refer to the `design \
+                <https://github.com/chainer/chainerio/blob/master/docs/\
+                source/design.rst#containers>`_
+
+        Works when the current handler is also a container: nested container.
+
+        Args:
+            path (str): The path to the container.
+
+        Returns:
+            A container handler that implements methods defined in
+            :class:`chainerio.container.Container`, which derived from
+            :class:`chainerio.IO`. The type of the container is
+            determined by the extension of the given path.
+            Currently, only zip is supported.
+
+        """
         container_class = self._get_container_handler(container_file)
         return container_class(self, container_file)
 
