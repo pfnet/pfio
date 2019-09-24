@@ -23,6 +23,10 @@ Toplevel Functions
 
 .. autoclass:: IO
    :members:
+.. autoclass:: chainerio.filesystem.FileSystem
+   :members:
+.. autoclass:: chainerio.container.Container
+   :members:
 
 Cache API
 ---------

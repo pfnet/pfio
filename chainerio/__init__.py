@@ -14,14 +14,21 @@ def open_as_container(path: str) -> IO:
 
     This function works similar to the :func:`open`,
     while it opens a container, e.g. zip, instead of a regular file.
+    For more details about the container, please refer to the `design \
+            <https://github.com/chainer/chainerio/blob/master/docs/\
+            source/design.rst#containers>`_
+
+    The function returns a handler to operate on the given container.
+    The handler is a object of :class:`chainerio.container.Container`,
+    which implements the APIs defines in the :class:`chainerio.IO`
 
     Args:
-        path (str): The path to the container. The path can be 
+        path (str): The path to the container. The path can be
         an Unix path or an URI.
 
     Returns:
         A container handler that implements methods defined in
-        :class:`chainerio.Container`, which derived from
+        :class:`chainerio.container.Container`, which derived from
         :class:`chainerio.IO`. The type of the container is
         determined by the extension of the given path.
         Currently, only zip is supported.
@@ -102,7 +109,7 @@ def open(file_path: str, mode: str = 'rb',
         file_path (str): the target file path, can be an Unix path,
             or an URI.
 
-        mode (str): the open mode of the file. Currently, the 
+        mode (str): the open mode of the file. Currently, the
         following modes are supported:
 
         +----+-----------------------+
@@ -116,7 +123,6 @@ def open(file_path: str, mode: str = 'rb',
         +----+-----------------------+
         | wb | write as a binary file|
         +----+-----------------------+
-        
 
     Returns:
         A file object according to the filesystem and ``mode``.
@@ -143,7 +149,7 @@ def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
     Example::
 
         # Case 1
-        # set_root by the name of uri 
+        # set_root by the name of uri
         chainerio.set_root("posix")
         # open a file on posix filesystem with path "some/file"
         chainerio.open("some/file")
@@ -254,7 +260,8 @@ def isdir(path: str) -> bool:
     return handler.isdir(actual_path)
 
 
-def mkdir(path: str, mode: int = 0o777, *, dir_fd: Optional[int] = None) -> None:
+def mkdir(path: str, mode: int = 0o777, *,
+          dir_fd: Optional[int] = None) -> None:
     """Makes a directory with mode
 
     Args:
