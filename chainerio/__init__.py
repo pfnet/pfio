@@ -254,7 +254,7 @@ def isdir(path: str) -> bool:
     return handler.isdir(actual_path)
 
 
-def mkdir(path: str, mode: int = 0o777, **kwargs) -> None:
+def mkdir(path: str, mode: int = 0o777, *, dir_fd: Optional[int] = None) -> None:
     """Makes a directory with mode
 
     Args:
@@ -269,7 +269,7 @@ def mkdir(path: str, mode: int = 0o777, **kwargs) -> None:
 
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(path)
-    return handler.mkdir(actual_path, mode, *kwargs)
+    return handler.mkdir(actual_path, mode, dir_fd=dir_fd)
 
 
 def makedirs(path: str, mode: int = 0o777,
