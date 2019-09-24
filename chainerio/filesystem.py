@@ -2,7 +2,7 @@ from chainerio.io import IO
 from chainerio.profiler import IOProfiler
 
 import os
-from typing import Optional
+from chainerio._typing import Optional
 
 
 class FileSystem(IO):

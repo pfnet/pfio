@@ -7,7 +7,8 @@ import sys
 import warnings
 import zipfile
 
-from typing import Type, Optional, Callable, Any
+from chainerio._typing import Optional
+from typing import Type, Callable, Any
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
