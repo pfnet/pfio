@@ -189,10 +189,15 @@ def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
     +=========+===========================+
     | POSIX   | current working directory |
     +---------+---------------------------+
-    | HDFS    |     /user/USERNAME        |
+    | HDFS    |     /user/``USERNAME`` #1 |
     +---------+---------------------------+
     | zip     |      top directory        |
     +---------+---------------------------+
+
+    #1 For the details about the ``USERNAME`` in HDFS, please refer to
+    `HDFS Document <https://hadoop.apache.org/docs/current/\
+            hadoop-project-dist/hadoop-hdfs/HdfsPermissionsGuide.html>`_
+
 
     Args:
         uri_or_handler (str or :class:~`chainerio.IO`): The ``uri_or_handler``
