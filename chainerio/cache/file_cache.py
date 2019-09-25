@@ -7,7 +7,7 @@ import warnings
 from chainerio import cache
 import pickle
 
-DEFAULT_CACHE_PATH = os.path.join(
+_DEFAULT_CACHE_PATH = os.path.join(
     os.getenv('HOME'), ".chainer", "chainerio", "cache")
 
 
@@ -77,13 +77,25 @@ class DummyLock:
 
 
 class FileCache(cache.Cache):
-    '''Stores cache data in local filesystem
+    '''Cache system with local filesystem
 
-    Stores cache data in local filesystem,
+    Stores cached data in local filesystem,
     ``~/.chainer/chainerio/cache`` by default. Cache data is
-    automatically deleted after the object is collected. If the
-    process quit (typically by SIGTERM) the cache remains after the
-    death of process.
+    automatically deleted after the object is collected. When this
+    object is not correctly closed, (e.g., the process killed by
+    SIGTERM), the cache remains after the death of process.
+
+    Arguments:
+        length (int): Length of the cache array.
+        multithread_safe (bool): Defines multithread safety. If this
+            is ``True``, reader-writer locking is introduced behind
+            the cache system. Major use case is with Chainer's
+            ``MultithreadIterator``.
+        do_pickle (bool):
+            Do automatic pickle and unpickle inside the cache.
+        dir (str):
+            The path to directory to place cache data in case home
+            directory is not backed by fast storage device.
 
     TODO(kuenishi): retain cache file in case of correct process
     termination and reuse for future process re-invocation.
@@ -91,7 +103,7 @@ class FileCache(cache.Cache):
     '''
 
     def __init__(self, length, multithread_safe=False, do_pickle=False,
-                 dir=DEFAULT_CACHE_PATH, verbose=False):
+                 dir=None, verbose=False):
         self._multithread_safe = multithread_safe
         self.length = length
         self.do_pickle = do_pickle
@@ -103,8 +115,10 @@ class FileCache(cache.Cache):
             self.lock = DummyLock()
 
         self.pos = 0
-        self.dir = dir
-        assert self.dir is not None
+        if dir is None:
+            self.dir = _DEFAULT_CACHE_PATH
+        else:
+            self.dir = dir
         os.makedirs(self.dir, exist_ok=True)
 
         self.closed = False
