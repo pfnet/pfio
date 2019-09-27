@@ -79,7 +79,7 @@ class DummyLock:
 class FileCache(cache.Cache):
     '''Cache system with local filesystem
 
-    Stores cached data in local filesystem,
+    Stores cache data in local temporary files, created in
     ``~/.chainer/chainerio/cache`` by default. Cache data is
     automatically deleted after the object is collected. When this
     object is not correctly closed, (e.g., the process killed by
@@ -87,15 +87,18 @@ class FileCache(cache.Cache):
 
     Arguments:
         length (int): Length of the cache array.
+
         multithread_safe (bool): Defines multithread safety. If this
-            is ``True``, reader-writer locking is introduced behind
-            the cache system. Major use case is with Chainer's
+            is ``True``, reader-writer locking system based on
+            ``threading.Lock`` is introduced behind the cache
+            management. Major use case is with Chainer's
             ``MultithreadIterator``.
+
         do_pickle (bool):
             Do automatic pickle and unpickle inside the cache.
-        dir (str):
-            The path to directory to place cache data in case home
-            directory is not backed by fast storage device.
+
+        dir (str): The path to the directory to place cache data in
+            case home directory is not backed by fast storage device.
 
     TODO(kuenishi): retain cache file in case of correct process
     termination and reuse for future process re-invocation.
