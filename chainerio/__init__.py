@@ -15,7 +15,7 @@ def open_as_container(path: str) -> IO:
        Call the corresponding :func:`IO.open_as_container` upon the
        default handler.
 
-       The ``path`` can be  an Unix path or an URI.
+       The ``path`` can be a POSIX path or an URI.
 
     """
     global _DEFAULT_CONTEXT
@@ -30,7 +30,7 @@ def list(path_or_prefix: Optional[str] = None,
 
        Call the corresponding :func:`IO.list` upon the default handler.
 
-       The ``path`` can be  an Unix path or an URI.
+       The ``path`` can be a POSIX path or an URI.
 
     """
 
@@ -70,7 +70,7 @@ def open(file_path: str, mode: str = 'rb',
 
     Call the corresponding :func:`IO.open` upon the default handler.
 
-    If an Unix path is given, the method use the default handler,
+    If a POSIX path is given, the method use the default handler,
     and identifies the file from root path.
     See :func:`set_root` for details about root path and default handler.
     If an URI is given, right filesystem handler is automatically chosen
@@ -205,7 +205,7 @@ def isdir(path: str) -> bool:
 
     Call the corresponding :func:`IO.isdir` upon the default handler.
 
-    The ``path`` can be  an Unix path or an URI.
+    The ``path`` can be a POSIX path or an URI.
     """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
@@ -221,7 +221,7 @@ def mkdir(path: str, mode: int = 0o777, *,
 
     Call the corresponding :func:`IO.mkdir` upon the default handler.
 
-    The ``path`` can be  an Unix path or an URI.
+    The ``path`` can be a POSIX path or an URI.
 
     """
     global _DEFAULT_CONTEXT
@@ -238,7 +238,7 @@ def makedirs(path: str, mode: int = 0o777,
 
     Call the corresponding :func:`IO.makedirs` upon the default handler.
 
-    The ``path`` can be  an Unix path or an URI.
+    The ``path`` can be a POSIX path or an URI.
 
     """
     global _DEFAULT_CONTEXT
@@ -254,7 +254,7 @@ def exists(path: str) -> bool:
 
     Call the corresponding :func:`IO.exists` upon the default handler.
 
-    The ``path`` can be an Unix path or an URI. or URIs.
+    The ``path`` can be a POSIX path or an URI. or URIs.
 
     """
     global _DEFAULT_CONTEXT
@@ -271,7 +271,7 @@ def rename(src: str, dst: str) -> None:
     Call the corresponding :func:`IO.rename` upon the default handler.
 
     Note the ``src`` and ``dst`` SHOULD be in the same filesystem.
-    The ``src`` and ``dst`` can be either Unix paths or URIs.
+    The ``src`` and ``dst`` can be either POSIX paths or URIs.
 
     """
     global _DEFAULT_CONTEXT
@@ -296,7 +296,7 @@ def remove(path: str, recursive: bool = False) -> None:
     Args:
         path (str): the target path to remove. The ``path`` can be a
         regular file or a directory.
-        The ``path`` can be an Unix file path or an URI.
+        The ``path`` can be a POSIX file path or an URI.
 
         recursive (bool): When the given path is a directory,
             all the files and directories under it will be removed.

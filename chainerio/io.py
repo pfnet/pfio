@@ -203,8 +203,8 @@ class IO(abc.ABC):
         depends on the actual file instead of the link itself.
 
         Args:
-            path (str): the ``path`` to the target file. The ``path`` can be an
-            Unix path or an URI.
+            path (str): the ``path`` to the target file. The ``path`` can be a
+            POSIX path or an URI.
 
         Returns:
             ``True`` when the file or directory exists,
