@@ -2,10 +2,12 @@ from chainerio.filesystem import FileSystem
 from chainerio.io import open_wrapper
 from krbticket import KrbTicket
 
-import getpass
+import subprocess
+import re
 import io
 import logging
 import os
+import getpass
 import pyarrow
 from pyarrow import hdfs
 
@@ -16,16 +18,50 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
+def parse_klist_output(output):
+    principle_str = output.decode('utf-8').split('\n')[1]
+    klist_principal_pattern = re.compile(
+        r'Default principal: (?P<username>.+)@(?P<service>.+)')
+    ret = klist_principal_pattern.match(principle_str)
+    if ret:
+        pattern_dict = ret.groupdict()
+        return pattern_dict['username']
+    else:
+        return None
+
+
 class HdfsFileSystem(FileSystem):
     def __init__(self, io_profiler=None, root="", keytab_path=None):
         FileSystem.__init__(self, io_profiler, root)
         self.connection = None
         self.type = 'hdfs'
         self.root = root
-        self.username = getpass.getuser()
-        self.userid = os.getuid()
+        self.username = self._get_principal_name(keytab_path)
+        if self.username is None:
+            # in case klist fails, use the login username instead
+            self.username = self._get_login_username()
         self.keytab_path = keytab_path
         self.nameservice = None
+
+    def _get_principal_name(self, keytab_path):
+        # get the default principle name from `klist`
+        try:
+            command = ['klist']
+            if keytab_path is not None:
+                command += ['-c', keytab_path]
+            pipe = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            out, err = pipe.communicate()
+            if out == b'' and err != b'':
+                return None
+            else:
+                return parse_klist_output(out)
+        except OSError:
+            # klist is not found
+            return None
+
+    def _get_login_username(self):
+        return getpass.getuser()
 
     def _create_connection(self):
         if None is self.connection:
