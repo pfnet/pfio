@@ -2,7 +2,7 @@ from chainerio._context import DefaultContext
 from chainerio.version import __version__  # NOQA
 
 from chainerio.io import IO
-from chainerio._typing import Optional
+from chainerio._typing import Optional, Union
 from typing import Iterator, Any, Callable, Type
 
 
@@ -10,6 +10,14 @@ _DEFAULT_CONTEXT = DefaultContext()
 
 
 def open_as_container(path: str) -> IO:
+    """Opens a container and returns the handler
+
+       Call the corresponding :func:`IO.open_as_container` upon the
+       default handler.
+
+       The ``path`` can be a POSIX path or an URI.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
@@ -17,22 +25,12 @@ def open_as_container(path: str) -> IO:
 
 
 def list(path_or_prefix: Optional[str] = None,
-         recursive: bool = False) -> Iterator:
-    """list all the files under the given path_or_prefix
+         recursive: bool = False) -> Iterator[str]:
+    """Lists all the files and directories under the given ``path_or_prefix``
 
-    Args:
-       path_or_prefix (str): The path to list against.
-           When we get the default value, list behave similar to
-           the default os.listdir: it shows the content under
-           the root directory, which is set to local $HOME,
-           as the default value.
-           Please note that the meaning of $HOME depends on each filesystem.
-           However, if a `path_or_prefix` is given,
-           then it shows all the files that start with `path_or_prefix`
+       Call the corresponding :func:`IO.list` upon the default handler.
 
-       recursive (bool): When set, list files and directories
-           recursively. Performance issues might occur for huge directories.
-           Mostly useful for containers such as zip.
+       The ``path`` can be a POSIX path or an URI.
 
     """
 
@@ -47,6 +45,14 @@ def list(path_or_prefix: Optional[str] = None,
 
 
 def info() -> str:
+    """Shows the detail of the current default handler
+
+       Call the corresponding :func:`IO.info` upon the default handler.
+
+    Returns:
+        A string that describes the details of the default handler.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
@@ -60,6 +66,17 @@ def open(file_path: str, mode: str = 'rb',
          closefd: bool = True,
          opener: Optional[Callable[
              [str, int], Any]] = None) -> Type['IOBase']:
+    """Opens a regular file with ``mode``
+
+    Call the corresponding :func:`IO.open` upon the default handler.
+
+    If a POSIX path is given, the method use the default handler,
+    and identifies the file from root path.
+    See :func:`set_root` for details about root path and default handler.
+    If an URI is given, right filesystem handler is automatically chosen
+    by the library, according to the scheme included in the URI.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
@@ -69,60 +86,194 @@ def open(file_path: str, mode: str = 'rb',
         errors, newline, closefd, opener)
 
 
-def set_root(uri_or_handler: str) -> None:
+def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
+    """Sets the current context to ``uri_or_handler``
+
+    The context here refers to the default handler and the root path.
+    The default handler points to a filesystem or a container which
+    ChainerIO uses when called without an URI.
+    Handlers can be created by :func:`create_handlen` with
+    the name of scheme. See the case 3 in the following example.
+
+    Example::
+
+        # Case 1
+        # set_root by the name of uri
+        chainerio.set_root("posix")
+        # open a file on posix filesystem with path "some/file"
+        chainerio.open("some/file")
+        # override with a uri
+        chainerio.open("hdfs:///some/file/on/hdfs")
+
+        # Case 2
+        # set_root by uri
+        chainerio.set_root("hdfs:///some/directory")
+        # open a file "on/hdfs" on hdfs under the " some/directory"
+        chainerio.open("on/hdfs")
+
+        # Case 3
+        handler = chainerio.create_handler('hdfs')
+        # set_root by handler
+        chainerio.set_root(handler)
+        # open a file "/some/file/on/hdfs" on hdfs
+        chainerio.open("/some/file/on/hdfs")
+
+        # Case 4
+        handler = chainerio.open_as_container('some.zip')
+        # set_root by handler
+        chainerio.set_root(handler)
+        # open a file "img.jpg" in "some.zip"
+        chainerio.open("img.jpg")
+
+    The root path refers to a directory that ChainerIO works on.
+    It is similar to current working directory, ``CWD`` in terms of the shell
+    environment.
+    The root path will only be set
+    when the ``uri_or_handler`` points to a directory.
+    Otherwise, it will be set to default,
+    which represents the default working directory as follows:
+
+    +---------+---------------------------+
+    |         | Default Working Directory |
+    +=========+===========================+
+    | POSIX   | current working directory |
+    +---------+---------------------------+
+    | HDFS    | /user/``USERNAME`` [#f1]_ |
+    +---------+---------------------------+
+    | zip     |      top directory        |
+    +---------+---------------------------+
+
+    .. [#f1] For the details about the ``USERNAME`` in HDFS, please refer to \
+    `HDFS Document <https://hadoop.apache.org/docs/current/\
+            hadoop-project-dist/hadoop-hdfs/HdfsPermissionsGuide.html>`_
+
+
+    Args:
+        uri_or_handler (str or a object of a derived class of
+            :class:`chainerio.IO`): The ``uri_or_handler``
+            can accept the following three kinds of values:
+
+            1. the scheme (string): set the default handler
+                according to the scheme.
+                See :func:`create_handler` for supported scheme.
+
+            2. an uri of directory (string): set the context
+                to use the corresponding handler and set
+                the root path to the given directory.
+
+            3. a handler, which is an instance of
+                :class:`chainerio.IO`. Set the default handler
+                to the given handler, and root path to default.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
     default_context.set_root(uri_or_handler)
 
 
-def create_handler(uri: str) -> IO:
+def create_handler(scheme: str) -> IO:
+    """Returns a handler according to the given ``scheme``
+
+    The current supported handlers are:
+
+    1. posix
+    2. hdfs
+
+    See `scheme <https://github.com/chainer/chainerio/blob/master/\
+            docs/source/design.rst#uri-expression-of-file-paths>`_
+    for more details.
+
+
+    Args:
+        scheme (str): the name of the scheme.
+
+    Returns:
+        An object that implements the APIs defined in :class:`chainerio.IO`.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
     (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(uri)
+        default_context.get_handler_by_name(scheme)
     return handler
 
 
-def isdir(file_path: str) -> bool:
+def isdir(path: str) -> bool:
+    """Returns ``True`` if the path is an existing directory
+
+    Call the corresponding :func:`IO.isdir` upon the default handler.
+
+    The ``path`` can be a POSIX path or an URI.
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
     (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(file_path)
+        default_context.get_handler_by_name(path)
     return handler.isdir(actual_path)
 
 
-def mkdir(file_path: str, mode: int = 0o777, **kwargs) -> None:
+def mkdir(path: str, mode: int = 0o777, *,
+          dir_fd: Optional[int] = None) -> None:
+    """Makes a directory with mode
+
+    Call the corresponding :func:`IO.mkdir` upon the default handler.
+
+    The ``path`` can be a POSIX path or an URI.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
     (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(file_path)
-    return handler.mkdir(actual_path, mode, *kwargs)
+        default_context.get_handler_by_name(path)
+    return handler.mkdir(actual_path, mode, dir_fd=dir_fd)
 
 
-def makedirs(file_path: str, mode: int = 0o777,
+def makedirs(path: str, mode: int = 0o777,
              exist_ok: bool = False) -> None:
+    """Makes directories recursively with mode
+
+    Call the corresponding :func:`IO.makedirs` upon the default handler.
+
+    The ``path`` can be a POSIX path or an URI.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
     (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(file_path)
+        default_context.get_handler_by_name(path)
     return handler.makedirs(actual_path, mode, exist_ok)
 
 
-def exists(file_path: str) -> bool:
+def exists(path: str) -> bool:
+    """Returns ``True`` when the given ``path`` exists
+
+    Call the corresponding :func:`IO.exists` upon the default handler.
+
+    The ``path`` can be a POSIX path or an URI. or URIs.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
     (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(file_path)
+        default_context.get_handler_by_name(path)
     return handler.exists(actual_path)
 
 
 def rename(src: str, dst: str) -> None:
+    """Renames the file from ``src`` to ``dst``
+
+    Call the corresponding :func:`IO.rename` upon the default handler.
+
+    Note the ``src`` and ``dst`` SHOULD be in the same filesystem.
+    The ``src`` and ``dst`` can be either POSIX paths or URIs.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
@@ -138,6 +289,20 @@ def rename(src: str, dst: str) -> None:
 
 
 def remove(path: str, recursive: bool = False) -> None:
+    """Removes a file or directory
+
+    Call the corresponding :func:`IO.remove` upon the default handler.
+
+    Args:
+        path (str): the target path to remove. The ``path`` can be a
+        regular file or a directory.
+        The ``path`` can be a POSIX file path or an URI.
+
+        recursive (bool): When the given path is a directory,
+            all the files and directories under it will be removed.
+            When the path is a file, this option is ignored.
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
@@ -147,6 +312,12 @@ def remove(path: str, recursive: bool = False) -> None:
 
 
 def get_root_dir() -> str:
+    """get the current root path
+
+    Returns:
+        The current root path
+
+    """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
