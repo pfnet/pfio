@@ -1,9 +1,11 @@
 import unittest
 
 from collections.abc import Iterable
+from chainerio.filesystems.hdfs import parse_klist_output
 import pickle
 import shutil
 import os
+import getpass
 
 import chainerio
 
@@ -41,6 +43,27 @@ class TestHdfsHandler(unittest.TestCase):
 
         with chainerio.create_handler(self.fs) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
+
+    def test_klist_not_exist(self):
+        path = os.environ['PATH']
+        # remove klist
+        os.environ['PATH'] = ''
+        with chainerio.create_handler(self.fs) as handler:
+            self.assertEqual(getpass.getuser(), handler.username)
+
+        os.environ['PATH'] = path
+
+    def test_keytab_not_exist(self):
+        with chainerio.filesystems.hdfs.HdfsFileSystem(
+                keytab_path="does_not_exist") as handler:
+            self.assertEqual(getpass.getuser(), handler.username)
+
+    def test_principle_pattern(self):
+        username = 'fake_user!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
+        service = 'fake_service!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
+        correct_out = 'Ticket cache: FILE:/tmp/krb5cc_sdfa\nDefault principal: {}@{}\nValid starting       Expires              Service principal\n10/01/2019 12:44:18  10/08/2019 12:44:14   krbtgt/service@service\nrenew until 10/22/2019 15:04:20'.format(username, service) # NOQA
+        self.assertEqual(username,
+                         parse_klist_output(correct_out.encode('utf-8')))
 
     def test_list(self):
         with chainerio.create_handler(self.fs) as handler:
