@@ -203,23 +203,24 @@ class TestContext(unittest.TestCase):
     def test_rename(self):
         new_tmp_dir = tempfile.TemporaryDirectory()
 
-        src = os.path.join("file://", new_tmp_dir.name, 'src')
-        dst = os.path.join("file://", new_tmp_dir.name, 'dst')
-        with chainerio.open(src, 'w') as fp:
-            fp.write('foobar')
+        try:
+            src = os.path.join("file://", new_tmp_dir.name, 'src')
+            dst = os.path.join("file://", new_tmp_dir.name, 'dst')
+            with chainerio.open(src, 'w') as fp:
+                fp.write('foobar')
 
-        assert chainerio.exists(src)
-        assert not chainerio.exists(dst)
+            assert chainerio.exists(src)
+            assert not chainerio.exists(dst)
 
-        chainerio.rename(src, dst)
-        with chainerio.open(dst, 'r') as fp:
-            data = fp.read()
-            assert data == 'foobar'
+            chainerio.rename(src, dst)
+            with chainerio.open(dst, 'r') as fp:
+                data = fp.read()
+                assert data == 'foobar'
 
-        assert not chainerio.exists(src)
-        assert chainerio.exists(dst)
-
-        new_tmp_dir.cleanup()
+            assert not chainerio.exists(src)
+            assert chainerio.exists(dst)
+        finally:
+            new_tmp_dir.cleanup()
 
     def test_remove(self):
         test_file = "test_remove.txt"
