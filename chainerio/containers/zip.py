@@ -110,13 +110,14 @@ class ZipContainer(Container):
             _list = set()
             for name in self.zip_file_obj.namelist():
                 if name.startswith(path_or_prefix):
-                    name = name[len(path_or_prefix):]
+                    # in case the path_or_prefix does not have trailing slash
+                    name = name[len(path_or_prefix):].lstrip("/")
 
-                first_level_file_name = name.split("/")[0]
-                if first_level_file_name and \
-                        first_level_file_name not in _list:
-                    _list.add(first_level_file_name)
-                    yield first_level_file_name
+                    first_level_file_name = name.split("/")[0]
+                    if first_level_file_name and \
+                            first_level_file_name not in _list:
+                        _list.add(first_level_file_name)
+                        yield first_level_file_name
 
     def set_base(self, base):
         Container.reset_base_handler(self, base)
