@@ -3,6 +3,7 @@ import unittest
 import chainerio
 import os
 import shutil
+import tempfile
 
 
 class TestContext(unittest.TestCase):
@@ -10,15 +11,14 @@ class TestContext(unittest.TestCase):
     def setUp(self):
         self.test_string_str = "this is a test string\n"
         self.test_string_bytes = self.test_string_str.encode("utf-8")
-        self.dir_name = "testdir/"
+        self.tmpdir = tempfile.TemporaryDirectory()
         self.tmpfile_name = "testfile.txt"
-        self.tmpfile_path = os.path.join(self.dir_name, self.tmpfile_name)
-        os.mkdir(self.dir_name)
+        self.tmpfile_path = os.path.join(self.tmpdir.name, self.tmpfile_name)
         with open(self.tmpfile_path, "w") as tmpfile:
             tmpfile.write(self.test_string_str)
 
     def tearDown(self):
-        chainerio.remove(self.dir_name, True)
+        self.tmpdir.cleanup()
 
     def test_set_root(self):
         # Set default context globally in this process
@@ -28,7 +28,7 @@ class TestContext(unittest.TestCase):
         with chainerio.open(self.tmpfile_path, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
-        chainerio.set_root('file://' + self.dir_name)
+        chainerio.set_root('file://' + self.tmpdir.name)
         with chainerio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
@@ -38,26 +38,32 @@ class TestContext(unittest.TestCase):
         zip_file_name = "test"
         zip_file_path = zip_file_name + ".zip"
 
-        shutil.make_archive(zip_file_name, "zip", base_dir=self.dir_name)
+        # in the zip, the leading slash will be removed
+        # TODO(tianqi): related to issue #61
+        dirname_zip = self.tmpdir.name.lstrip('/') + '/'
+        file_name_zip = self.tmpfile_path.lstrip('/')
+        first_level_dir = dirname_zip.split('/')[0]
+
+        shutil.make_archive(zip_file_name, "zip", base_dir=self.tmpdir.name)
 
         with chainerio.open_as_container(zip_file_path) as container:
             file_generator = container.list()
             file_list = list(file_generator)
-            self.assertIn(self.dir_name[:-1], file_list)
-            self.assertNotIn(self.tmpfile_path, file_list)
+            self.assertIn(first_level_dir, file_list)
+            self.assertNotIn(file_name_zip, file_list)
             self.assertNotIn("", file_list)
 
-            file_generator = container.list(self.dir_name)
+            file_generator = container.list(dirname_zip)
             file_list = list(file_generator)
-            self.assertNotIn(self.dir_name[:-1], file_list)
-            self.assertIn(os.path.basename(self.tmpfile_path), file_list)
+            self.assertNotIn(first_level_dir, file_list)
+            self.assertIn(os.path.basename(file_name_zip), file_list)
             self.assertNotIn("", file_list)
 
-            self.assertTrue(container.isdir(self.dir_name))
-            self.assertFalse(container.isdir(self.tmpfile_path))
+            self.assertTrue(container.isdir(dirname_zip))
+            self.assertFalse(container.isdir(file_name_zip))
 
             self.assertIsInstance(container.info(), str)
-            with container.open(self.tmpfile_path, "r") as f:
+            with container.open(file_name_zip, "r") as f:
                 self.assertEqual(
                     f.read(), self.test_string_str)
 
@@ -69,10 +75,13 @@ class TestContext(unittest.TestCase):
         zip_file_path = zip_file_name + ".zip"
         posix_file_path = "file://" + zip_file_path
 
-        shutil.make_archive(zip_file_name, "zip", base_dir=self.dir_name)
+        # in the zip, the leading slash will be removed
+        file_name_zip = self.tmpfile_path.lstrip('/')
+
+        shutil.make_archive(zip_file_name, "zip", base_dir=self.tmpdir.name)
 
         with chainerio.open_as_container(posix_file_path) as container:
-            with container.open(self.tmpfile_path, "r") as f:
+            with container.open(file_name_zip, "r") as f:
                 self.assertEqual(
                     f.read(), self.test_string_str)
 
@@ -84,6 +93,9 @@ class TestContext(unittest.TestCase):
         zip_file_name = "test"
         zip_file_path = zip_file_name + ".zip"
 
+        # in the zip, the leading slash will be removed
+        file_name_zip = self.tmpfile_path.lstrip('/')
+
         # TODO(tianqi): add functionality ot chainerio
         from pyarrow import hdfs
 
@@ -93,14 +105,14 @@ class TestContext(unittest.TestCase):
 
         hdfs_file_path = os.path.join(hdfs_home, zip_file_path)
 
-        shutil.make_archive(zip_file_name, "zip", base_dir=self.dir_name)
+        shutil.make_archive(zip_file_name, "zip", base_dir=self.tmpdir.name)
 
         with chainerio.open(hdfs_file_path, "wb") as hdfs_file:
             with chainerio.open(zip_file_path, "rb") as posix_file:
                 hdfs_file.write(posix_file.read())
 
         with chainerio.open_as_container(hdfs_file_path) as container:
-            with container.open(self.tmpfile_path, "r") as f:
+            with container.open(file_name_zip, "r") as f:
                 self.assertEqual(
                     f.read(), self.test_string_str)
 
@@ -108,8 +120,7 @@ class TestContext(unittest.TestCase):
         chainerio.remove(hdfs_file_path)
 
     def test_root_local_override(self):
-        chainerio.set_root('file://' + self.dir_name)
-        print(self.tmpfile_name)
+        chainerio.set_root('file://' + self.tmpdir.name)
         with chainerio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
@@ -149,7 +160,7 @@ class TestContext(unittest.TestCase):
         nested_dir_name1 = "nested_dir1"
         nested_dir_name2 = "nested_dir2"
 
-        nested_dir_path1 = os.path.join(self.dir_name, nested_dir_name1)
+        nested_dir_path1 = os.path.join(self.tmpdir.name, nested_dir_name1)
         nested_dir_path2 = os.path.join(nested_dir_path1,
                                         nested_dir_name2)
         nested_dir_path2_relative = os.path.join(nested_dir_name1,
@@ -157,18 +168,18 @@ class TestContext(unittest.TestCase):
         chainerio.makedirs(nested_dir_path1)
         chainerio.makedirs(nested_dir_path2)
 
-        file_list = list(chainerio.list(self.dir_name))
+        file_list = list(chainerio.list(self.tmpdir.name))
         self.assertIn(nested_dir_name1, file_list)
         self.assertIn(self.tmpfile_name, file_list)
         self.assertNotIn(nested_dir_path2_relative, file_list)
 
-        file_list = list(chainerio.list(self.dir_name, recursive=True))
+        file_list = list(chainerio.list(self.tmpdir.name, recursive=True))
         self.assertIn(nested_dir_name1, file_list)
         self.assertIn(self.tmpfile_name, file_list)
         self.assertIn(nested_dir_path2_relative, file_list)
 
     def test_isdir(self):
-        self.assertTrue(chainerio.isdir("file://" + self.dir_name))
+        self.assertTrue(chainerio.isdir("file://" + self.tmpdir.name))
 
     def test_mkdir(self):
         new_tmp_dir = "testmkdir/"
@@ -186,26 +197,30 @@ class TestContext(unittest.TestCase):
 
     def test_exists(self):
         non_exist_file = "non_exist_file"
-        self.assertTrue(chainerio.exists(self.dir_name))
+        self.assertTrue(chainerio.exists(self.tmpdir.name))
         self.assertFalse(chainerio.exists(non_exist_file))
 
     def test_rename(self):
-        new_tmp_dir = "testmkdir/"
-        chainerio.makedirs("file://" + new_tmp_dir)
+        new_tmp_dir = tempfile.TemporaryDirectory()
 
-        src = os.path.join("file://", new_tmp_dir, 'src')
-        dst = os.path.join("file://", new_tmp_dir, 'dst')
-        with chainerio.open(src, 'w') as fp:
-            fp.write('foobar')
+        try:
+            src = os.path.join("file://", new_tmp_dir.name, 'src')
+            dst = os.path.join("file://", new_tmp_dir.name, 'dst')
+            with chainerio.open(src, 'w') as fp:
+                fp.write('foobar')
 
-        chainerio.rename(src, dst)
-        with chainerio.open(dst, 'r') as fp:
-            data = fp.read()
-            assert data == 'foobar'
+            assert chainerio.exists(src)
+            assert not chainerio.exists(dst)
 
-        assert not chainerio.exists(src)
-        assert chainerio.exists(dst)
-        chainerio.remove(new_tmp_dir, True)
+            chainerio.rename(src, dst)
+            with chainerio.open(dst, 'r') as fp:
+                data = fp.read()
+                assert data == 'foobar'
+
+            assert not chainerio.exists(src)
+            assert chainerio.exists(dst)
+        finally:
+            new_tmp_dir.cleanup()
 
     def test_remove(self):
         test_file = "test_remove.txt"

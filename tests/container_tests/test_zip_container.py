@@ -5,6 +5,7 @@ import io
 import os
 import pickle
 import shutil
+import tempfile
 from zipfile import ZipFile
 
 
@@ -30,24 +31,28 @@ class TestZipHandler(unittest.TestCase):
         self.zip_file_path = self.zip_file_name + ".zip"
 
         # nested zip and nested file
+        self.tmpdir = tempfile.TemporaryDirectory()
         self.nested_zipped_file_name = "nested"
         self.nested_dir_name = "nested_dir/"
+        self.nested_dir_path = os.path.join(self.tmpdir.name,
+                                            self.nested_dir_name)
         self.nested_zip_file_name = "nested.zip"
 
         # directory and file
         self.dir_name = "testdir/"
+        self.dir_path = os.path.join(self.tmpdir.name, self.dir_name)
         self.zipped_file_name = "testfile"
 
         self.zipped_file_path = os.path.join(
-            self.dir_name, self.zipped_file_name)
+            self.dir_path, self.zipped_file_name)
         self.nested_zip_path = os.path.join(
-            self.dir_name, self.nested_zip_file_name)
+            self.dir_path, self.nested_zip_file_name)
         self.nested_zipped_file_path = os.path.join(
-            self.nested_dir_name, self.nested_zipped_file_name)
+            self.nested_dir_path, self.nested_zipped_file_name)
         self.fs_handler = chainerio.create_handler("posix")
 
-        os.mkdir(self.dir_name)
-        os.mkdir(self.nested_dir_name)
+        os.mkdir(self.dir_path)
+        os.mkdir(self.nested_dir_path)
         with open(self.zipped_file_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
 
@@ -58,13 +63,16 @@ class TestZipHandler(unittest.TestCase):
             tmpzip.write(self.nested_zipped_file_path)
 
         os.remove(self.nested_zipped_file_path)
+        shutil.make_archive(self.zip_file_name, "zip", base_dir=self.dir_path)
 
-        shutil.make_archive(self.zip_file_name, "zip", base_dir=self.dir_name)
+        self.dir_path = self.dir_path.lstrip("/")
+        self.zipped_file_path = self.zipped_file_path.lstrip("/")
+        self.nested_zip_path = self.nested_zip_path.lstrip("/")
+        self.nested_zipped_file_path = self.nested_zipped_file_path.lstrip("/")
 
     def tearDown(self):
         os.remove(self.zip_file_path)
-        shutil.rmtree(self.dir_name)
-        shutil.rmtree(self.nested_dir_name)
+        self.tmpdir.cleanup()
 
     def test_read_bytes(self):
         with self.fs_handler.open_as_container(
@@ -89,20 +97,20 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             zip_generator = handler.list()
             zip_list = list(zip_generator)
-            self.assertIn(self.dir_name.split("/")[0], zip_list)
+            self.assertIn(self.dir_path.split("/")[0], zip_list)
             self.assertNotIn(self.zipped_file_name, zip_list)
             self.assertNotIn("", zip_list)
 
-            zip_generator = handler.list(self.dir_name)
+            zip_generator = handler.list(self.dir_path)
             zip_list = list(zip_generator)
-            self.assertNotIn(self.dir_name.split("/")[0], zip_list)
+            self.assertNotIn(self.dir_path.split("/")[0], zip_list)
             self.assertIn(self.zipped_file_name, zip_list)
             self.assertNotIn("", zip_list)
 
             zip_generator = handler.list(recursive=True)
             zip_list = list(zip_generator)
-            self.assertIn(self.dir_name, zip_list)
-            self.assertIn(os.path.join(self.dir_name, self.zipped_file_name),
+            self.assertIn(self.dir_path, zip_list)
+            self.assertIn(os.path.join(self.dir_path, self.zipped_file_name),
                           zip_list)
             self.assertNotIn("", zip_list)
 
@@ -112,7 +120,7 @@ class TestZipHandler(unittest.TestCase):
 
     def test_isdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            self.assertTrue(handler.isdir(self.dir_name))
+            self.assertTrue(handler.isdir(self.dir_path))
             self.assertFalse(handler.isdir(self.zipped_file_path))
 
     def test_mkdir(self):
@@ -148,7 +156,7 @@ class TestZipHandler(unittest.TestCase):
         non_exist_file = "non_exist_file.txt"
 
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            self.assertTrue(handler.exists(self.dir_name))
+            self.assertTrue(handler.exists(self.dir_path))
             self.assertTrue(handler.exists(self.zipped_file_path))
             self.assertFalse(handler.exists(non_exist_file))
 
