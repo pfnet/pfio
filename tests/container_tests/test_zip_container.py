@@ -161,17 +161,69 @@ class TestZipHandler(unittest.TestCase):
                  "recursive": False},
                 # recursive test
                 {"path_or_prefix": '',
-                 "expected_list": [self.dir_name1,
-                                   self.dir_name2,
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   os.path.join(self.dir_name1,
+                                                self.nested_zip_file_name),
+                                   os.path.join(self.dir_name2,
+                                                self.zipped_file_name),
+                                   self.testfile_name],
+                 "recursive": True},
+                {"path_or_prefix": self.dir_name2,
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": True},
+                # problem 2 in issue #66
+                {"path_or_prefix": self.dir_name2.rstrip('/'),
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": True},
+                # not normalized path
+                {"path_or_prefix": 'testdir2//testfile//../',
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": True},
+                # not normalized path root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   os.path.join(self.dir_name1,
+                                                self.nested_zip_file_name),
+                                   os.path.join(self.dir_name2,
+                                                self.zipped_file_name),
+                                   self.testfile_name],
+                 "recursive": True},
+                # not normalized path beyond root
+                {"path_or_prefix": '//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   os.path.join(self.dir_name1,
+                                                self.nested_zip_file_name),
+                                   os.path.join(self.dir_name2,
+                                                self.zipped_file_name),
+                                   self.testfile_name],
+                 "recursive": True},
+                # not normalized path beyond root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   os.path.join(self.dir_name1,
+                                                self.nested_zip_file_name),
+                                   os.path.join(self.dir_name2,
+                                                self.zipped_file_name),
+                                   self.testfile_name],
+                 "recursive": True},
+                # starting with slash
+                {"path_or_prefix": '/',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
                                    os.path.join(self.dir_name1,
                                                 self.nested_zip_file_name),
                                    os.path.join(self.dir_name2,
                                                 self.zipped_file_name),
                                    self.testfile_name],
                  "recursive": True}]
+
             for case in cases:
                 zip_generator = handler.list(case['path_or_prefix'],
-                                             case['recursive'])
+                                             recursive=case['recursive'])
                 zip_list = list(zip_generator)
                 self.assertEqual(sorted(case['expected_list']),
                                  sorted(zip_list))
@@ -194,6 +246,9 @@ class TestZipHandler(unittest.TestCase):
             for case in cases:
                 with self.assertRaises(case["error"]):
                     list(handler.list(case['path_or_prefix']))
+
+                with self.assertRaises(case["error"]):
+                    list(handler.list(case['path_or_prefix'], recursive=True))
 
     def test_info(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
