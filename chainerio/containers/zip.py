@@ -98,7 +98,24 @@ class ZipContainer(Container):
 
     def stat(self, path):
         self._open_zip_file()
-        return self.zip_file_obj.getinfo(path)
+        try:
+            stat = self.zip_file_obj.getinfo(path)
+        except KeyError:
+            # handles cases when path is a directory but without trailing slash
+            # see issue $67
+            if path.endswith('/'):
+                # the case where the file_path already has trailing slash
+                # and it is not in the zip, raise the KeyError
+                raise FileNotFoundError(
+                    "{} is not found".format(path))
+            else:
+                try:
+                    # retry with trailing slash
+                    stat = self.zip_file_obj.getinfo(path + '/')
+                except KeyError:
+                    raise FileNotFoundError(
+                        "{} is not found".format(path))
+        return stat
 
     def list(self, path_or_prefix: str = "", recursive=False):
         self._open_zip_file()
@@ -114,20 +131,9 @@ class ZipContainer(Container):
         else:
             given_dir_list = []
 
-        if path_or_prefix:
-            # TODO(tianqi)will move to `stat` to support
-            # directory without slash,
-            # which will be fixed in #73
-            try:
-                self.stat(path_or_prefix + '/')
-            except KeyError:
-                try:
-                    self.stat(path_or_prefix)
-                    raise NotADirectoryError(
-                        "{} is not a directory".format(path_or_prefix))
-                except KeyError:
-                    raise FileNotFoundError(
-                        "{} is not found".format(path_or_prefix))
+        if path_or_prefix and not self.isdir(path_or_prefix):
+            raise NotADirectoryError(
+                "{} is not a directory".format(path_or_prefix))
 
         if recursive:
             for name in self.zip_file_obj.namelist():
