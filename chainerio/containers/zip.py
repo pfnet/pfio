@@ -140,7 +140,8 @@ class ZipContainer(Container):
 
     def exists(self, file_path: str):
         self._open_zip_file()
-        return file_path in self.zip_file_obj.namelist()
+        return (file_path in self.zip_file_obj.namelist()
+                or file_path + "/" in self.zip_file_obj.namelist())
 
     def __enter__(self):
         return self
