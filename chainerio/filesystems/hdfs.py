@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
-def parse_klist_output(output):
+def _parse_klist_output(output):
     principle_str = output.decode('utf-8').split('\n')[1]
     klist_principal_pattern = re.compile(
         r'Default principal: (?P<username>.+)@(?P<service>.+)')
@@ -55,7 +55,7 @@ class HdfsFileSystem(FileSystem):
             if out == b'' and err != b'':
                 return None
             else:
-                return parse_klist_output(out)
+                return _parse_klist_output(out)
         except OSError:
             # klist is not found
             return None
