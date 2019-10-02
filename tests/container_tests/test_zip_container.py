@@ -272,7 +272,12 @@ class TestZipHandler(unittest.TestCase):
     def test_isdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             self.assertTrue(handler.isdir(self.dir_name1))
+            self.assertTrue(handler.isdir(self.dir_name1.rstrip('/')))
             self.assertFalse(handler.isdir(self.zipped_file_path))
+            self.assertFalse(handler.isdir(self.zipped_file_path.rstrip('/')))
+            for _dir in self.non_exists_list:
+                with self.assertRaises(FileNotFoundError):
+                    handler.isdir(_dir)
 
     def test_mkdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
@@ -309,7 +314,7 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             self.assertTrue(handler.exists(self.dir_name1))
             self.assertTrue(handler.exists(self.zipped_file_path))
-            dir_list = [self.dir_path, self.dir_path.rstrip('/')]
+            dir_list = [self.dir_name1, self.dir_name1.rstrip('/')]
             for _dir in dir_list:
                 self.assertTrue(handler.exists(_dir))
             self.assertFalse(handler.exists(non_exist_file))
