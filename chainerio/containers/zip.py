@@ -131,7 +131,10 @@ class ZipContainer(Container):
 
         if recursive:
             for name in self.zip_file_obj.namelist():
-                yield name
+                if name.startswith(path_or_prefix):
+                    name = name[len(path_or_prefix):].strip("/")
+                    if name:
+                        yield name
         else:
             _list = set()
             for name in self.zip_file_obj.namelist():
