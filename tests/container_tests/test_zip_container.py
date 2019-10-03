@@ -19,7 +19,8 @@ class TestZipHandler(unittest.TestCase):
         # |       | - nested_dir
         # |           | - nested
         # | - testdir2
-        # |   | - testfile
+        # |   | - testfile1
+        # | - testfile2
         self.test_string = "this is a test string\n"
         self.nested_test_string = \
             "this is a test string for nested zip\n"
@@ -42,11 +43,13 @@ class TestZipHandler(unittest.TestCase):
         # directory and file
         self.dir_name1 = "testdir1/"
         self.dir_name2 = "testdir2/"
-        self.zipped_file_name = "testfile"
+        self.zipped_file_name = "testfile1"
+        self.testfile_name = "testfile2"
 
         # paths used in making outside.zip
         dir_path1 = os.path.join(self.tmpdir.name, self.dir_name1)
         dir_path2 = os.path.join(self.tmpdir.name, self.dir_name2)
+        testfile_path = os.path.join(self.tmpdir.name, self.testfile_name)
         nested_dir_path = os.path.join(self.tmpdir.name, self.nested_dir_name)
         zipped_file_path = os.path.join(dir_path2, self.zipped_file_name)
         nested_zipped_file_path = os.path.join(
@@ -55,8 +58,7 @@ class TestZipHandler(unittest.TestCase):
             dir_path1, self.nested_zipped_file_name)
 
         # paths used in tests
-        self.zip_file_path = os.path.join(self.tmpdir.name,
-                                          self.zip_file_name)
+        self.zip_file_path = self.zip_file_name + ".zip"
         self.zipped_file_path = os.path.join(self.dir_name2,
                                              self.zipped_file_name)
         self.nested_zip_path = os.path.join(
@@ -74,18 +76,21 @@ class TestZipHandler(unittest.TestCase):
         with open(nested_zipped_file_path, "w") as tmpfile:
             tmpfile.write(self.nested_test_string)
 
+        with open(testfile_path, "w") as tmpfile:
+            tmpfile.write(self.test_string)
+
         shutil.make_archive(nested_zip_file_path, "zip",
                             root_dir=self.tmpdir.name,
                             base_dir=self.nested_dir_name)
         shutil.rmtree(nested_dir_path)
 
-        shutil.make_archive(self.zip_file_path, "zip",
+        # this will include outside.zip itself into the zip
+        shutil.make_archive(self.zip_file_name, "zip",
                             root_dir=self.tmpdir.name)
-
-        self.zip_file_path += ".zip"
 
     def tearDown(self):
         self.tmpdir.cleanup()
+        chainerio.remove(self.zip_file_path)
 
     def test_read_bytes(self):
         with self.fs_handler.open_as_container(
@@ -109,31 +114,38 @@ class TestZipHandler(unittest.TestCase):
     def test_list(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             zip_generator = handler.list()
+            # list the first level of files:
+            # expected_list = [testdir1, testdir2, testfile2]
+            expected_list = [self.dir_name1.rstrip('/'),
+                             self.dir_name2.rstrip('/'),
+                             self.testfile_name]
             zip_list = list(zip_generator)
-            self.assertIn(self.dir_name1.rstrip('/'), zip_list)
-            self.assertIn(self.dir_name2.rstrip('/'), zip_list)
-            self.assertNotIn(self.nested_zipped_file_name, zip_list)
-            self.assertNotIn(self.zipped_file_path, zip_list)
-            self.assertNotIn("", zip_list)
+            self.assertEqual(sorted(expected_list), sorted(zip_list))
 
             # Problem 1, 2 in issue #66
-            dir_list = [self.dir_name1, self.dir_name1.rstrip('/')]
+            dir_list = [self.dir_name2, self.dir_name2.rstrip('/')]
             for _dir in dir_list:
                 zip_generator = handler.list(_dir)
                 zip_list = list(zip_generator)
-                self.assertNotIn(self.dir_name1.rstrip('/'), zip_list)
-                self.assertNotIn(self.dir_name2.rstrip('/'), zip_list)
-                self.assertNotIn(self.zipped_file_path, zip_list)
-                self.assertIn(self.nested_zip_file_name, zip_list)
-                self.assertNotIn("", zip_list)
+                # list the testdir2
+                # expected_list = [testfile]
+                expected_list = [self.zipped_file_name]
+                self.assertEqual(sorted(expected_list), sorted(zip_list))
 
             zip_generator = handler.list(recursive=True)
+            # list every thing
+            # expected_list = [testdir1, testdir2,
+            #                  testdir1/nested.zip, testdir2/testfile,
+            #                  testfile2]
+            expected_list = [self.dir_name1,
+                             self.dir_name2,
+                             os.path.join(self.dir_name1,
+                                          self.nested_zip_file_name),
+                             os.path.join(self.dir_name2,
+                                          self.zipped_file_name),
+                             self.testfile_name]
             zip_list = list(zip_generator)
-            self.assertIn(self.dir_name1, zip_list)
-            self.assertIn(self.dir_name2, zip_list)
-            self.assertIn(self.zipped_file_path, zip_list)
-            self.assertIn(self.nested_zip_path, zip_list)
-            self.assertNotIn("", zip_list)
+            self.assertEqual(sorted(expected_list), sorted(zip_list))
 
     def test_info(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
