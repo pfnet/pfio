@@ -21,7 +21,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 exec(open(os.path.join(here, 'chainerio', 'version.py')).read())
 
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
-        long_description = f.read()
+    long_description = f.read()
 
 setup(
     name='chainerio',
@@ -49,8 +49,9 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=find_packages(),
-    package_data={'chainerio' : package_data},
-    extras_require={'test':['pytest', 'flake8', 'autopep8']},
+    package_data={'chainerio': package_data},
+    extras_require={'test': ['pytest', 'flake8', 'autopep8'],
+                    'doc': ['sphinx', 'sphinx_rtd_theme']},
     python_requires=">=3.5",
     install_requires=['krbticket', 'pyarrow'],
     include_package_data=True,
