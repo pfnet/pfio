@@ -2,7 +2,7 @@
 set -eux
 
 source /root/.bash_docker
-pyenv global 3.5.7 3.6.8 3.7.2
+pyenv global 3.5.2 3.6.8 3.7.2
 tox && :
 tox_status=$?
 pip install .[doc]
