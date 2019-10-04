@@ -132,6 +132,30 @@ class TestZipHandler(unittest.TestCase):
                 {"path_or_prefix": 'testdir2//testfile//../',
                  "expected_list": [self.zipped_file_name],
                  "recursive": False},
+                # not normalized path root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # not normalized path beyond root
+                {"path_or_prefix": '//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # not normalized path beyond root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # starting with slash
+                {"path_or_prefix": '/',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
                 # recursive test
                 {"path_or_prefix": '',
                  "expected_list": [self.dir_name1,
@@ -157,9 +181,6 @@ class TestZipHandler(unittest.TestCase):
                  "error": FileNotFoundError},
                 # not exist but share the prefix
                 {"path_or_prefix": 't',
-                 "error": FileNotFoundError},
-                # starting with slash
-                {"path_or_prefix": '/',
                  "error": FileNotFoundError},
                 # broken path
                 {"path_or_prefix": 'testdir2//t/',
