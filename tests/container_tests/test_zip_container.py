@@ -113,39 +113,63 @@ class TestZipHandler(unittest.TestCase):
 
     def test_list(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            zip_generator = handler.list()
-            # list the first level of files:
-            # expected_list = [testdir1, testdir2, testfile2]
-            expected_list = [self.dir_name1.rstrip('/'),
-                             self.dir_name2.rstrip('/'),
-                             self.testfile_name]
-            zip_list = list(zip_generator)
-            self.assertEqual(sorted(expected_list), sorted(zip_list))
-
-            # Problem 1, 2 in issue #66
-            dir_list = [self.dir_name2, self.dir_name2.rstrip('/')]
-            for _dir in dir_list:
-                zip_generator = handler.list(_dir)
+            cases = [
+                # default case get the first level from the root
+                {"path_or_prefix": "",
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # Problem 1 in issue #66
+                {"path_or_prefix": self.dir_name2,
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": False},
+                # problem 2 in issue #66
+                {"path_or_prefix": self.dir_name2.rstrip('/'),
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": False},
+                # not normalized path
+                {"path_or_prefix": 'testdir2//testfile//../',
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": False},
+                # recursive test
+                {"path_or_prefix": '',
+                 "expected_list": [self.dir_name1,
+                                   self.dir_name2,
+                                   os.path.join(self.dir_name1,
+                                                self.nested_zip_file_name),
+                                   os.path.join(self.dir_name2,
+                                                self.zipped_file_name),
+                                   self.testfile_name],
+                 "recursive": True}]
+            for case in cases:
+                zip_generator = handler.list(case['path_or_prefix'],
+                                             case['recursive'])
                 zip_list = list(zip_generator)
-                # list the testdir2
-                # expected_list = [testfile]
-                expected_list = [self.zipped_file_name]
-                self.assertEqual(sorted(expected_list), sorted(zip_list))
+                self.assertEqual(sorted(case['expected_list']),
+                                 sorted(zip_list))
 
-            zip_generator = handler.list(recursive=True)
-            # list every thing
-            # expected_list = [testdir1, testdir2,
-            #                  testdir1/nested.zip, testdir2/testfile,
-            #                  testfile2]
-            expected_list = [self.dir_name1,
-                             self.dir_name2,
-                             os.path.join(self.dir_name1,
-                                          self.nested_zip_file_name),
-                             os.path.join(self.dir_name2,
-                                          self.zipped_file_name),
-                             self.testfile_name]
-            zip_list = list(zip_generator)
-            self.assertEqual(sorted(expected_list), sorted(zip_list))
+    def test_list_with_errors(self):
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            cases = [
+                # non_exist_file
+                {"path_or_prefix": 'does_not_exist',
+                 "error": FileNotFoundError},
+                # not exist but share the prefix
+                {"path_or_prefix": 't',
+                 "error": FileNotFoundError},
+                # starting with slash
+                {"path_or_prefix": '/',
+                 "error": FileNotFoundError},
+                # broken path
+                {"path_or_prefix": 'testdir2//t/',
+                 "error": FileNotFoundError},
+                # list a file
+                {"path_or_prefix": 'testdir2//testfile1///',
+                 "error": NotADirectoryError}]
+            for case in cases:
+                with self.assertRaises(case["error"]):
+                    list(handler.list(case['path_or_prefix']))
 
     def test_info(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
