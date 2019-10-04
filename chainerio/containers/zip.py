@@ -105,7 +105,17 @@ class ZipContainer(Container):
 
         if path_or_prefix:
             path_or_prefix = os.path.normpath(path_or_prefix)
-            # TODO(tianqi)will change after the `stat` supports
+            # cannot move beyond root
+            given_dir_list = path_or_prefix.split('/')
+            if ("." in given_dir_list or ".." in given_dir_list
+                    or {""} == set(given_dir_list)):
+                given_dir_list = []
+                path_or_prefix = ""
+        else:
+            given_dir_list = []
+
+        if path_or_prefix:
+            # TODO(tianqi)will move to `stat` to support
             # directory without slash,
             # which will be fixed in #73
             try:
@@ -119,8 +129,6 @@ class ZipContainer(Container):
                     raise FileNotFoundError(
                         "{} is not found".format(path_or_prefix))
 
-        given_dir_list = path_or_prefix.split('/')
-
         if recursive:
             for name in self.zip_file_obj.namelist():
                 yield name
@@ -129,7 +137,7 @@ class ZipContainer(Container):
             for name in self.zip_file_obj.namelist():
                 return_file_name = None
                 current_dir_list = os.path.normpath(name).split('/')
-                if not path_or_prefix:
+                if not given_dir_list:
                     # if path_or_prefix is not given
                     return_file_name = current_dir_list[0]
                 else:
