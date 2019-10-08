@@ -103,20 +103,55 @@ class ZipContainer(Container):
     def list(self, path_or_prefix: str = "", recursive=False):
         self._open_zip_file()
 
+        if path_or_prefix:
+            path_or_prefix = os.path.normpath(path_or_prefix)
+            # cannot move beyond root
+            given_dir_list = path_or_prefix.split('/')
+            if ("." in given_dir_list or ".." in given_dir_list
+                    or {""} == set(given_dir_list)):
+                given_dir_list = []
+                path_or_prefix = ""
+        else:
+            given_dir_list = []
+
+        if path_or_prefix:
+            # TODO(tianqi)will move to `stat` to support
+            # directory without slash,
+            # which will be fixed in #73
+            try:
+                self.stat(path_or_prefix + '/')
+            except KeyError:
+                try:
+                    self.stat(path_or_prefix)
+                    raise NotADirectoryError(
+                        "{} is not a directory".format(path_or_prefix))
+                except KeyError:
+                    raise FileNotFoundError(
+                        "{} is not found".format(path_or_prefix))
+
         if recursive:
             for name in self.zip_file_obj.namelist():
                 yield name
         else:
             _list = set()
             for name in self.zip_file_obj.namelist():
-                if name.startswith(path_or_prefix):
-                    name = name[len(path_or_prefix):]
+                return_file_name = None
+                current_dir_list = os.path.normpath(name).split('/')
+                if not given_dir_list:
+                    # if path_or_prefix is not given
+                    return_file_name = current_dir_list[0]
+                else:
+                    if (current_dir_list
+                            and len(current_dir_list) > len(given_dir_list)
+                            and current_dir_list[:len(given_dir_list)] ==
+                            given_dir_list):
+                        return_file_name = current_dir_list[
+                            len(given_dir_list):][0]
 
-                first_level_file_name = name.split("/")[0]
-                if first_level_file_name and \
-                        first_level_file_name not in _list:
-                    _list.add(first_level_file_name)
-                    yield first_level_file_name
+                if (return_file_name is not None
+                        and return_file_name not in _list):
+                    _list.add(return_file_name)
+                    yield return_file_name
 
     def set_base(self, base):
         Container.reset_base_handler(self, base)

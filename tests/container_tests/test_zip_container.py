@@ -14,21 +14,23 @@ class TestZipHandler(unittest.TestCase):
     def setUp(self):
         # The following zip layout is created for all the tests
         # outside.zip
-        # | - testdir
-        # |   | - nested.zip
-        # |   |   | - nested_dir
-        # |   |   |   | - nested
-        # |   | - testfile
+        # | - testdir1
+        # |   | - nested1.zip
+        # |       | - nested_dir
+        # |           | - nested
+        # | - testdir2
+        # |   | - testfile1
+        # | - testfile2
         self.test_string = "this is a test string\n"
         self.nested_test_string = \
             "this is a test string for nested zip\n"
         self.test_string_b = self.test_string.encode("utf-8")
         self.nested_test_string_b = \
             self.nested_test_string.encode("utf-8")
+        self.fs_handler = chainerio.create_handler("posix")
 
         # the most outside zip
         self.zip_file_name = "outside"
-        self.zip_file_path = self.zip_file_name + ".zip"
 
         # nested zip and nested file
         self.tmpdir = tempfile.TemporaryDirectory()
@@ -39,40 +41,56 @@ class TestZipHandler(unittest.TestCase):
         self.nested_zip_file_name = "nested.zip"
 
         # directory and file
-        self.dir_name = "testdir/"
-        self.dir_path = os.path.join(self.tmpdir.name, self.dir_name)
-        self.zipped_file_name = "testfile"
+        self.dir_name1 = "testdir1/"
+        self.dir_name2 = "testdir2/"
+        self.zipped_file_name = "testfile1"
+        self.testfile_name = "testfile2"
 
-        self.zipped_file_path = os.path.join(
-            self.dir_path, self.zipped_file_name)
+        # paths used in making outside.zip
+        dir_path1 = os.path.join(self.tmpdir.name, self.dir_name1)
+        dir_path2 = os.path.join(self.tmpdir.name, self.dir_name2)
+        testfile_path = os.path.join(self.tmpdir.name, self.testfile_name)
+        nested_dir_path = os.path.join(self.tmpdir.name, self.nested_dir_name)
+        zipped_file_path = os.path.join(dir_path2, self.zipped_file_name)
+        nested_zipped_file_path = os.path.join(
+            nested_dir_path, self.nested_zipped_file_name)
+        nested_zip_file_path = os.path.join(
+            dir_path1, self.nested_zipped_file_name)
+
+        # paths used in tests
+        self.zip_file_path = self.zip_file_name + ".zip"
+        self.zipped_file_path = os.path.join(self.dir_name2,
+                                             self.zipped_file_name)
         self.nested_zip_path = os.path.join(
-            self.dir_path, self.nested_zip_file_name)
+            self.dir_name1, self.nested_zip_file_name)
         self.nested_zipped_file_path = os.path.join(
-            self.nested_dir_path, self.nested_zipped_file_name)
-        self.fs_handler = chainerio.create_handler("posix")
+            self.nested_dir_name, self.nested_zipped_file_name)
 
-        os.mkdir(self.dir_path)
-        os.mkdir(self.nested_dir_path)
-        with open(self.zipped_file_path, "w") as tmpfile:
+        os.mkdir(dir_path1)
+        os.mkdir(dir_path2)
+        os.mkdir(nested_dir_path)
+
+        with open(zipped_file_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
 
-        with open(self.nested_zipped_file_path, "w") as tmpfile:
+        with open(nested_zipped_file_path, "w") as tmpfile:
             tmpfile.write(self.nested_test_string)
 
-        with ZipFile(self.nested_zip_path, "w") as tmpzip:
-            tmpzip.write(self.nested_zipped_file_path)
+        with open(testfile_path, "w") as tmpfile:
+            tmpfile.write(self.test_string)
 
-        os.remove(self.nested_zipped_file_path)
-        shutil.make_archive(self.zip_file_name, "zip", base_dir=self.dir_path)
+        shutil.make_archive(nested_zip_file_path, "zip",
+                            root_dir=self.tmpdir.name,
+                            base_dir=self.nested_dir_name)
+        shutil.rmtree(nested_dir_path)
 
-        self.dir_path = self.dir_path.lstrip("/")
-        self.zipped_file_path = self.zipped_file_path.lstrip("/")
-        self.nested_zip_path = self.nested_zip_path.lstrip("/")
-        self.nested_zipped_file_path = self.nested_zipped_file_path.lstrip("/")
+        # this will include outside.zip itself into the zip
+        shutil.make_archive(self.zip_file_name, "zip",
+                            root_dir=self.tmpdir.name)
 
     def tearDown(self):
-        os.remove(self.zip_file_path)
         self.tmpdir.cleanup()
+        chainerio.remove(self.zip_file_path)
 
     def test_read_bytes(self):
         with self.fs_handler.open_as_container(
@@ -95,24 +113,84 @@ class TestZipHandler(unittest.TestCase):
 
     def test_list(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            zip_generator = handler.list()
-            zip_list = list(zip_generator)
-            self.assertIn(self.dir_path.split("/")[0], zip_list)
-            self.assertNotIn(self.zipped_file_name, zip_list)
-            self.assertNotIn("", zip_list)
+            cases = [
+                # default case get the first level from the root
+                {"path_or_prefix": "",
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # Problem 1 in issue #66
+                {"path_or_prefix": self.dir_name2,
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": False},
+                # problem 2 in issue #66
+                {"path_or_prefix": self.dir_name2.rstrip('/'),
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": False},
+                # not normalized path
+                {"path_or_prefix": 'testdir2//testfile//../',
+                 "expected_list": [self.zipped_file_name],
+                 "recursive": False},
+                # not normalized path root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # not normalized path beyond root
+                {"path_or_prefix": '//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # not normalized path beyond root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # starting with slash
+                {"path_or_prefix": '/',
+                 "expected_list": [self.dir_name1.rstrip('/'),
+                                   self.dir_name2.rstrip('/'),
+                                   self.testfile_name],
+                 "recursive": False},
+                # recursive test
+                {"path_or_prefix": '',
+                 "expected_list": [self.dir_name1,
+                                   self.dir_name2,
+                                   os.path.join(self.dir_name1,
+                                                self.nested_zip_file_name),
+                                   os.path.join(self.dir_name2,
+                                                self.zipped_file_name),
+                                   self.testfile_name],
+                 "recursive": True}]
+            for case in cases:
+                zip_generator = handler.list(case['path_or_prefix'],
+                                             case['recursive'])
+                zip_list = list(zip_generator)
+                self.assertEqual(sorted(case['expected_list']),
+                                 sorted(zip_list))
 
-            zip_generator = handler.list(self.dir_path)
-            zip_list = list(zip_generator)
-            self.assertNotIn(self.dir_path.split("/")[0], zip_list)
-            self.assertIn(self.zipped_file_name, zip_list)
-            self.assertNotIn("", zip_list)
-
-            zip_generator = handler.list(recursive=True)
-            zip_list = list(zip_generator)
-            self.assertIn(self.dir_path, zip_list)
-            self.assertIn(os.path.join(self.dir_path, self.zipped_file_name),
-                          zip_list)
-            self.assertNotIn("", zip_list)
+    def test_list_with_errors(self):
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            cases = [
+                # non_exist_file
+                {"path_or_prefix": 'does_not_exist',
+                 "error": FileNotFoundError},
+                # not exist but share the prefix
+                {"path_or_prefix": 't',
+                 "error": FileNotFoundError},
+                # broken path
+                {"path_or_prefix": 'testdir2//t/',
+                 "error": FileNotFoundError},
+                # list a file
+                {"path_or_prefix": 'testdir2//testfile1///',
+                 "error": NotADirectoryError}]
+            for case in cases:
+                with self.assertRaises(case["error"]):
+                    list(handler.list(case['path_or_prefix']))
 
     def test_info(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
@@ -120,7 +198,7 @@ class TestZipHandler(unittest.TestCase):
 
     def test_isdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            self.assertTrue(handler.isdir(self.dir_path))
+            self.assertTrue(handler.isdir(self.dir_name1))
             self.assertFalse(handler.isdir(self.zipped_file_path))
 
     def test_mkdir(self):
@@ -156,7 +234,7 @@ class TestZipHandler(unittest.TestCase):
         non_exist_file = "non_exist_file.txt"
 
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            self.assertTrue(handler.exists(self.dir_path))
+            self.assertTrue(handler.exists(self.dir_name1))
             self.assertTrue(handler.exists(self.zipped_file_path))
             self.assertFalse(handler.exists(non_exist_file))
 
