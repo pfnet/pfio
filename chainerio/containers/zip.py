@@ -81,7 +81,10 @@ class ZipContainer(Container):
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
 
+        file_path, _ = self._normalize_input_path(file_path)
         self._open_zip_file(mode)
+        if not self.exists(file_path):
+            raise FileNotFoundError("{} not found", file_path)
 
         # zip only supports open with r rU or U
         nested_file = self.zip_file_obj.open(file_path, "r")
@@ -97,6 +100,7 @@ class ZipContainer(Container):
         return info_str
 
     def stat(self, path):
+        path, _ = self._normalize_input_path(path)
         self._open_zip_file()
         if path in self.zip_file_obj.namelist():
             actual_path = path
@@ -111,23 +115,31 @@ class ZipContainer(Container):
 
         return self.zip_file_obj.getinfo(actual_path)
 
+    def _normalize_input_path(self, path):
+        path = os.path.normpath(path)
+        # cannot move beyond root
+        given_dir_list = path.split('/')
+        if ("." == path or ".." in given_dir_list
+                or {""} == set(given_dir_list)):
+            path = ""
+            given_dir_list = []
+        return path, given_dir_list
+
     def list(self, path_or_prefix: str = "", recursive=False):
         self._open_zip_file()
 
         if path_or_prefix:
-            path_or_prefix = os.path.normpath(path_or_prefix)
-            # cannot move beyond root
-            given_dir_list = path_or_prefix.split('/')
-            if ("." in given_dir_list or ".." in given_dir_list
-                    or {""} == set(given_dir_list)):
-                given_dir_list = []
-                path_or_prefix = ""
+            path_or_prefix, given_dir_list = \
+                self._normalize_input_path(path_or_prefix)
         else:
             given_dir_list = []
 
-        if path_or_prefix and not self.isdir(path_or_prefix):
-            raise NotADirectoryError(
-                "{} is not a directory".format(path_or_prefix))
+        if path_or_prefix:
+            if not self.exists(path_or_prefix):
+                raise FileNotFoundError
+            if not self.isdir(path_or_prefix):
+                raise NotADirectoryError(
+                    "{} is not a directory".format(path_or_prefix))
 
         if recursive:
             for name in self.zip_file_obj.namelist():
@@ -164,11 +176,14 @@ class ZipContainer(Container):
             self.zip_file_obj = None
 
     def isdir(self, file_path: str):
-        stat = self.stat(file_path)
-        # The `is_dir` function under `ZipInfo` object
-        # is not available on my testbed
-        # Copied the code from the `zipfile.py`
-        return "/" == stat.filename[-1]
+        try:
+            stat = self.stat(file_path)
+            # The `is_dir` function under `ZipInfo` object
+            # is not available on my testbed
+            # Copied the code from the `zipfile.py`
+            return "/" == stat.filename[-1]
+        except FileNotFoundError:
+            return False
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         raise io.UnsupportedOperation("zip does not support mkdir")
@@ -177,6 +192,7 @@ class ZipContainer(Container):
         raise io.UnsupportedOperation("zip does not support makedirs")
 
     def exists(self, file_path: str):
+        file_path, _ = self._normalize_input_path(file_path)
         self._open_zip_file()
         return file_path in self.zip_file_obj.namelist()
 
