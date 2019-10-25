@@ -55,7 +55,7 @@ class TestZipHandler(unittest.TestCase):
         nested_zipped_file_path = os.path.join(
             nested_dir_path, self.nested_zipped_file_name)
         nested_zip_file_path = os.path.join(
-            dir_path1, self.nested_zipped_file_name)
+            dir_path1, self.nested_zip_file_name)
 
         # paths used in tests
         self.zip_file_path = self.zip_file_name + ".zip"
@@ -82,14 +82,28 @@ class TestZipHandler(unittest.TestCase):
         with open(testfile_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
 
-        shutil.make_archive(nested_zip_file_path, "zip",
-                            root_dir=self.tmpdir.name,
-                            base_dir=self.nested_dir_name)
+        self.make_archive(nested_zip_file_path,
+                          root_dir=self.tmpdir.name,
+                          base_dir=self.nested_dir_name)
         shutil.rmtree(nested_dir_path)
 
         # this will include outside.zip itself into the zip
-        shutil.make_archive(self.zip_file_name, "zip",
-                            root_dir=self.tmpdir.name)
+        self.make_archive(self.zip_file_path,
+                          root_dir=self.tmpdir.name,
+                          base_dir=".")
+
+    def make_archive(self, zipfilename, root_dir, base_dir):
+        pwd = os.getcwd()
+        with ZipFile(zipfilename, "w") as f:
+            os.chdir(root_dir)
+            for root, dirs, filenames in os.walk(base_dir):
+                for _dir in dirs:
+                    path = os.path.normpath(os.path.join(root, _dir))
+                    f.write(path)
+                for _file in filenames:
+                    path = os.path.normpath(os.path.join(root, _file))
+                    f.write(path)
+            os.chdir(pwd)
 
     def tearDown(self):
         self.tmpdir.cleanup()
