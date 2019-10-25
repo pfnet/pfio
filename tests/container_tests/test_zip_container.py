@@ -66,6 +66,9 @@ class TestZipHandler(unittest.TestCase):
         self.nested_zipped_file_path = os.path.join(
             self.nested_dir_name, self.nested_zipped_file_name)
 
+        self.non_exists_list = ["does_not_exist", "does_not_exist/",
+                                "does/not/exist"]
+
         os.mkdir(dir_path1)
         os.mkdir(dir_path2)
         os.mkdir(nested_dir_path)
@@ -309,6 +312,14 @@ class TestZipHandler(unittest.TestCase):
                     self.assertEqual(f.read(), self.nested_test_string)
 
     def test_stat(self):
-        # pass for now
-        # TODO(tianqi) add test after we well defined the stat
-        pass
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            self.assertEqual(self.nested_zip_path,
+                             handler.stat(self.nested_zip_path).filename)
+
+            dir_list = [self.dir_name1, self.dir_name1.rstrip('/')]
+            for _dir in dir_list:
+                self.assertEqual(self.dir_name1, handler.stat(_dir).filename)
+
+            for _dir in self.non_exists_list:
+                with self.assertRaises(FileNotFoundError):
+                    handler.stat(_dir)
