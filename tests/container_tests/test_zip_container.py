@@ -8,6 +8,19 @@ import shutil
 import tempfile
 from zipfile import ZipFile
 
+def make_zip(zipfilename, root_dir, base_dir):
+    pwd = os.getcwd()
+    with ZipFile(zipfilename, "w") as f:
+        os.chdir(root_dir)
+        for root, dirs, filenames in os.walk(base_dir):
+            for _dir in dirs:
+                path = os.path.normpath(os.path.join(root, _dir))
+                f.write(path)
+            for _file in filenames:
+                path = os.path.normpath(os.path.join(root, _file))
+                f.write(path)
+        os.chdir(pwd)
+
 
 class TestZipHandler(unittest.TestCase):
 
@@ -82,28 +95,15 @@ class TestZipHandler(unittest.TestCase):
         with open(testfile_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
 
-        self.make_archive(nested_zip_file_path,
-                          root_dir=self.tmpdir.name,
-                          base_dir=self.nested_dir_name)
+        make_zip(nested_zip_file_path,
+                 root_dir=self.tmpdir.name,
+                 base_dir=self.nested_dir_name)
         shutil.rmtree(nested_dir_path)
 
         # this will include outside.zip itself into the zip
-        self.make_archive(self.zip_file_path,
-                          root_dir=self.tmpdir.name,
-                          base_dir=".")
-
-    def make_archive(self, zipfilename, root_dir, base_dir):
-        pwd = os.getcwd()
-        with ZipFile(zipfilename, "w") as f:
-            os.chdir(root_dir)
-            for root, dirs, filenames in os.walk(base_dir):
-                for _dir in dirs:
-                    path = os.path.normpath(os.path.join(root, _dir))
-                    f.write(path)
-                for _file in filenames:
-                    path = os.path.normpath(os.path.join(root, _file))
-                    f.write(path)
-            os.chdir(pwd)
+        make_zip(self.zip_file_path,
+                 root_dir=self.tmpdir.name,
+                 base_dir=".")
 
     def tearDown(self):
         self.tmpdir.cleanup()
