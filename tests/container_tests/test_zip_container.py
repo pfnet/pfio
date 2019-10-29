@@ -9,6 +9,20 @@ import tempfile
 from zipfile import ZipFile
 
 
+def make_zip(zipfilename, root_dir, base_dir):
+    pwd = os.getcwd()
+    with ZipFile(zipfilename, "w") as f:
+        os.chdir(root_dir)
+        for root, dirs, filenames in os.walk(base_dir):
+            for _dir in dirs:
+                path = os.path.normpath(os.path.join(root, _dir))
+                f.write(path)
+            for _file in filenames:
+                path = os.path.normpath(os.path.join(root, _file))
+                f.write(path)
+        os.chdir(pwd)
+
+
 class TestZipHandler(unittest.TestCase):
 
     def setUp(self):
@@ -55,7 +69,7 @@ class TestZipHandler(unittest.TestCase):
         nested_zipped_file_path = os.path.join(
             nested_dir_path, self.nested_zipped_file_name)
         nested_zip_file_path = os.path.join(
-            dir_path1, self.nested_zipped_file_name)
+            dir_path1, self.nested_zip_file_name)
 
         # paths used in tests
         self.zip_file_path = self.zip_file_name + ".zip"
@@ -82,14 +96,15 @@ class TestZipHandler(unittest.TestCase):
         with open(testfile_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
 
-        shutil.make_archive(nested_zip_file_path, "zip",
-                            root_dir=self.tmpdir.name,
-                            base_dir=self.nested_dir_name)
+        make_zip(nested_zip_file_path,
+                 root_dir=self.tmpdir.name,
+                 base_dir=self.nested_dir_name)
         shutil.rmtree(nested_dir_path)
 
         # this will include outside.zip itself into the zip
-        shutil.make_archive(self.zip_file_name, "zip",
-                            root_dir=self.tmpdir.name)
+        make_zip(self.zip_file_path,
+                 root_dir=self.tmpdir.name,
+                 base_dir=".")
 
     def tearDown(self):
         self.tmpdir.cleanup()
@@ -257,7 +272,12 @@ class TestZipHandler(unittest.TestCase):
     def test_isdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             self.assertTrue(handler.isdir(self.dir_name1))
+            self.assertTrue(handler.isdir(self.dir_name1.rstrip('/')))
             self.assertFalse(handler.isdir(self.zipped_file_path))
+            self.assertFalse(handler.isdir(self.zipped_file_path.rstrip('/')))
+            for _dir in self.non_exists_list:
+                with self.assertRaises(FileNotFoundError):
+                    handler.isdir(_dir)
 
     def test_mkdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
@@ -294,6 +314,9 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             self.assertTrue(handler.exists(self.dir_name1))
             self.assertTrue(handler.exists(self.zipped_file_path))
+            dir_list = [self.dir_name1, self.dir_name1.rstrip('/')]
+            for _dir in dir_list:
+                self.assertTrue(handler.exists(_dir))
             self.assertFalse(handler.exists(non_exist_file))
 
     def test_remove(self):
