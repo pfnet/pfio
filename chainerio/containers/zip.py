@@ -97,6 +97,7 @@ class ZipContainer(Container):
         return info_str
 
     def stat(self, path):
+        path = os.path.normpath(path)
         self._open_zip_file()
         if path in self.zip_file_obj.namelist():
             actual_path = path
