@@ -129,6 +129,17 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(non_exist_file) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
 
+    def test_open_non_normalized_path(self):
+        cases = [
+            # not normalized path
+            {"path_or_prefix": '././testdir2//../testdir2/testfile1',
+             "expected": self.test_string}]
+        for case in cases:
+            with self.fs_handler.open_as_container(
+                    os.path.abspath(self.zip_file_path)) as handler:
+                with handler.open(case['path_or_prefix'], "r") as zipped_file:
+                    self.assertEqual(case['expected'], zipped_file.read())
+
     def test_list(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             cases = [
