@@ -309,15 +309,40 @@ class TestZipHandler(unittest.TestCase):
         os.remove(pickle_zip)
 
     def test_exists(self):
-        non_exist_file = "non_exist_file.txt"
+        cases = [
+            # path ends with slash
+            {"path_or_prefix": 'testdir2//',
+             "expected": True},
+            # not normalized path
+            {"path_or_prefix": 'testdir2//testfile1',
+             "expected": True},
+            {"path_or_prefix": 'testdir1//..//testdir2/testfile1',
+             "expected": True},
+            {"path_or_prefix": 'testdir1//..//testdir2/testfile',
+             "expected": False},
+            # # not normalized path
+            {"path_or_prefix": 'testdir2//testfile//../',
+             "expected": True},
+            # not normalized path root
+            {"path_or_prefix": 'testdir2//..//',
+             "expected": False},
+            # not normalized path beyond root
+            {"path_or_prefix": '//..//',
+             "expected": False},
+            # not normalized path beyond root
+            {"path_or_prefix": 'testdir2//..//',
+             "expected": False},
+            # starting with slash
+            {"path_or_prefix": '/',
+             "expected": False}]
 
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            self.assertTrue(handler.exists(self.dir_name1))
-            self.assertTrue(handler.exists(self.zipped_file_path))
-            dir_list = [self.dir_name1, self.dir_name1.rstrip('/')]
-            for _dir in dir_list:
-                self.assertTrue(handler.exists(_dir))
-            self.assertFalse(handler.exists(non_exist_file))
+            for case in cases:
+                self.assertEqual(handler.exists(case["path_or_prefix"]),
+                                 case['expected'])
+
+            for case in self.non_exists_list:
+                self.assertFalse(handler.exists(case))
 
     def test_remove(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
