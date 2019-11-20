@@ -177,6 +177,7 @@ class ZipContainer(Container):
         raise io.UnsupportedOperation("zip does not support makedirs")
 
     def exists(self, file_path: str):
+        file_path = os.path.normpath(file_path)
         self._open_zip_file()
         namelist = self.zip_file_obj.namelist()
         return (file_path in namelist
