@@ -281,14 +281,40 @@ class TestZipHandler(unittest.TestCase):
             self.assertIsInstance(handler.info(), str)
 
     def test_isdir(self):
+        cases = [
+            # path ends with slash
+            {"path_or_prefix": 'testdir2//',
+             "expected": True},
+            # not normalized path
+            {"path_or_prefix": 'testdir2//testfile1',
+             "expected": False},
+            {"path_or_prefix": 'testdir1//..//testdir2/testfile1',
+             "expected": False},
+            # problem 2 in issue #66
+            {"path_or_prefix": self.dir_name2.rstrip('/'),
+             "expected": True},
+            # not normalized path
+            {"path_or_prefix": 'testdir2//testfile1//../',
+             "expected": True},
+            # not normalized path root
+            {"path_or_prefix": 'testdir2//..//',
+             "expected": False},
+            # not normalized path beyond root
+            {"path_or_prefix": '//..//',
+             "expected": False},
+            # not normalized path beyond root
+            {"path_or_prefix": 'testdir2//..//',
+             "expected": False},
+            # starting with slash
+            {"path_or_prefix": '/',
+             "expected": False}]
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            self.assertTrue(handler.isdir(self.dir_name1))
-            self.assertTrue(handler.isdir(self.dir_name1.rstrip('/')))
-            self.assertFalse(handler.isdir(self.zipped_file_path))
-            self.assertFalse(handler.isdir(self.zipped_file_path.rstrip('/')))
+            for case in cases:
+                self.assertEqual(handler.isdir(case["path_or_prefix"]),
+                                 case["expected"])
+
             for _dir in self.non_exists_list:
-                with self.assertRaises(FileNotFoundError):
-                    handler.isdir(_dir)
+                self.assertFalse(handler.isdir(_dir))
 
     def test_mkdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
