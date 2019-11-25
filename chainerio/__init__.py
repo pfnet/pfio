@@ -195,6 +195,9 @@ def create_handler(scheme: str) -> IO:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
+    if not default_context.is_supported_scheme(scheme):
+        raise ValueError("scheme {} is not supported".format(scheme))
+
     (handler, actual_path, is_URI) = \
         default_context.get_handler_by_name(scheme)
     return handler

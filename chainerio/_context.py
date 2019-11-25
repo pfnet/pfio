@@ -12,6 +12,9 @@ class FileSystemDriverList(object):
     def __init__(self):
         self._handler_dict = {}
 
+        # TODO(tianqi): dynamically create this list
+        # as well as the patterns upon loading the chainerio module.
+        self.scheme_list = ["hdfs", "posix"]
         self.posix_pattern = re.compile(r"file:\/\/(?P<path>.+)")
         self.hdfs_pattern = re.compile(r"(?P<path>hdfs:\/\/.+)")
         self.pattern_list = {"hdfs": self.hdfs_pattern,
@@ -61,6 +64,9 @@ class FileSystemDriverList(object):
                 uri_or_handler_name)
             new_handler.root = actual_path
             return (new_handler, actual_path, is_URI)
+
+    def is_supported_scheme(self, scheme: str) -> bool:
+        return scheme in self.scheme_list
 
 
 class DefaultContext(object):
@@ -115,3 +121,6 @@ class DefaultContext(object):
 
     def get_root_dir(self) -> str:
         return self._root
+
+    def is_supported_scheme(self, scheme: str) -> bool:
+        return self._fs_handler_list.is_supported_scheme(scheme)
