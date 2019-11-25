@@ -156,6 +156,18 @@ class TestContext(unittest.TestCase):
         conn.delete(hdfs_tmpfile)
         conn.close()
 
+    def test_create_handler(self):
+        posix_handler = chainerio.create_handler("posix")
+        self.assertIsInstance(posix_handler,
+                              chainerio.filesystems.posix.PosixFileSystem)
+
+        hdfs_handler = chainerio.create_handler("hdfs")
+        self.assertIsInstance(hdfs_handler,
+                              chainerio.filesystems.hdfs.HdfsFileSystem)
+
+        with self.assertRaises(ValueError):
+            chainerio.create_handler("unsupported_scheme")
+
     def test_list(self):
         nested_dir_name1 = "nested_dir1"
         nested_dir_name2 = "nested_dir2"
