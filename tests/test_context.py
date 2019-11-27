@@ -165,6 +165,9 @@ class TestContext(unittest.TestCase):
         self.assertIsInstance(hdfs_handler,
                               chainerio.filesystems.hdfs.HdfsFileSystem)
 
+        another_posix_handler = chainerio.create_handler("posix")
+        self.assertNotEqual(posix_handler, another_posix_handler)
+
         with self.assertRaises(ValueError):
             chainerio.create_handler("unsupported_scheme")
 

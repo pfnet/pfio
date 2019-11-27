@@ -10,8 +10,6 @@ from typing import Tuple
 
 class FileSystemDriverList(object):
     def __init__(self):
-        self._handler_dict = {}
-
         # TODO(tianqi): dynamically create this list
         # as well as the patterns upon loading the chainerio module.
         self.scheme_list = ["hdfs", "posix"]
@@ -41,24 +39,16 @@ class FileSystemDriverList(object):
         else:
             return (path, False)
 
-    def _get_handler(self, fs_type: str) -> IO:
-        if fs_type in self._handler_dict.keys():
-            return self._handler_dict[fs_type]
-        else:
-            new_handler = create_fs_handler(fs_type=fs_type)
-            self._handler_dict[fs_type] = new_handler
-            return new_handler
-
     def get_handler_from_path(self, path: str) -> Tuple[IO, str, bool]:
         (fs_type, actual_path, is_URI) = self._determine_fs_type(path)
 
-        handler = self._get_handler(fs_type)
+        handler = create_fs_handler(fs_type)
         return (handler, actual_path, is_URI)
 
     def get_handler_for_root(self,
                              uri_or_handler_name: str) -> Tuple[IO, str, bool]:
         if uri_or_handler_name in self.pattern_list.keys():
-            return (self._get_handler(uri_or_handler_name), "", False)
+            return (create_fs_handler(uri_or_handler_name), "", False)
         else:
             (new_handler, actual_path, is_URI) = self.get_handler_from_path(
                 uri_or_handler_name)
