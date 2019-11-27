@@ -100,9 +100,6 @@ class FileCache(cache.Cache):
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
 
-    TODO(kuenishi): retain cache file in case of correct process
-    termination and reuse for future process re-invocation.
-
     '''
 
     def __init__(self, length, multithread_safe=False, do_pickle=False,
@@ -126,9 +123,7 @@ class FileCache(cache.Cache):
 
         self.closed = False
         self.indexfp = tempfile.NamedTemporaryFile(delete=True, dir=self.dir)
-        self.indexfile = self.indexfp.name
         self.datafp = tempfile.NamedTemporaryFile(delete=True, dir=self.dir)
-        self.datafile = self.datafp.name
 
         # allocate space to store 2n 64bit unsigned integers
         # 16 bytes * n chunks
@@ -142,15 +137,23 @@ class FileCache(cache.Cache):
             assert r == self.buflen
         self.verbose = verbose
         if self.verbose:
-            print('created index file:', self.indexfile)
-            print('created data file:', self.datafile)
+            print('created index file:', self.indexfp.name)
+            print('created data file:', self.datafp.name)
+
+        self._frozen = False
 
     def __len__(self):
         return self.length
 
     @property
+    def frozen(self):
+        return self._frozen
+
+    @property
     def multiprocess_safe(self):
-        return False
+        # If it's preseved/preloaded, then the file contents are
+        # fixed.
+        return self._frozen
 
     @property
     def multithread_safe(self):
@@ -178,6 +181,7 @@ class FileCache(cache.Cache):
             return data
 
     def put(self, i, data):
+        assert not self._frozen
         try:
             if self.do_pickle:
                 data = pickle.dumps(data)
@@ -251,3 +255,56 @@ class FileCache(cache.Cache):
                 self.datafp.close()
                 self.indexfp = None
                 self.datafp = None
+
+    def preload(self, name):
+        '''Load the cache saved by ``preserve()``
+
+        After loading the files, no data can be added to the cache.
+        ``name`` is the prefix of the persistent files. To use cache
+        in ``multiprocessing`` environment, call this method at every
+        forked process.
+
+        .. note:: This feature is experimental.
+
+        '''
+        if self._frozen:
+            return
+
+        indexfile = os.path.join(self.dir, '{}.cachei'.format(name))
+        datafile = os.path.join(self.dir, '{}.cached'.format(name))
+
+        with self.lock.wrlock():
+            # Hard link and save them
+            self.indexfp.close()
+            self.datafp.close()
+
+            self.indexfp = open(indexfile, 'rb')
+            self.datafp = open(datafile, 'rb')
+            self._frozen = True
+
+    def preserve(self, name):
+        '''Preserve the cache as persistent files in the disk
+
+        Once the cache is preserved, cache files are not to be removed
+        at cache close. To read data from preserved files, use
+        ``preload()`` method. After preservation, no data can be added
+        to the cache.  ``name`` is the prefix of the persistent
+        files.
+
+        .. note:: This feature is experimental.
+
+        '''
+
+        indexfile = os.path.join(self.dir, '{}.cachei'.format(name))
+        datafile = os.path.join(self.dir, '{}.cached'.format(name))
+
+        with self.lock.wrlock():
+            # Hard link and save them
+            os.link(self.indexfp.name, indexfile)
+            os.link(self.datafp.name, datafile)
+            self.indexfp.close()
+            self.datafp.close()
+
+            self.indexfp = open(indexfile, 'rb')
+            self.datafp = open(datafile, 'rb')
+            self._frozen = True
