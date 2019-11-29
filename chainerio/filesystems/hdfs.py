@@ -40,7 +40,11 @@ class HdfsFileSystem(FileSystem):
         if self.username is None:
             # in case klist fails, use the login username instead
             self.username = self._get_login_username()
+
         self.keytab_path = keytab_path
+        if self.keytab_path is None:
+            self.keytab_path = os.getenv("CHAINERIO_KEYTAB")
+
         self.nameservice = None
 
     def _get_principal_name(self, keytab_path):
