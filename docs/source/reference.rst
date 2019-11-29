@@ -28,13 +28,13 @@ Toplevel Functions
 .. autoclass:: chainerio.container.Container
    :members:
 
-
 .. note:: With environment variable
-          ``CHAINERIO_KEYTAB=path/to/your.keytab`` set, ``hdfs``
+          ``KRB5_KTNAME=path/to/your.keytab`` set, ``hdfs``
           handler automatically starts automatic and periodical
           updating Kerberos ticket using `krbticket
           <https://pypi.org/project/krbticket/>`_ . The update
           frequency is every 10 minutes by default.
+
 
 Cache API
 ---------
