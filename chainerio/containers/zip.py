@@ -81,6 +81,7 @@ class ZipContainer(Container):
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
 
+        file_path = os.path.normpath(file_path)
         self._open_zip_file(mode)
 
         # zip only supports open with r rU or U
