@@ -335,14 +335,33 @@ class TestZipHandler(unittest.TestCase):
                     self.assertEqual(f.read(), self.nested_test_string)
 
     def test_stat(self):
+        cases = [
+            # path ends with slash
+            {"path_or_prefix": 'testdir2//',
+             "expected": 'testdir2/'},
+            # not normalized path
+            {"path_or_prefix": 'testdir2//testfile1',
+             "expected": 'testdir2/testfile1'},
+            {"path_or_prefix": 'testdir1//..//testdir2/testfile1',
+             "expected": 'testdir2/testfile1'},
+            {"path_or_prefix": 'testdir2//testfile//../',
+             "expected": 'testdir2/'}]
+
+        non_exists_list = [
+            # not normalized path root
+            'testdir2//..//',
+            # not normalized path beyond root
+            '//..//',
+            # not normalized path beyond root
+            'testdir2//..//',
+            # root
+            '/'] + self.non_exists_list
+
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            self.assertEqual(self.nested_zip_path,
-                             handler.stat(self.nested_zip_path).filename)
+            for case in cases:
+                self.assertEqual(case['expected'],
+                                 handler.stat(case['path_or_prefix']).filename)
 
-            dir_list = [self.dir_name1, self.dir_name1.rstrip('/')]
-            for _dir in dir_list:
-                self.assertEqual(self.dir_name1, handler.stat(_dir).filename)
-
-            for _dir in self.non_exists_list:
+            for _dir in non_exists_list:
                 with self.assertRaises(FileNotFoundError):
                     handler.stat(_dir)
