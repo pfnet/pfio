@@ -17,7 +17,7 @@ Toplevel Functions
 .. autofunction:: exists
 .. autofunction:: rename
 .. autofunction:: remove
-                  
+
 .. autofunction:: set_root
 .. autofunction:: get_root_dir
 
@@ -28,6 +28,14 @@ Toplevel Functions
 .. autoclass:: chainerio.container.Container
    :members:
 
+.. note:: With environment variable
+          ``KRB5_KTNAME=path/to/your.keytab`` set, ``hdfs``
+          handler automatically starts automatic and periodical
+          updating Kerberos ticket using `krbticket
+          <https://pypi.org/project/krbticket/>`_ . The update
+          frequency is every 10 minutes by default.
+
+
 Cache API
 ---------
 
@@ -35,7 +43,7 @@ Cache API
 
 .. autoclass:: Cache
    :members:
-      
+
 .. autoclass:: NaiveCache
    :members:
 
@@ -53,5 +61,3 @@ Chainer Extensions API
 
 .. autoclass:: SimpleWriter
    :members:
-
-

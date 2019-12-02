@@ -31,20 +31,21 @@ def _parse_klist_output(output):
 
 
 class HdfsFileSystem(FileSystem):
-    def __init__(self, io_profiler=None, root="", keytab_path=None):
+    def __init__(self, io_profiler=None, root=""):
         FileSystem.__init__(self, io_profiler, root)
         self.connection = None
         self.type = 'hdfs'
         self.root = root
-        self.username = self._get_principal_name(keytab_path)
+        self.username = self._get_principal_name()
         if self.username is None:
             # in case klist fails, use the login username instead
             self.username = self._get_login_username()
-        self.keytab_path = keytab_path
+
         self.nameservice = None
 
-    def _get_principal_name(self, keytab_path):
+    def _get_principal_name(self):
         # get the default principle name from `klist`
+        keytab_path = os.getenv("KRB5_KTNAME")
         try:
             command = ['klist']
             if keytab_path is not None:
@@ -67,11 +68,12 @@ class HdfsFileSystem(FileSystem):
         if None is self.connection:
             logger.debug('creating connection')
 
-            if None is not self.keytab_path:
-                self.ticket = KrbTicket.init(
-                    self.username,
-                    self.keytab_path)
-                self.ticket.updater_start()
+            # Updater automatically let kinit take ``KRB5_KTNAME``
+            # variable. If /etc/krb5.keytab doesn't exist, krbticket
+            # tries to update the ticket with ``kinit -R`` as much as
+            # possible.
+            self.ticket = KrbTicket.init(self.username)
+            self.ticket.updater_start()
 
             connection = hdfs.connect()
             assert connection is not None
