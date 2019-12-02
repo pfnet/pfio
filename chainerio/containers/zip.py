@@ -172,10 +172,12 @@ class ZipContainer(Container):
     def isdir(self, file_path: str):
         if self.exists(file_path):
             stat = self.stat(file_path)
-            # The `is_dir` function under `ZipInfo` object
-            # is not available on my testbed
-            # Copied the code from the `zipfile.py`
-            return "/" == stat.filename[-1]
+            if sys.version_info >= (3, 6, ):
+                return stat.is_dir()
+            else:
+                # The `is_dir` function under `ZipInfo` object
+                # is not available before Python 3.6.0
+                return "/" == stat.filename[-1]
         else:
             return False
 
