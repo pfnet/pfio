@@ -262,7 +262,7 @@ class FileCache(cache.Cache):
         After loading the files, no data can be added to the cache.
         ``name`` is the prefix of the persistent files. To use cache
         in ``multiprocessing`` environment, call this method at every
-        forked process.
+        forked process, except the process that called ``preserve()``.
 
         .. note:: This feature is experimental.
 
@@ -283,9 +283,9 @@ class FileCache(cache.Cache):
             self._frozen = True
 
     def preserve(self, name):
-        '''Preserve the cache as persistent files in the disk
+        '''Preserve the cache as persistent files on the disk
 
-        Once the cache is preserved, cache files are not to be removed
+        Once the cache is preserved, cache files will not be removed
         at cache close. To read data from preserved files, use
         ``preload()`` method. After preservation, no data can be added
         to the cache.  ``name`` is the prefix of the persistent
