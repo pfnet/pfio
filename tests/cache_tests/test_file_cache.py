@@ -1,5 +1,6 @@
 from chainerio.cache import FileCache
 import os
+import tempfile
 
 import pytest
 
@@ -28,3 +29,25 @@ def test_enoent(monkeypatch):
 
             with pytest.raises(OSError):
                 cache.put(4, str(4))
+
+
+def test_preservation():
+    with tempfile.TemporaryDirectory() as d:
+        cache = FileCache(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        cache.preserve('preserved')
+
+        for i in range(10):
+            assert str(i) == cache.get(i)
+
+        cache.close()
+
+        # Imitating a new process, fresh load
+        cache2 = FileCache(10, dir=d, do_pickle=True)
+
+        cache2.preload('preserved')
+        for i in range(10):
+            assert str(i) == cache2.get(i)

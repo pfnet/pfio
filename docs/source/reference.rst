@@ -40,7 +40,7 @@ Cache API
    :members:
 
 .. autoclass:: FileCache
-   :members:
+   :members: preserve, preload
 
 Chainer Extensions API
 ----------------------
