@@ -18,8 +18,12 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
-def _parse_klist_output(output):
-    principle_str = output.decode('utf-8').split('\n')[1]
+def _parse_principal_name_from_klist(output):
+    output_array = output.split('\n')
+    if len(output_array) < 2:
+        return None
+
+    principle_str = output_array[1]
     klist_principal_pattern = re.compile(
         r'Default principal: (?P<username>.+)@(?P<service>.+)')
     ret = klist_principal_pattern.match(principle_str)
@@ -30,6 +34,58 @@ def _parse_klist_output(output):
         return None
 
 
+def _parse_principal_name_from_keytab(output):
+    output_array = output.split('\n')
+    if len(output_array) < 4:
+        return None
+
+    principle_str = output_array[3]
+    keytab_principle_pattern = re.compile(
+        r'\s+\d+ (?P<username>.+)@(?P<service>.+)')
+    ret = keytab_principle_pattern.match(principle_str)
+    if ret:
+        pattern_dict = ret.groupdict()
+        return pattern_dict['username']
+    else:
+        return None
+
+
+def _get_principal_name_from_keytab():
+    keytab_path = os.getenv("KRB5_KTNAME")
+    if keytab_path is None:
+        return None
+
+    output = _run_klist(keytab_path)
+    if output is None:
+        return None
+
+    return _parse_principal_name_from_keytab(output.decode('utf-8'))
+
+
+def _get_principal_name_from_klist():
+    output = _run_klist()
+    if output is None:
+        return None
+    return _parse_principal_name_from_klist(output.decode('utf-8'))
+
+
+def _run_klist(keytab_path=None):
+    try:
+        command = ['klist']
+        if keytab_path is not None:
+            command += ['-k', keytab_path]
+        pipe = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        out, err = pipe.communicate()
+        if out == b'' and err != b'':
+            return None
+        else:
+            return out
+    except OSError:
+        # klist is not found
+        return None
+
+
 class HdfsFileSystem(FileSystem):
     def __init__(self, io_profiler=None, root=""):
         FileSystem.__init__(self, io_profiler, root)
@@ -37,29 +93,22 @@ class HdfsFileSystem(FileSystem):
         self.type = 'hdfs'
         self.root = root
         self.username = self._get_principal_name()
-        if self.username is None:
-            # in case klist fails, use the login username instead
-            self.username = self._get_login_username()
 
         self.nameservice = None
 
     def _get_principal_name(self):
-        # get the default principle name from `klist`
-        keytab_path = os.getenv("KRB5_KTNAME")
-        try:
-            command = ['klist']
-            if keytab_path is not None:
-                command += ['-c', keytab_path]
-            pipe = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
-            out, err = pipe.communicate()
-            if out == b'' and err != b'':
-                return None
+        # get the default principle name from `klist` cache
+        principal_name = _get_principal_name_from_klist()
+
+        if principal_name is not None:
+            return principal_name
+        else:
+            principal_name = _get_principal_name_from_keytab()
+            if principal_name is not None:
+                return principal_name
             else:
-                return _parse_klist_output(out)
-        except OSError:
-            # klist is not found
-            return None
+                # in case klist fails, use the login username instead
+                return self._get_login_username()
 
     def _get_login_username(self):
         return getpass.getuser()
