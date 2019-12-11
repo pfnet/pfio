@@ -72,7 +72,7 @@ class HdfsFileSystem(FileSystem):
             # variable. If /etc/krb5.keytab doesn't exist, krbticket
             # tries to update the ticket with ``kinit -R`` as much as
             # possible.
-            self.ticket = KrbTicket.init(self.username)
+            self.ticket = KrbTicket.get_or_init(self.username)
             self.ticket.updater_start()
 
             connection = hdfs.connect()
