@@ -53,11 +53,6 @@ class TestHdfsHandler(unittest.TestCase):
 
         os.environ['PATH'] = path
 
-    def test_keytab_not_exist(self):
-        with chainerio.filesystems.hdfs.HdfsFileSystem(
-                keytab_path="does_not_exist") as handler:
-            self.assertEqual(getpass.getuser(), handler.username)
-
     def test_principle_pattern(self):
         username = 'fake_user!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
         service = 'fake_service!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
