@@ -1,4 +1,5 @@
 from chainerio._context import DefaultContext
+from chainerio.io import create_fs_handler
 from chainerio.version import __version__  # NOQA
 
 from chainerio.io import IO
@@ -198,9 +199,7 @@ def create_handler(scheme: str) -> IO:
     if not default_context.is_supported_scheme(scheme):
         raise ValueError("scheme {} is not supported".format(scheme))
 
-    (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(scheme)
-    return handler
+    return create_fs_handler(scheme)
 
 
 def isdir(path: str) -> bool:
@@ -213,8 +212,7 @@ def isdir(path: str) -> bool:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(path)
+    (handler, actual_path) = default_context.get_handler(path)
     return handler.isdir(actual_path)
 
 
@@ -230,8 +228,7 @@ def mkdir(path: str, mode: int = 0o777, *,
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(path)
+    (handler, actual_path) = default_context.get_handler(path)
     return handler.mkdir(actual_path, mode, dir_fd=dir_fd)
 
 
@@ -247,8 +244,7 @@ def makedirs(path: str, mode: int = 0o777,
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(path)
+    (handler, actual_path) = default_context.get_handler(path)
     return handler.makedirs(actual_path, mode, exist_ok)
 
 
@@ -263,8 +259,7 @@ def exists(path: str) -> bool:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(path)
+    (handler, actual_path) = default_context.get_handler(path)
     return handler.exists(actual_path)
 
 
@@ -280,15 +275,13 @@ def rename(src: str, dst: str) -> None:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler_src, actual_src, _is_URI1) = \
-        default_context.get_handler_by_name(src)
-    (handler_dst, actual_dst, _is_URI2) = \
-        default_context.get_handler_by_name(dst)
+    (handler_src, actual_path_src) = default_context.get_handler(src)
+    (handler_dst, actual_path_dst) = default_context.get_handler(dst)
     # TODO: containers are not supported here
     if type(handler_src) != type(handler_dst):
         raise NotImplementedError(
             "Moving between different systems is not supported")
-    handler_src.rename(actual_src, actual_dst)
+    handler_src.rename(actual_path_src, actual_path_dst)
 
 
 def remove(path: str, recursive: bool = False) -> None:
@@ -309,8 +302,7 @@ def remove(path: str, recursive: bool = False) -> None:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path, is_URI) = \
-        default_context.get_handler_by_name(path)
+    (handler, actual_path) = default_context.get_handler(path)
     return handler.remove(actual_path, recursive)
 
 
