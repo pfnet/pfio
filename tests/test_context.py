@@ -32,6 +32,8 @@ class TestContext(unittest.TestCase):
         with chainerio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
+        chainerio.set_root('posix')
+
     def test_open_as_container(self):
         # Create a container for testing
         chainerio.set_root("posix")
@@ -129,19 +131,28 @@ class TestContext(unittest.TestCase):
             with chainerio.open('file://' + __file__) as fp:
                 self.assertEqual(fp.read(), my_script.read().encode("utf-8"))
 
+        chainerio.set_root('posix')
+
     # override with different filesystem
     @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
     def test_root_fs_override(self):
         from pyarrow import hdfs
 
-        hdfs_tmpfile = "tmpfile_hdfs"
+        hdfs_tmpdir = "tmpdir_hdfs"
+        hdfs_tmpfile = os.path.join(hdfs_tmpdir, "tmpfile_hdfs")
+        hdfs_tmpnested_dir = os.path.join(hdfs_tmpdir, "nesteddir_hdfs")
+        hdfs_tmpfile_renamed = os.path.join(hdfs_tmpdir, "renamed_file")
         hdfs_file_string = "this is a test string for hdfs"
 
+        chainerio.set_root("hdfs")
+
         conn = hdfs.connect()
+        chainerio.mkdir(hdfs_tmpdir)
+        chainerio.makedirs(hdfs_tmpnested_dir)
+
         with conn.open(hdfs_tmpfile, "wb") as f:
             f.write(hdfs_file_string.encode('utf-8'))
 
-        chainerio.set_root("hdfs")
         with chainerio.open(hdfs_tmpfile, "r") as fp:
             self.assertEqual(fp.read(), hdfs_file_string)
 
@@ -153,8 +164,23 @@ class TestContext(unittest.TestCase):
         with chainerio.open(hdfs_tmpfile, "r") as fp:
             self.assertEqual(fp.read(), hdfs_file_string)
 
-        conn.delete(hdfs_tmpfile)
+        self.assertEqual(chainerio.isdir(hdfs_tmpnested_dir), True)
+
+        self.assertEqual(sorted(list(chainerio.list(hdfs_tmpdir))),
+                         sorted(["tmpfile_hdfs", "nesteddir_hdfs"]))
+
+        self.assertEqual(chainerio.exists(hdfs_tmpfile), True)
+        self.assertEqual(chainerio.exists(hdfs_tmpfile_renamed), False)
+
+        chainerio.rename(hdfs_tmpfile, hdfs_tmpfile_renamed)
+        self.assertEqual(chainerio.exists(hdfs_tmpfile), False)
+        self.assertEqual(chainerio.exists(hdfs_tmpfile_renamed), True)
+
+        chainerio.remove(hdfs_tmpdir, recursive=True)
+        self.assertEqual(chainerio.exists(hdfs_tmpdir), False)
         conn.close()
+
+        chainerio.set_root("posix")
 
     def test_create_handler(self):
         posix_handler = chainerio.create_handler("posix")
