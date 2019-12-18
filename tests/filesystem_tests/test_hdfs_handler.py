@@ -15,6 +15,19 @@ import tempfile
 import chainerio
 
 
+def create_dummy_keytab(tmpd, dummy_username):
+    dummy_password = "123"
+    keytab_path = os.path.join(tmpd, "user.keytab")
+    command = "(echo 'addent -password -p {}@{} -k 1 -e rc4-hmac' &&\
+              sleep 1 && echo {} && echo write_kt {}) \
+              | ktutil".format(dummy_username, "dummy_realm",
+                               dummy_password, keytab_path)
+    pipe = subprocess.Popen(command, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, shell=True)
+    out, err = pipe.communicate()
+    return keytab_path
+
+
 @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
 class TestHdfsHandler(unittest.TestCase):
 
@@ -48,18 +61,6 @@ class TestHdfsHandler(unittest.TestCase):
 
         with chainerio.create_handler(self.fs) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
-
-    def create_dummy_keytab(self, tmpd, dummy_username):
-        dummy_password = "123"
-        keytab_path = os.path.join(tmpd, "user.keytab")
-        command = "(echo 'addent -password -p {}@{} -k 1 -e rc4-hmac' &&\
-                  sleep 1 && echo {} && echo write_kt {}) \
-                  | ktutil".format(dummy_username, "dummy_realm",
-                                   dummy_password, keytab_path)
-        pipe = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, shell=True)
-        out, err = pipe.communicate()
-        return keytab_path
 
     def test_get_principal_name(self):
         ticket_cache_path = "/tmp/krb5cc_{}".format(os.getuid())
@@ -98,7 +99,7 @@ class TestHdfsHandler(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpd:
             # save the original KRB5_KTNAME
             try:
-                keytab_path = self.create_dummy_keytab(tmpd, dummy_username)
+                keytab_path = create_dummy_keytab(tmpd, dummy_username)
                 os.environ['KRB5_KTNAME'] = keytab_path
                 with HdfsFileSystem() as handler:
                     self.assertEqual(dummy_username, handler.username)
