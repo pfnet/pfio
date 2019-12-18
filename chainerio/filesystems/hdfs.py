@@ -51,11 +51,7 @@ def _parse_principal_name_from_keytab(output):
 
 
 def _get_principal_name_from_keytab():
-    keytab_path = os.getenv("KRB5_KTNAME")
-    if keytab_path is None:
-        return None
-
-    output = _run_klist(keytab_path)
+    output = _run_klist(use_keytab=True)
     if output is None:
         return None
 
@@ -69,11 +65,11 @@ def _get_principal_name_from_klist():
     return _parse_principal_name_from_klist(output.decode('utf-8'))
 
 
-def _run_klist(keytab_path=None):
+def _run_klist(use_keytab=False):
     try:
         command = ['klist']
-        if keytab_path is not None:
-            command += ['-k', keytab_path]
+        if use_keytab:
+            command += ['-k']
         pipe = subprocess.Popen(command, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         out, err = pipe.communicate()
@@ -106,9 +102,9 @@ class HdfsFileSystem(FileSystem):
             principal_name = _get_principal_name_from_keytab()
             if principal_name is not None:
                 return principal_name
-            else:
-                # in case klist fails, use the login username instead
-                return self._get_login_username()
+
+        # in case every thing, use the login username instead
+        return self._get_login_username()
 
     def _get_login_username(self):
         return getpass.getuser()
