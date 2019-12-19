@@ -62,6 +62,7 @@ class TestHdfsHandler(unittest.TestCase):
         with chainerio.create_handler(self.fs) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
 
+    @unittest.skipIf(shutil.which('klist') is None, "klist not installed")
     def test_get_principal_name(self):
         ticket_cache_path = "/tmp/krb5cc_{}".format(os.getuid())
         ticket_cache_backup_path = "/tmp/ccbackup_{}".format(getpass.getuser())
@@ -75,11 +76,13 @@ class TestHdfsHandler(unittest.TestCase):
 
         # remove klist
         original_path = os.environ.get('PATH')
-        del os.environ['PATH']
+        if original_path is not None:
+            del os.environ['PATH']
 
         # remove keytab
         original_krb5_ktname = os.environ.get('KRB5_KTNAME')
-        del os.environ['KRB5_KTNAME']
+        if original_krb5_ktname is not None:
+            del os.environ['KRB5_KTNAME']
 
         # priority 0:
         # getting login name when klist, cache and keytab are not available
@@ -87,7 +90,8 @@ class TestHdfsHandler(unittest.TestCase):
             self.assertEqual(getpass.getuser(), handler.username)
 
         # restore klist
-        os.environ['PATH'] = original_path
+        if original_path is not None:
+            os.environ['PATH'] = original_path
         # priority 0:
         # getting login name when cache and keytab are not available
         with HdfsFileSystem() as handler:
