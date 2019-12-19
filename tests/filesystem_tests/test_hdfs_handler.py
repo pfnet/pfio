@@ -1,13 +1,31 @@
 import unittest
 
 from collections.abc import Iterable
-from chainerio.filesystems.hdfs import _parse_klist_output
+from chainerio.filesystems.hdfs import _parse_principal_name_from_klist
+from chainerio.filesystems.hdfs import _parse_principal_name_from_keytab
+from chainerio.filesystems.hdfs import _get_principal_name_from_klist
+from chainerio.filesystems.hdfs import HdfsFileSystem
 import pickle
 import shutil
+import subprocess
 import os
 import getpass
+import tempfile
 
 import chainerio
+
+
+def create_dummy_keytab(tmpd, dummy_username):
+    dummy_password = "123"
+    keytab_path = os.path.join(tmpd, "user.keytab")
+    command = "(echo 'addent -password -p {}@{} -k 1 -e rc4-hmac' &&\
+              sleep 1 && echo {} && echo write_kt {}) \
+              | ktutil".format(dummy_username, "dummy_realm",
+                               dummy_password, keytab_path)
+    pipe = subprocess.Popen(command, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, shell=True)
+    out, err = pipe.communicate()
+    return keytab_path
 
 
 @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
@@ -44,21 +62,85 @@ class TestHdfsHandler(unittest.TestCase):
         with chainerio.create_handler(self.fs) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
 
-    def test_klist_not_exist(self):
-        path = os.environ['PATH']
+    def test_get_principal_name(self):
+        ticket_cache_path = "/tmp/krb5cc_{}".format(os.getuid())
+        ticket_cache_backup_path = "/tmp/ccbackup_{}".format(getpass.getuser())
+
+        # remove the credential cache
+        if chainerio.exists(ticket_cache_path):
+            chainerio.rename(ticket_cache_path, ticket_cache_backup_path)
+        original_ccname = os.environ.get("KRB5CCNAME")
+        if original_ccname is not None:
+            del os.environ['KRB5CCNAME']
+
         # remove klist
-        os.environ['PATH'] = ''
-        with chainerio.create_handler(self.fs) as handler:
+        original_path = os.environ.get('PATH')
+        del os.environ['PATH']
+
+        # remove keytab
+        original_krb5_ktname = os.environ.get('KRB5_KTNAME')
+        del os.environ['KRB5_KTNAME']
+
+        # priority 0:
+        # getting login name when klist, cache and keytab are not available
+        with HdfsFileSystem() as handler:
             self.assertEqual(getpass.getuser(), handler.username)
 
-        os.environ['PATH'] = path
+        # restore klist
+        os.environ['PATH'] = original_path
+        # priority 0:
+        # getting login name when cache and keytab are not available
+        with HdfsFileSystem() as handler:
+            self.assertEqual(getpass.getuser(), handler.username)
 
-    def test_principle_pattern(self):
+        # priority 1:
+        # getting keytab username when only cache is not available
+        dummy_username = "IAmADummy"
+        with tempfile.TemporaryDirectory() as tmpd:
+            # save the original KRB5_KTNAME
+            try:
+                keytab_path = create_dummy_keytab(tmpd, dummy_username)
+                os.environ['KRB5_KTNAME'] = keytab_path
+                with HdfsFileSystem() as handler:
+                    self.assertEqual(dummy_username, handler.username)
+            finally:
+                # put KRB5_KTNAME back
+                if original_krb5_ktname is None:
+                    del os.environ['KRB5_KTNAME']
+                else:
+                    os.environ['KRB5_KTNAME'] = original_krb5_ktname
+
+        # restore cache
+        # remove the credential cache
+        if chainerio.exists(ticket_cache_backup_path):
+            chainerio.rename(ticket_cache_backup_path, ticket_cache_path)
+        if original_ccname is not None:
+            os.environ['KRB5CCNAME'] = original_ccname
+        # priority 2:
+        # getting principal name from cache
+        with HdfsFileSystem() as handler:
+            self.assertEqual(_get_principal_name_from_klist(),
+                             handler.username)
+
+    def test_get_principal_name_from_keytab(self):
+        username1 = 'fake_user1!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
+        username2 = 'fake_user2!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
+        service = 'fake_service!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
+        correct_out = 'Keytab name: FILE:user.keytab\n\
+                KVNO Principal\n---- ------------------\
+                --------------------------------------------------------\n\
+                1 {}@{} \n   2 {}@{}\n'.format(username1, service,
+                                               username2, service)
+        self.assertEqual(username1,
+                         (_parse_principal_name_from_keytab(
+                             correct_out)))
+
+    def test_get_principal_name_from_klist(self):
         username = 'fake_user!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
         service = 'fake_service!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
         correct_out = 'Ticket cache: FILE:/tmp/krb5cc_sdfa\nDefault principal: {}@{}\nValid starting       Expires              Service principal\n10/01/2019 12:44:18  10/08/2019 12:44:14   krbtgt/service@service\nrenew until 10/22/2019 15:04:20'.format(username, service) # NOQA
         self.assertEqual(username,
-                         _parse_klist_output(correct_out.encode('utf-8')))
+                         _parse_principal_name_from_klist(correct_out))
 
     def test_list(self):
         with chainerio.create_handler(self.fs) as handler:

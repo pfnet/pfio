@@ -34,6 +34,9 @@ Toplevel Functions
           updating Kerberos ticket using `krbticket
           <https://pypi.org/project/krbticket/>`_ . The update
           frequency is every 10 minutes by default.
+.. note::
+          Only the username in the first entry in The
+          keytab will be used to update the Kerberos ticket.
 
 
 Cache API
