@@ -93,15 +93,16 @@ class HdfsFileSystem(FileSystem):
         self.nameservice = None
 
     def _get_principal_name(self):
-        # get the default principle name from `klist` cache
+        # get the default principal name from `klist` cache
         principal_name = _get_principal_name_from_klist()
 
         if principal_name is not None:
             return principal_name
-        else:
-            principal_name = _get_principal_name_from_keytab()
-            if principal_name is not None:
-                return principal_name
+
+        # try getting principal name from keytab
+        principal_name = _get_principal_name_from_keytab()
+        if principal_name is not None:
+            return principal_name
 
         # in case every thing, use the login username instead
         return self._get_login_username()
