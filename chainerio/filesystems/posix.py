@@ -20,11 +20,13 @@ class PosixFileSystem(FileSystem):
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
 
+        file_path = self.get_actual_path(file_path)
         return io.open(file_path, mode,
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
     def list(self, path_or_prefix: str = None, recursive=False):
+        path_or_prefix = self.get_actual_path(path_or_prefix)
         if recursive:
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
@@ -43,6 +45,7 @@ class PosixFileSystem(FileSystem):
                                                 file.path)
 
     def stat(self, path):
+        path = self.get_actual_path(path)
         return os.stat(path)
 
     def close(self):
@@ -55,21 +58,30 @@ class PosixFileSystem(FileSystem):
         pass
 
     def isdir(self, file_path: str):
+        file_path = self.get_actual_path(file_path)
         return os.path.isdir(file_path)
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
+        file_path = self.get_actual_path(file_path)
         return os.mkdir(file_path, mode, *args, dir_fd=None)
 
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
+        file_path = self.get_actual_path(file_path)
         return os.makedirs(file_path, mode, exist_ok)
 
     def exists(self, file_path: str):
+        file_path = self.get_actual_path(file_path)
         return os.path.exists(file_path)
 
     def rename(self, src, dst):
+        src = self.get_actual_path(src)
+        dst = self.get_actual_path(dst)
+
         return os.rename(src, dst)
 
     def remove(self, file_path: str, recursive=False):
+        file_path = self.get_actual_path(file_path)
+
         if recursive:
             return shutil.rmtree(file_path)
         if os.path.isdir(file_path):

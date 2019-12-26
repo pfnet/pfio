@@ -98,6 +98,7 @@ class ZipContainer(Container):
             raise ValueError('Mode w and wb are not supported '
                              'only in Python < 3.6')
 
+        file_path = self.get_actual_path(file_path)
         file_path = os.path.normpath(file_path)
         self._open_zip_file(mode)
 
@@ -115,6 +116,7 @@ class ZipContainer(Container):
         return info_str
 
     def stat(self, path):
+        path = self.get_actual_path(path)
         path = os.path.normpath(path)
         self._open_zip_file()
         if path in self.zip_file_obj.namelist():
@@ -131,6 +133,8 @@ class ZipContainer(Container):
         return self.zip_file_obj.getinfo(actual_path)
 
     def list(self, path_or_prefix: str = "", recursive=False):
+        original_path = path_or_prefix
+        path_or_prefix = self.get_actual_path(path_or_prefix)
         self._open_zip_file()
 
         if path_or_prefix:
@@ -145,10 +149,10 @@ class ZipContainer(Container):
             given_dir_list = []
 
         if path_or_prefix:
-            if not self.exists(path_or_prefix):
+            if not self.exists(original_path):
                 raise FileNotFoundError(
                     "{} is not found".format(path_or_prefix))
-            elif not self.isdir(path_or_prefix):
+            elif not self.isdir(original_path):
                 raise NotADirectoryError(
                     "{} is not a directory".format(path_or_prefix))
 
@@ -205,6 +209,7 @@ class ZipContainer(Container):
         raise io.UnsupportedOperation("zip does not support makedirs")
 
     def exists(self, file_path: str):
+        file_path = self.get_actual_path(file_path)
         file_path = os.path.normpath(file_path)
         self._open_zip_file()
         namelist = self.zip_file_obj.namelist()

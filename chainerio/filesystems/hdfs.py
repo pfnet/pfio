@@ -84,13 +84,26 @@ def _run_klist(use_keytab=False):
 
 class HdfsFileSystem(FileSystem):
     def __init__(self, io_profiler=None, root=""):
+        self.username = self._get_principal_name()
+
         FileSystem.__init__(self, io_profiler, root)
         self.connection = None
         self.type = 'hdfs'
-        self.root = root
-        self.username = self._get_principal_name()
 
+        self.root = root
         self.nameservice = None
+
+    @property
+    def root(self):
+        return self._root
+
+    # override root
+    @root.setter
+    def root(self, root: str) -> None:
+        if root.startswith("/"):
+            self._root = root
+        else:
+            self._root = os.path.join("/user/{}".format(self.username), root)
 
     def _get_principal_name(self):
         # get the default principal name from `klist` cache
@@ -167,6 +180,7 @@ class HdfsFileSystem(FileSystem):
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
 
+        file_path = self.get_actual_path(file_path)
         self._create_connection()
 
         # hdfs only support open in 'b'
@@ -187,8 +201,7 @@ class HdfsFileSystem(FileSystem):
         return info_str
 
     def list(self, path_or_prefix: str = None, recursive=False):
-        if path_or_prefix is None:
-            path_or_prefix = "/user/{}".format(self.username)
+        path_or_prefix = self.get_actual_path(path_or_prefix)
 
         self._create_connection()
         target_dir = self.connection.info(path_or_prefix)
@@ -221,6 +234,7 @@ class HdfsFileSystem(FileSystem):
                                                 file_name)
 
     def stat(self, path):
+        path = self.get_actual_path(path)
         self._create_connection()
         return self.connection.stat(path)
 
@@ -236,38 +250,48 @@ class HdfsFileSystem(FileSystem):
             self.connection = None
 
     def isdir(self, file_path: str):
+        file_path = self.get_actual_path(file_path)
         stat = self.stat(file_path)
         return "directory" == stat["kind"]
 
     def mkdir(self, file_path: str, *args, dir_fd=None):
+        file_path = self.get_actual_path(file_path)
         self._create_connection()
         return self.connection.mkdir(file_path)
 
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
+        file_path = self.get_actual_path(file_path)
         return self.mkdir(file_path, mode, exist_ok)
 
     def exists(self, file_path: str):
+        file_path = self.get_actual_path(file_path)
         self._create_connection()
         return self.connection.exists(file_path)
 
     # not used for now, save for the future use
     def read(self, file_path, mode='rb'):
         # support rb open only
+        file_path = self.get_actual_path(file_path)
 
         with self.open(file_path, mode) as file_obj:
             return file_obj.read()
 
     def write(self, file_path, content, mode='wb'):
         # support wb open only
+        file_path = self.get_actual_path(file_path)
 
         content = self._convert_to_bytes(content)
         with self.open(file_path, "wb") as file_obj:
             return file_obj.write(content)
 
     def rename(self, src, dst):
+        src = self.get_actual_path(src)
+        dst = self.get_actual_path(dst)
+
         self._create_connection()
         return self.connection.rename(src, dst)
 
     def remove(self, path, recursive=False):
+        path = self.get_actual_path(path)
         self._create_connection()
         return self.connection.delete(path, recursive)

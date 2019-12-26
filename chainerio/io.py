@@ -5,6 +5,7 @@ from importlib import import_module
 from chainerio.profiler import IOProfiler
 
 from chainerio._typing import Optional
+import os
 from typing import Type, Callable, Iterator, Any
 from types import TracebackType
 
@@ -95,6 +96,14 @@ class IO(abc.ABC):
     @root.setter
     def root(self, root: str) -> None:
         self._root = root
+
+    def get_actual_path(self, path: str) -> str:
+        if path is None:
+            return self.root
+        elif path.startswith('/'):
+            # we only change the relative paths
+            return path
+        return os.path.join(self.root, path)
 
     @abstractmethod
     def info(self) -> str:
