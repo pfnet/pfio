@@ -31,24 +31,23 @@ class FileSystemDriverList(object):
         return ("posix", path, False)
 
     def _create_handler_from_path(self, path: str,
-                                  fs_type: str = None) -> Tuple[IO, str, bool]:
+                                  fs_type: str = None) -> Tuple[IO, str]:
         if fs_type is None:
-            (fs_type, actual_path, is_URI) = self.format_path(path)
+            (fs_type, actual_path, _) = self.format_path(path)
         else:
             actual_path = path
-            is_URI = False
 
         handler = create_fs_handler(fs_type)
-        return (handler, actual_path, is_URI)
+        return (handler, actual_path)
 
-    def get_handler(self, uri_or_handler_name: str) -> Tuple[IO, str, bool]:
+    def get_handler(self, uri_or_handler_name: str) -> Tuple[IO, str]:
         if uri_or_handler_name in self.pattern_list.keys():
-            return (create_fs_handler(uri_or_handler_name), "", False)
+            return (create_fs_handler(uri_or_handler_name), "")
         else:
-            (new_handler, actual_path, is_URI) = \
+            (new_handler, actual_path) = \
                 self._create_handler_from_path(uri_or_handler_name)
             new_handler.root = actual_path
-            return (new_handler, actual_path, is_URI)
+            return (new_handler, actual_path)
 
     def is_supported_scheme(self, scheme: str) -> bool:
         return scheme in self.scheme_list
