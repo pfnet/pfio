@@ -2,9 +2,12 @@ import unittest
 
 import chainerio
 import io
+import multiprocessing
 import os
 import pickle
+import random
 import shutil
+import string
 import tempfile
 from zipfile import ZipFile
 
@@ -21,6 +24,9 @@ def make_zip(zipfilename, root_dir, base_dir):
                 path = os.path.normpath(os.path.join(root, _file))
                 f.write(path)
         os.chdir(pwd)
+
+def make_random_str(n):
+    return ''.join([random.choice(string.ascii_letters + string.digits) for i in range(n)])
 
 
 class TestZipHandler(unittest.TestCase):
@@ -427,3 +433,71 @@ class TestZipHandler(unittest.TestCase):
             for _dir in non_exists_list:
                 with self.assertRaises(FileNotFoundError):
                     handler.stat(_dir)
+
+
+class TestZipHandlerWithLargeData(unittest.TestCase):
+
+    def setUp(self):
+        # The following zip layout is created for all the tests
+        # outside.zip
+        # | - testfile1
+
+        n = 1 << 13
+        self.test_string = make_random_str(n)
+        self.fs_handler = chainerio.create_handler("posix")
+
+        # the most outside zip
+        self.zip_file_name = "outside"
+
+        # nested zip and nested file
+        self.tmpdir = tempfile.TemporaryDirectory()
+
+        # test file
+        self.testfile_name = "testfile1"
+
+        # paths used in making outside.zip
+        testfile_path = os.path.join(self.tmpdir.name, self.testfile_name)
+
+        # paths used in tests
+        self.zip_file_path = self.zip_file_name + ".zip"
+
+        with open(testfile_path, "w") as tmpfile:
+            tmpfile.write(self.test_string)
+
+        # this will include outside.zip itself into the zip
+        make_zip(self.zip_file_path,
+                 root_dir=self.tmpdir.name,
+                 base_dir=".")
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+        chainerio.remove(self.zip_file_path)
+
+    def test_read_multi_processes(self):
+        barrier = multiprocessing.Barrier(2)
+        print(self.zip_file_path)
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            print('main', os.getpid(), id(handler))
+            with handler.open(self.testfile_name) as f:
+                f.read()
+
+            def func():
+                print(os.getpid(), id(handler))
+                # accessing the shared container
+                with handler.open(self.testfile_name) as f:
+                    print(os.getpid(), "start", flush=True)
+                    barrier.wait()
+                    f.read()
+                print(os.getpid(), "end", flush=True)
+
+            p1 = multiprocessing.Process(target=func)
+            p2 = multiprocessing.Process(target=func)
+            p1.start()
+            p2.start()
+
+            p1.join()
+            p2.join()
+
+            self.assertEqual(p1.exitcode, 0)
+            self.assertEqual(p2.exitcode, 0)
