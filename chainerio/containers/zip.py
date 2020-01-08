@@ -1,6 +1,5 @@
 from chainerio.container import Container
 from chainerio.io import open_wrapper
-import copy
 import io
 import logging
 import os
@@ -39,8 +38,6 @@ class ZipContainer(Container):
                 self.zip_file_obj_mode = None
 
         if self.zip_file_obj is None:
-            self.zip_file_obj_pid = os.getpid()
-            self.zip_file_obj_mode = mode
             zip_file = self.base_handler.open(self.base, "rb")
             if isinstance(self.base_handler, ZipContainer) \
                     and sys.version_info < (3, 7, ):
@@ -64,9 +61,10 @@ class ZipContainer(Container):
                               'memory issues when the nested zip is huge.',
                               category=RuntimeWarning)
                 zip_file = io.BytesIO(zip_file.read())
+            self.zip_file_obj_pid = os.getpid()
+            self.zip_file_obj_mode = mode
             mode = mode.replace("b", "")
             self.zip_file_obj = zipfile.ZipFile(zip_file, mode)
-        print("zip_file_obj id", os.getpid(), self.zip_file_obj, id(self.zip_file_obj))
 
     def _close_zip_file(self):
         if None is not self.zip_file_obj:

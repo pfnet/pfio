@@ -25,8 +25,10 @@ def make_zip(zipfilename, root_dir, base_dir):
                 f.write(path)
         os.chdir(pwd)
 
+
 def make_random_str(n):
-    return ''.join([random.choice(string.ascii_letters + string.digits) for i in range(n)])
+    return ''.join([random.choice(string.ascii_letters + string.digits)
+                    for i in range(n)])
 
 
 class TestZipHandler(unittest.TestCase):
@@ -475,21 +477,16 @@ class TestZipHandlerWithLargeData(unittest.TestCase):
 
     def test_read_multi_processes(self):
         barrier = multiprocessing.Barrier(2)
-        print(self.zip_file_path)
         with self.fs_handler.open_as_container(
                 os.path.abspath(self.zip_file_path)) as handler:
-            print('main', os.getpid(), id(handler))
             with handler.open(self.testfile_name) as f:
                 f.read()
 
             def func():
-                print(os.getpid(), id(handler))
                 # accessing the shared container
                 with handler.open(self.testfile_name) as f:
-                    print(os.getpid(), "start", flush=True)
                     barrier.wait()
                     f.read()
-                print(os.getpid(), "end", flush=True)
 
             p1 = multiprocessing.Process(target=func)
             p2 = multiprocessing.Process(target=func)
