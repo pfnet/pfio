@@ -31,11 +31,16 @@ class ZipContainer(Container):
         filename, file_extension = os.path.splitext(self.base)
 
     def _open_zip_file(self, mode='r'):
-        if self.zip_file_obj is not None:
-            if self.zip_file_obj_pid != os.getpid():
-                self.zip_file_obj = None
-                self.zip_file_obj_pid = None
-                self.zip_file_obj_mode = None
+        mode = mode.replace("b", "")
+        if self.zip_file_obj_mode is not None \
+                and self.zip_file_obj_mode != mode:
+            self._close_zip_file()
+
+        if self.zip_file_obj is not None \
+                and self.zip_file_obj_pid != os.getpid():
+            self.zip_file_obj = None
+            self.zip_file_obj_pid = None
+            self.zip_file_obj_mode = None
 
         if self.zip_file_obj is None:
             zip_file = self.base_handler.open(self.base, "rb")
@@ -63,7 +68,6 @@ class ZipContainer(Container):
                 zip_file = io.BytesIO(zip_file.read())
             self.zip_file_obj_pid = os.getpid()
             self.zip_file_obj_mode = mode
-            mode = mode.replace("b", "")
             self.zip_file_obj = zipfile.ZipFile(zip_file, mode)
 
     def _close_zip_file(self):

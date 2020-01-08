@@ -493,8 +493,8 @@ class TestZipHandlerWithLargeData(unittest.TestCase):
             p1.start()
             p2.start()
 
-            p1.join()
-            p2.join()
+            p1.join(timeout=1)
+            p2.join(timeout=1)
 
             self.assertEqual(p1.exitcode, 0)
             self.assertEqual(p2.exitcode, 0)
