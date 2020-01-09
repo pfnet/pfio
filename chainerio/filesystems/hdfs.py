@@ -86,6 +86,7 @@ class HdfsFileSystem(FileSystem):
     def __init__(self, io_profiler=None, root=""):
         FileSystem.__init__(self, io_profiler, root)
         self.connection = None
+        self.connection_pid = None
         self.type = 'hdfs'
         self.root = root
         self.username = self._get_principal_name()
@@ -111,6 +112,10 @@ class HdfsFileSystem(FileSystem):
         return getpass.getuser()
 
     def _create_connection(self):
+        if self.connection_pid is not None and self.connection_pid != os.getpid():
+            self.connection = None
+            self.connection_pid = None
+
         if None is self.connection:
             logger.debug('creating connection')
 
@@ -124,6 +129,7 @@ class HdfsFileSystem(FileSystem):
             connection = hdfs.connect()
             assert connection is not None
             self.connection = connection
+            self.connection_pid = os.getpid()
 
             # set nameservice
             _file_in_root = self.connection.ls("/")[0]
@@ -233,6 +239,7 @@ class HdfsFileSystem(FileSystem):
         if None is not self.connection:
             self.connection.close()
             self.connection = None
+            self.connection_pid = None
 
     def isdir(self, file_path: str):
         stat = self.stat(file_path)
