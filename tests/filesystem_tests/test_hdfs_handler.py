@@ -5,14 +5,22 @@ from chainerio.filesystems.hdfs import _parse_principal_name_from_klist
 from chainerio.filesystems.hdfs import _parse_principal_name_from_keytab
 from chainerio.filesystems.hdfs import _get_principal_name_from_klist
 from chainerio.filesystems.hdfs import HdfsFileSystem
+import multiprocessing
 import pickle
 import shutil
 import subprocess
 import os
+import string
+import random
 import getpass
 import tempfile
 
 import chainerio
+
+
+def make_random_str(n):
+    return ''.join([random.choice(string.ascii_letters + string.digits)
+                    for i in range(n)])
 
 
 def create_dummy_keytab(tmpd, dummy_username):
@@ -307,3 +315,46 @@ class TestHdfsHandler(unittest.TestCase):
         # pass for now
         # TODO(tianqi) add test after we well defined the stat
         pass
+
+
+@unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
+class TestHdfsHandlerWithLargeData(unittest.TestCase):
+
+    def setUp(self):
+        n = 1 << 13
+        self.test_string = make_random_str(n)
+        self.fs = "hdfs"
+        self.tmpfile_name = "tmpfile.txt"
+
+    def tearDown(self):
+        with chainerio.create_handler(self.fs) as handler:
+            try:
+                handler.remove(self.tmpfile_name)
+            except IOError:
+                pass
+
+    def test_read_multi_processes(self):
+        barrier = multiprocessing.Barrier(2)
+
+        with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "w") as tmpfile:
+                tmpfile.write(self.test_string)
+            with handler.open(self.tmpfile_name, "r") as f:
+                f.read()
+
+            def func():
+                # accessing the shared container
+                with handler.open(self.tmpfile_name) as f:
+                    barrier.wait()
+                    f.read()
+
+            p1 = multiprocessing.Process(target=func)
+            p2 = multiprocessing.Process(target=func)
+            p1.start()
+            p2.start()
+
+            p1.join(timeout=1)
+            p2.join(timeout=1)
+
+            self.assertEqual(p1.exitcode, 0)
+            self.assertEqual(p2.exitcode, 0)

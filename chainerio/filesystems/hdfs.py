@@ -112,7 +112,8 @@ class HdfsFileSystem(FileSystem):
         return getpass.getuser()
 
     def _create_connection(self):
-        if self.connection_pid is not None and self.connection_pid != os.getpid():
+        if self.connection_pid is not None \
+                and self.connection_pid != os.getpid():
             self.connection = None
             self.connection_pid = None
 
