@@ -1,6 +1,6 @@
 from chainerio.filesystem import FileSystem
 from chainerio.io import open_wrapper
-from krbticket import KrbTicket
+from krbticket import KrbTicket, SingleProcessKrbTicketUpdater
 
 import subprocess
 import re
@@ -118,7 +118,8 @@ class HdfsFileSystem(FileSystem):
             # variable. If /etc/krb5.keytab doesn't exist, krbticket
             # tries to update the ticket with ``kinit -R`` as much as
             # possible.
-            self.ticket = KrbTicket.get_or_init(self.username)
+            self.ticket = KrbTicket.get_or_init(
+                self.username, updater_class=SingleProcessKrbTicketUpdater)
             self.ticket.updater_start()
 
             connection = hdfs.connect()
