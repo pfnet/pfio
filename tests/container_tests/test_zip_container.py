@@ -5,9 +5,11 @@ import io
 import multiprocessing
 import os
 import pickle
+import pytest
 import random
 import shutil
 import string
+import sys
 import tempfile
 from zipfile import ZipFile
 
@@ -130,6 +132,8 @@ class TestZipHandler(unittest.TestCase):
             with handler.open(self.zipped_file_path, "r") as zipped_file:
                 self.assertEqual(self.test_string, zipped_file.readline())
 
+    @pytest.mark.skipif(sys.version_info < (3, 6),
+                        reason="requires python3.6 or higher")
     def test_write_bytes(self):
         testfile_name = "testfile3"
         test_string = "this is a written string\n"
@@ -145,6 +149,8 @@ class TestZipHandler(unittest.TestCase):
             with handler.open(testfile_name, "rb") as zipped_file:
                 self.assertEqual(test_string_b, zipped_file.readline())
 
+    @pytest.mark.skipif(sys.version_info < (3, 6),
+                        reason="requires python3.6 or higher")
     def test_write_string(self):
         testfile_name = "testfile3"
         test_string = "this is a written string\n"
@@ -464,6 +470,8 @@ class TestZipHandler(unittest.TestCase):
                 with self.assertRaises(FileNotFoundError):
                     handler.stat(_dir)
 
+    @pytest.mark.skipif(sys.version_info < (3, 6),
+                        reason="requires python3.6 or higher")
     def test_writing_after_listing(self):
         testfile_name = "testfile3"
         test_string = "this is a written string\n"
@@ -476,6 +484,18 @@ class TestZipHandler(unittest.TestCase):
             with handler.open(testfile_name, "w") as zipped_file:
                 zipped_file.write(test_string)
             self.assertEqual(handler.zip_file_obj_mode, "w")
+
+    @pytest.mark.skipif(sys.version_info > (3, 5),
+                        reason="requires python3.5 or lower")
+    def test_mode_w_exception(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with self.assertRaises(ValueError):
+                with handler.open(testfile_name, "w") as zipped_file:
+                    zipped_file.write(test_string)
 
 
 class TestZipHandlerWithLargeData(unittest.TestCase):

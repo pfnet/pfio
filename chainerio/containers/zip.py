@@ -94,11 +94,12 @@ class ZipContainer(Container):
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
+        if sys.version_info < (3, 6) and "w" in mode:
+            raise ValueError('Mode w and wb is not supported')
 
         file_path = os.path.normpath(file_path)
         self._open_zip_file(mode)
 
-        # zip only supports open with r rU or U
         zip_file_obj_mode = mode.replace("b", "")
         nested_file = self.zip_file_obj.open(file_path, zip_file_obj_mode)
         return nested_file
