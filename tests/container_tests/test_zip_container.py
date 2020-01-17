@@ -130,6 +130,34 @@ class TestZipHandler(unittest.TestCase):
             with handler.open(self.zipped_file_path, "r") as zipped_file:
                 self.assertEqual(self.test_string, zipped_file.readline())
 
+    def test_write_bytes(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+        test_string_b = test_string.encode("utf-8")
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "wb") as zipped_file:
+                zipped_file.write(test_string_b)
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "rb") as zipped_file:
+                self.assertEqual(test_string_b, zipped_file.readline())
+
+    def test_write_string(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "w") as zipped_file:
+                zipped_file.write(test_string)
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "r") as zipped_file:
+                self.assertEqual(test_string, zipped_file.readline())
+
     def test_open_non_exist(self):
 
         non_exist_file = "non_exist_file.txt"
@@ -435,6 +463,19 @@ class TestZipHandler(unittest.TestCase):
             for _dir in non_exists_list:
                 with self.assertRaises(FileNotFoundError):
                     handler.stat(_dir)
+
+    def test_writing_after_listing(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            list(handler.list())
+            self.assertEqual(handler.zip_file_obj_mode, "r")
+
+            with handler.open(testfile_name, "w") as zipped_file:
+                zipped_file.write(test_string)
+            self.assertEqual(handler.zip_file_obj_mode, "w")
 
 
 class TestZipHandlerWithLargeData(unittest.TestCase):

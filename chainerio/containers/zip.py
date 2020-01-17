@@ -43,7 +43,7 @@ class ZipContainer(Container):
             self.zip_file_obj_mode = None
 
         if self.zip_file_obj is None:
-            zip_file = self.base_handler.open(self.base, "rb")
+            zip_file = self.base_handler.open(self.base, "{}b".format(mode))
             if isinstance(self.base_handler, ZipContainer) \
                     and sys.version_info < (3, 7, ):
                 # In Python < 3.7, the returned file object from zipfile.open,
@@ -99,7 +99,8 @@ class ZipContainer(Container):
         self._open_zip_file(mode)
 
         # zip only supports open with r rU or U
-        nested_file = self.zip_file_obj.open(file_path, "r")
+        zip_file_obj_mode = mode.replace("b", "")
+        nested_file = self.zip_file_obj.open(file_path, zip_file_obj_mode)
         return nested_file
 
     def close(self):
