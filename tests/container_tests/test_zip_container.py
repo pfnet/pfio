@@ -505,7 +505,7 @@ class TestZipHandlerWithLargeData(unittest.TestCase):
         # outside.zip
         # | - testfile1
 
-        n = 1 << 13
+        n = 1 << 20
         self.test_string = make_random_str(n)
         self.fs_handler = chainerio.create_handler("posix")
 
