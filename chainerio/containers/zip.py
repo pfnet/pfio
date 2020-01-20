@@ -95,7 +95,8 @@ class ZipContainer(Container):
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
         if sys.version_info < (3, 6) and "w" in mode:
-            raise ValueError('Mode w and wb are not supported only in Python < 3.6')
+            raise ValueError('Mode w and wb are not supported '
+                             'only in Python < 3.6')
 
         file_path = os.path.normpath(file_path)
         self._open_zip_file(mode)
