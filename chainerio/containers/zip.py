@@ -21,6 +21,8 @@ class ZipContainer(Container):
 
         logger.info("using zip container for {}".format(base))
         self.zip_file_obj = None
+        self.zip_file_obj_pid = None
+        self.zip_file_obj_mode = None
         self.type = "zip"
 
     def _check_zip_file_name(self, base):
@@ -30,9 +32,18 @@ class ZipContainer(Container):
 
     def _open_zip_file(self, mode='r'):
         mode = mode.replace("b", "")
+        if self.zip_file_obj_mode is not None \
+                and self.zip_file_obj_mode != mode:
+            self._close_zip_file()
+
+        if self.zip_file_obj is not None \
+                and self.zip_file_obj_pid != os.getpid():
+            self.zip_file_obj = None
+            self.zip_file_obj_pid = None
+            self.zip_file_obj_mode = None
 
         if self.zip_file_obj is None:
-            zip_file = self.base_handler.open(self.base, "rb")
+            zip_file = self.base_handler.open(self.base, "{}b".format(mode))
             if isinstance(self.base_handler, ZipContainer) \
                     and sys.version_info < (3, 7, ):
                 # In Python < 3.7, the returned file object from zipfile.open,
@@ -55,13 +66,16 @@ class ZipContainer(Container):
                               'memory issues when the nested zip is huge.',
                               category=RuntimeWarning)
                 zip_file = io.BytesIO(zip_file.read())
-
+            self.zip_file_obj_pid = os.getpid()
+            self.zip_file_obj_mode = mode
             self.zip_file_obj = zipfile.ZipFile(zip_file, mode)
 
     def _close_zip_file(self):
         if None is not self.zip_file_obj:
             self.zip_file_obj.close()
             self.zip_file_obj = None
+            self.zip_file_obj_pid = None
+            self.zip_file_obj_mode = None
 
     def _wrap_fileobject(self, file_obj: Type['IOBase'],
                          file_path: str, mode: str = 'rb',
@@ -80,12 +94,15 @@ class ZipContainer(Container):
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
+        if sys.version_info < (3, 6) and "w" in mode:
+            raise ValueError('Mode w and wb are not supported '
+                             'only in Python < 3.6')
 
         file_path = os.path.normpath(file_path)
         self._open_zip_file(mode)
 
-        # zip only supports open with r rU or U
-        nested_file = self.zip_file_obj.open(file_path, "r")
+        zip_file_obj_mode = mode.replace("b", "")
+        nested_file = self.zip_file_obj.open(file_path, zip_file_obj_mode)
         return nested_file
 
     def close(self):
@@ -199,8 +216,7 @@ class ZipContainer(Container):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if None is not self.zip_file_obj:
-            self.zip_file_obj.close()
-            self.zip_file_obj = None
+            self._close_zip_file()
 
     def remove(self, file_path, recursive=False):
         raise io.UnsupportedOperation
