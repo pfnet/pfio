@@ -2,9 +2,14 @@ import unittest
 
 import chainerio
 import io
+import multiprocessing
 import os
 import pickle
+import pytest
+import random
 import shutil
+import string
+import sys
 import tempfile
 from zipfile import ZipFile
 
@@ -21,6 +26,11 @@ def make_zip(zipfilename, root_dir, base_dir):
                 path = os.path.normpath(os.path.join(root, _file))
                 f.write(path)
         os.chdir(pwd)
+
+
+def make_random_str(n):
+    return ''.join([random.choice(string.ascii_letters + string.digits)
+                    for i in range(n)])
 
 
 class TestZipHandler(unittest.TestCase):
@@ -121,6 +131,38 @@ class TestZipHandler(unittest.TestCase):
                 os.path.abspath(self.zip_file_path)) as handler:
             with handler.open(self.zipped_file_path, "r") as zipped_file:
                 self.assertEqual(self.test_string, zipped_file.readline())
+
+    @pytest.mark.skipif(sys.version_info < (3, 6),
+                        reason="requires python3.6 or higher")
+    def test_write_bytes(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+        test_string_b = test_string.encode("utf-8")
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "wb") as zipped_file:
+                zipped_file.write(test_string_b)
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "rb") as zipped_file:
+                self.assertEqual(test_string_b, zipped_file.readline())
+
+    @pytest.mark.skipif(sys.version_info < (3, 6),
+                        reason="requires python3.6 or higher")
+    def test_write_string(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "w") as zipped_file:
+                zipped_file.write(test_string)
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(testfile_name, "r") as zipped_file:
+                self.assertEqual(test_string, zipped_file.readline())
 
     def test_open_non_exist(self):
 
@@ -427,3 +469,93 @@ class TestZipHandler(unittest.TestCase):
             for _dir in non_exists_list:
                 with self.assertRaises(FileNotFoundError):
                     handler.stat(_dir)
+
+    @pytest.mark.skipif(sys.version_info < (3, 6),
+                        reason="requires python3.6 or higher")
+    def test_writing_after_listing(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            list(handler.list())
+            self.assertEqual(handler.zip_file_obj_mode, "r")
+
+            with handler.open(testfile_name, "w") as zipped_file:
+                zipped_file.write(test_string)
+            self.assertEqual(handler.zip_file_obj_mode, "w")
+
+    @pytest.mark.skipif(sys.version_info > (3, 5),
+                        reason="requires python3.5 or lower")
+    def test_mode_w_exception(self):
+        testfile_name = "testfile3"
+        test_string = "this is a written string\n"
+
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with self.assertRaises(ValueError):
+                with handler.open(testfile_name, "w") as zipped_file:
+                    zipped_file.write(test_string)
+
+
+class TestZipHandlerWithLargeData(unittest.TestCase):
+
+    def setUp(self):
+        # The following zip layout is created for all the tests
+        # outside.zip
+        # | - testfile1
+
+        n = 1 << 20
+        self.test_string = make_random_str(n)
+        self.fs_handler = chainerio.create_handler("posix")
+
+        # the most outside zip
+        self.zip_file_name = "outside"
+
+        # nested zip and nested file
+        self.tmpdir = tempfile.TemporaryDirectory()
+
+        # test file
+        self.testfile_name = "testfile1"
+
+        # paths used in making outside.zip
+        testfile_path = os.path.join(self.tmpdir.name, self.testfile_name)
+
+        # paths used in tests
+        self.zip_file_path = self.zip_file_name + ".zip"
+
+        with open(testfile_path, "w") as tmpfile:
+            tmpfile.write(self.test_string)
+
+        # this will include outside.zip itself into the zip
+        make_zip(self.zip_file_path,
+                 root_dir=self.tmpdir.name,
+                 base_dir=".")
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+        chainerio.remove(self.zip_file_path)
+
+    def test_read_multi_processes(self):
+        barrier = multiprocessing.Barrier(2)
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(self.testfile_name) as f:
+                f.read()
+
+            def func():
+                # accessing the shared container
+                with handler.open(self.testfile_name) as f:
+                    barrier.wait()
+                    f.read()
+
+            p1 = multiprocessing.Process(target=func)
+            p2 = multiprocessing.Process(target=func)
+            p1.start()
+            p2.start()
+
+            p1.join(timeout=1)
+            p2.join(timeout=1)
+
+            self.assertEqual(p1.exitcode, 0)
+            self.assertEqual(p2.exitcode, 0)
