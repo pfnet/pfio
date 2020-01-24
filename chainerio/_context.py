@@ -13,7 +13,7 @@ class FileSystemDriverList(object):
         # as well as the patterns upon loading the chainerio module.
         self.scheme_list = ["hdfs", "posix"]
         self.posix_pattern = re.compile(r"file:\/\/(?P<path>.+)")
-        self.hdfs_pattern = re.compile(r"(?P<path>hdfs:\/\/.+)")
+        self.hdfs_pattern = re.compile(r"hdfs:\/\/(?P<path>.+)")
         self.pattern_list = {"hdfs": self.hdfs_pattern,
                              "posix": self.posix_pattern, }
         # this is a cache to store the handler for global context
