@@ -37,6 +37,14 @@ class TestHdfsHandler(unittest.TestCase):
         self.fs = "hdfs"
         self.tmpfile_name = "tmpfile.txt"
 
+    def tearDown(self):
+
+        with chainerio.create_handler(self.fs) as handler:
+            try:
+                handler.remove(self.tmpfile_name)
+            except IOError:
+                pass
+
     def test_read_bytes(self):
 
         with chainerio.create_handler(self.fs) as handler:
@@ -148,6 +156,9 @@ class TestHdfsHandler(unittest.TestCase):
 
     def test_list(self):
         with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "w") as tmpfile:
+                tmpfile.write(self.test_string)
+
             file_generator = handler.list()
             self.assertIsInstance(file_generator, Iterable)
             file_list = list(file_generator)
@@ -194,6 +205,9 @@ class TestHdfsHandler(unittest.TestCase):
 
     def test_isdir(self):
         with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "w") as tmpfile:
+                tmpfile.write(self.test_string)
+
             self.assertTrue(handler.isdir("/"))
             self.assertFalse(handler.isdir(self.tmpfile_name))
 
@@ -234,6 +248,9 @@ class TestHdfsHandler(unittest.TestCase):
         non_exist_file = "non_exist_file.txt"
 
         with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "w") as tmpfile:
+                tmpfile.write(self.test_string)
+
             self.assertTrue(handler.exists(self.tmpfile_name))
             self.assertTrue(handler.exists("/"))
             self.assertFalse(handler.exists(non_exist_file))
