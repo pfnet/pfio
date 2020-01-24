@@ -16,6 +16,48 @@ class TestPosixHandler(unittest.TestCase):
         self.test_string_bytes = self.test_string_str.encode("utf-8")
         self.fs = "posix"
 
+    def test_root(self):
+        with chainerio.create_handler(self.fs) as handler:
+            # prepare the tmpfile
+            with tempfile.TemporaryDirectory() as tmpdir:
+                testfile_name = "testfile"
+                testfile_path = os.path.join(tmpdir, testfile_name)
+                with handler.open(testfile_path, "w") as f:
+                    f.write(self.test_string_str)
+
+                self.assertTrue(os.path.exists(testfile_path))
+
+                # set root
+                handler.root = tmpdir
+                # open with root
+                with handler.open(testfile_name, "r") as f:
+                    self.assertEqual(self.test_string_str, f.read())
+
+                # list with root
+                self.assertEqual(list(handler.list()), [testfile_name])
+                # stat with root
+                self.assertIsNotNone(handler.stat(testfile_name))
+                # exits with root
+                self.assertTrue(handler.exists(testfile_name))
+                # exits with root
+                new_testfile_name = "new_test_filename"
+                handler.rename(testfile_name, new_testfile_name)
+                self.assertFalse(handler.exists(testfile_name))
+                self.assertTrue(handler.exists(new_testfile_name))
+                # mkdir with root
+                mkdir_name = "mkdir"
+                handler.mkdir(mkdir_name)
+                self.assertTrue(handler.exists(mkdir_name))
+                # mkdir with root
+                mkdirs_name = "mkdirs/dirs"
+                handler.makedirs(mkdirs_name)
+                self.assertTrue(handler.exists(mkdirs_name))
+                # isdir with root
+                self.assertTrue(handler.isdir(mkdir_name))
+                # remove with root
+                handler.remove(mkdir_name)
+                self.assertFalse(handler.exists(mkdir_name))
+
     def test_read_string(self):
 
         with chainerio.create_handler(self.fs) as handler:

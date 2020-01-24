@@ -120,6 +120,24 @@ class TestZipHandler(unittest.TestCase):
         self.tmpdir.cleanup()
         chainerio.remove(self.zip_file_path)
 
+    def test_root(self):
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            # set root
+            handler.root = self.dir_name2
+            # open with root
+            with handler.open(self.zipped_file_name, "r") as f:
+                self.assertEqual(self.test_string, f.read())
+
+            # list with root
+            self.assertEqual(list(handler.list()), [self.zipped_file_name])
+            # stat with root
+            self.assertIsNotNone(handler.stat(self.zipped_file_name))
+            # exists with root
+            self.assertTrue(handler.exists(self.zipped_file_name))
+            # isdir with root
+            self.assertFalse(handler.isdir(self.zipped_file_name))
+
     def test_read_bytes(self):
         with self.fs_handler.open_as_container(
                 os.path.abspath(self.zip_file_path)) as handler:
