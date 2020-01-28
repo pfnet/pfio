@@ -1,6 +1,7 @@
 from chainerio.container import Container
 from chainerio.io import create_fs_handler
 from chainerio.io import IO
+from threading import Lock
 import re
 
 from chainerio._typing import Union
@@ -18,6 +19,7 @@ class FileSystemDriverList(object):
                              "posix": self.posix_pattern, }
         # this is a cache to store the handler for global context
         self._handler_cache = {}
+        self._handler_mt_lock = Lock()
 
     def format_path(self, path: str) -> Tuple[str, str, bool]:
         if path in self.scheme_list:
@@ -33,6 +35,8 @@ class FileSystemDriverList(object):
 
     def get_handler(self, fs_type: str) -> Tuple[IO]:
 
+        self._handler_mt_lock.acquire()
+
         if fs_type in self._handler_cache:
             # get handler from cache
             handler = self._handler_cache[fs_type]
@@ -40,6 +44,8 @@ class FileSystemDriverList(object):
             # create a new handler
             handler = create_fs_handler(fs_type)
             self._handler_cache[fs_type] = handler
+
+        self._handler_mt_lock.release()
 
         return handler
 
