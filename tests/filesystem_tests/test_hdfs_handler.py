@@ -41,9 +41,10 @@ class TestHdfsHandler(unittest.TestCase):
         with chainerio.create_handler(self.fs) as handler:
             # prepare the tmpfile
             tmpdir = "testdir"
+            original_root = handler.root
 
-            handler.mkdir(tmpdir)
             try:
+                handler.mkdir(tmpdir)
                 self.assertTrue(handler.exists(tmpdir))
 
                 testfile_name = "testfile"
@@ -86,7 +87,8 @@ class TestHdfsHandler(unittest.TestCase):
                 handler.remove(mkdir_name)
                 self.assertFalse(handler.exists(mkdir_name))
             finally:
-                handler.root = ""
+                # set back the root to delete the tmpdir
+                handler.root = original_root
                 handler.remove(tmpdir, True)
 
     def test_read_bytes(self):
