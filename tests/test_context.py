@@ -138,46 +138,46 @@ class TestContext(unittest.TestCase):
     def test_root_fs_override(self):
         from pyarrow import hdfs
 
-        hdfs_tmpdir = "tmpdir_hdfs"
-        hdfs_tmpfile = os.path.join(hdfs_tmpdir, "tmpfile_hdfs")
-        hdfs_tmpnested_dir = os.path.join(hdfs_tmpdir, "nesteddir_hdfs")
-        hdfs_tmpfile_renamed = os.path.join(hdfs_tmpdir, "renamed_file")
-        hdfs_file_string = "this is a test string for hdfs"
+        tmpdir = "tmpdir"
+        tmpfile = os.path.join(tmpdir, "tmpfile")
+        tmpnested_dir = os.path.join(tmpdir, "nesteddir")
+        tmpfile_renamed = os.path.join(tmpdir, "renamed")
+        file_string = "this is a test string"
 
         chainerio.set_root("hdfs")
 
         conn = hdfs.connect()
-        chainerio.mkdir(hdfs_tmpdir)
-        chainerio.makedirs(hdfs_tmpnested_dir)
+        chainerio.mkdir(tmpdir)
+        chainerio.makedirs(tmpnested_dir)
 
-        with conn.open(hdfs_tmpfile, "wb") as f:
-            f.write(hdfs_file_string.encode('utf-8'))
+        with conn.open(tmpfile, "wb") as f:
+            f.write(file_string.encode('utf-8'))
 
-        with chainerio.open(hdfs_tmpfile, "r") as fp:
-            self.assertEqual(fp.read(), hdfs_file_string)
+        with chainerio.open(tmpfile, "r") as fp:
+            self.assertEqual(fp.read(), file_string)
 
         # override with full URI
         with open(__file__, "r") as my_script:
             with chainerio.open("file://" + __file__, "r") as fp:
                 self.assertEqual(fp.read(), my_script.read())
 
-        with chainerio.open(hdfs_tmpfile, "r") as fp:
-            self.assertEqual(fp.read(), hdfs_file_string)
+        with chainerio.open(tmpfile, "r") as fp:
+            self.assertEqual(fp.read(), file_string)
 
-        self.assertEqual(chainerio.isdir(hdfs_tmpnested_dir), True)
+        self.assertEqual(chainerio.isdir(tmpnested_dir), True)
 
-        self.assertEqual(sorted(list(chainerio.list(hdfs_tmpdir))),
-                         sorted(["tmpfile_hdfs", "nesteddir_hdfs"]))
+        self.assertEqual(sorted(list(chainerio.list(tmpdir))),
+                         sorted(["tmpfile", "nesteddir"]))
 
-        self.assertEqual(chainerio.exists(hdfs_tmpfile), True)
-        self.assertEqual(chainerio.exists(hdfs_tmpfile_renamed), False)
+        self.assertEqual(chainerio.exists(tmpfile), True)
+        self.assertEqual(chainerio.exists(tmpfile_renamed), False)
 
-        chainerio.rename(hdfs_tmpfile, hdfs_tmpfile_renamed)
-        self.assertEqual(chainerio.exists(hdfs_tmpfile), False)
-        self.assertEqual(chainerio.exists(hdfs_tmpfile_renamed), True)
+        chainerio.rename(tmpfile, tmpfile_renamed)
+        self.assertEqual(chainerio.exists(tmpfile), False)
+        self.assertEqual(chainerio.exists(tmpfile_renamed), True)
 
-        chainerio.remove(hdfs_tmpdir, recursive=True)
-        self.assertEqual(chainerio.exists(hdfs_tmpdir), False)
+        chainerio.remove(tmpdir, recursive=True)
+        self.assertEqual(chainerio.exists(tmpdir), False)
         conn.close()
 
         chainerio.set_root("posix")
