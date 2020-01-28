@@ -33,7 +33,7 @@ class FileSystemDriverList(object):
 
         return ("posix", path, False)
 
-    def get_handler(self, fs_type: str) -> Tuple[IO]:
+    def get_or_create_cached_handler(self, fs_type: str) -> Tuple[IO]:
 
         self._handler_mt_lock.acquire()
 
@@ -58,13 +58,13 @@ class DefaultContext(object):
         self._fs_handler_list = FileSystemDriverList()
 
         self._default_context = \
-            self._fs_handler_list.get_handler("posix")
+            self._fs_handler_list.get_or_create_cached_handler("posix")
 
     def set_root(self, uri_or_handler: Union[str, IO]) -> None:
         if isinstance(uri_or_handler, IO):
             handler = uri_or_handler
         else:
-            handler, path = self.get_handler(uri_or_handler)
+            handler, path = self.get_or_create_default_handler(uri_or_handler)
             handler.root = path
 
             if handler.root:
@@ -74,18 +74,19 @@ class DefaultContext(object):
 
         self._default_context = handler
 
-    def get_handler(self, path: str = "") -> Tuple[IO, str]:
+    def get_or_create_default_handler(self, path: str = "") -> Tuple[IO, str]:
         (fs_type, actual_path, is_URI) = \
             self._fs_handler_list.format_path(path)
 
         if not is_URI:
             handler = self._default_context
         else:
-            handler = self._fs_handler_list.get_handler(fs_type)
+            handler = self._fs_handler_list.get_or_create_cached_handler(
+                fs_type)
         return (handler, actual_path)
 
     def open_as_container(self, path: str) -> Container:
-        (handler, actual_path) = self.get_handler(path)
+        (handler, actual_path) = self.get_or_create_default_handler(path)
         return handler.open_as_container(actual_path)
 
     def get_root_dir(self) -> str:

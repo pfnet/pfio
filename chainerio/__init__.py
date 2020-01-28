@@ -41,7 +41,7 @@ def list(path_or_prefix: Optional[str] = None,
     if None is path_or_prefix:
         path_or_prefix = ""
 
-    (handler, actual_path) = default_context.get_handler(path_or_prefix)
+    (handler, actual_path) = default_context.get_or_create_default_handler(path_or_prefix)
     return handler.list(actual_path, recursive)
 
 
@@ -57,7 +57,7 @@ def info() -> str:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, dummy_path) = default_context.get_handler()
+    (handler, dummy_path) = default_context.get_or_create_default_handler()
     return handler.info()
 
 
@@ -81,7 +81,7 @@ def open(file_path: str, mode: str = 'rb',
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path) = default_context.get_handler(file_path)
+    (handler, actual_path) = default_context.get_or_create_default_handler(file_path)
     return handler.open(
         actual_path, mode, buffering, encoding,
         errors, newline, closefd, opener)
@@ -212,7 +212,7 @@ def isdir(path: str) -> bool:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path) = default_context.get_handler(path)
+    (handler, actual_path) = default_context.get_or_create_default_handler(path)
     return handler.isdir(actual_path)
 
 
@@ -228,7 +228,7 @@ def mkdir(path: str, mode: int = 0o777, *,
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path) = default_context.get_handler(path)
+    (handler, actual_path) = default_context.get_or_create_default_handler(path)
     return handler.mkdir(actual_path, mode, dir_fd=dir_fd)
 
 
@@ -244,7 +244,7 @@ def makedirs(path: str, mode: int = 0o777,
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path) = default_context.get_handler(path)
+    (handler, actual_path) = default_context.get_or_create_default_handler(path)
     return handler.makedirs(actual_path, mode, exist_ok)
 
 
@@ -259,7 +259,7 @@ def exists(path: str) -> bool:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path) = default_context.get_handler(path)
+    (handler, actual_path) = default_context.get_or_create_default_handler(path)
     return handler.exists(actual_path)
 
 
@@ -275,8 +275,8 @@ def rename(src: str, dst: str) -> None:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler_src, actual_path_src) = default_context.get_handler(src)
-    (handler_dst, actual_path_dst) = default_context.get_handler(dst)
+    (handler_src, actual_path_src) = default_context.get_or_create_default_handler(src)
+    (handler_dst, actual_path_dst) = default_context.get_or_create_default_handler(dst)
     # TODO: containers are not supported here
     if type(handler_src) != type(handler_dst):
         raise NotImplementedError(
@@ -302,7 +302,7 @@ def remove(path: str, recursive: bool = False) -> None:
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
 
-    (handler, actual_path) = default_context.get_handler(path)
+    (handler, actual_path) = default_context.get_or_create_default_handler(path)
     return handler.remove(actual_path, recursive)
 
 
