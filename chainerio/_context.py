@@ -33,7 +33,7 @@ class FileSystemHandlerList(object):
 
         return ("posix", path, False)
 
-    def get_or_create_cached_handler(self, fs_type: str) -> Tuple[IO]:
+    def get_or_create_cached_handler(self, fs_type: str) -> IO:
 
         self._handler_mt_lock.acquire()
 
