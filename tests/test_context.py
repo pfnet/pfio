@@ -19,6 +19,7 @@ class TestContext(unittest.TestCase):
 
     def tearDown(self):
         self.tmpdir.cleanup()
+        chainerio.set_root('posix')
 
     def test_set_root(self):
         # Set default context globally in this process
@@ -31,8 +32,6 @@ class TestContext(unittest.TestCase):
         chainerio.set_root('file://' + self.tmpdir.name)
         with chainerio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
-
-        chainerio.set_root('posix')
 
     def test_open_as_container(self):
         # Create a container for testing
@@ -131,8 +130,6 @@ class TestContext(unittest.TestCase):
             with chainerio.open('file://' + __file__) as fp:
                 self.assertEqual(fp.read(), my_script.read().encode("utf-8"))
 
-        chainerio.set_root('posix')
-
     # override with different filesystem
     @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
     def test_root_fs_override(self):
@@ -147,40 +144,40 @@ class TestContext(unittest.TestCase):
         chainerio.set_root("hdfs")
 
         conn = hdfs.connect()
-        chainerio.mkdir(tmpdir)
-        chainerio.makedirs(tmpnested_dir)
+        try:
+            chainerio.mkdir(tmpdir)
+            chainerio.makedirs(tmpnested_dir)
 
-        with conn.open(tmpfile, "wb") as f:
-            f.write(file_string.encode('utf-8'))
+            with conn.open(tmpfile, "wb") as f:
+                f.write(file_string.encode('utf-8'))
 
-        with chainerio.open(tmpfile, "r") as fp:
-            self.assertEqual(fp.read(), file_string)
+            with chainerio.open(tmpfile, "r") as fp:
+                self.assertEqual(fp.read(), file_string)
 
-        # override with full URI
-        with open(__file__, "r") as my_script:
-            with chainerio.open("file://" + __file__, "r") as fp:
-                self.assertEqual(fp.read(), my_script.read())
+            # override with full URI
+            with open(__file__, "r") as my_script:
+                with chainerio.open("file://" + __file__, "r") as fp:
+                    self.assertEqual(fp.read(), my_script.read())
 
-        with chainerio.open(tmpfile, "r") as fp:
-            self.assertEqual(fp.read(), file_string)
+            with chainerio.open(tmpfile, "r") as fp:
+                self.assertEqual(fp.read(), file_string)
 
-        self.assertEqual(chainerio.isdir(tmpnested_dir), True)
+            self.assertEqual(chainerio.isdir(tmpnested_dir), True)
 
-        self.assertEqual(sorted(list(chainerio.list(tmpdir))),
-                         sorted(["tmpfile", "nesteddir"]))
+            self.assertEqual(sorted(list(chainerio.list(tmpdir))),
+                             sorted(["tmpfile", "nesteddir"]))
 
-        self.assertEqual(chainerio.exists(tmpfile), True)
-        self.assertEqual(chainerio.exists(tmpfile_renamed), False)
+            self.assertEqual(chainerio.exists(tmpfile), True)
+            self.assertEqual(chainerio.exists(tmpfile_renamed), False)
 
-        chainerio.rename(tmpfile, tmpfile_renamed)
-        self.assertEqual(chainerio.exists(tmpfile), False)
-        self.assertEqual(chainerio.exists(tmpfile_renamed), True)
+            chainerio.rename(tmpfile, tmpfile_renamed)
+            self.assertEqual(chainerio.exists(tmpfile), False)
+            self.assertEqual(chainerio.exists(tmpfile_renamed), True)
 
-        chainerio.remove(tmpdir, recursive=True)
-        self.assertEqual(chainerio.exists(tmpdir), False)
-        conn.close()
-
-        chainerio.set_root("posix")
+            chainerio.remove(tmpdir, recursive=True)
+            self.assertEqual(chainerio.exists(tmpdir), False)
+        finally:
+            conn.close()
 
     def test_create_handler(self):
         posix_handler = chainerio.create_handler("posix")
