@@ -8,7 +8,7 @@ from chainerio._typing import Union
 from typing import Tuple
 
 
-class FileSystemDriverList(object):
+class FileSystemHandlerList(object):
     def __init__(self):
         # TODO(tianqi): dynamically create this list
         # as well as the patterns upon loading the chainerio module.
@@ -55,7 +55,7 @@ class FileSystemDriverList(object):
 
 class DefaultContext(object):
     def __init__(self):
-        self._fs_handler_list = FileSystemDriverList()
+        self._fs_handler_list = FileSystemHandlerList()
 
         self._default_context = \
             self._fs_handler_list.get_or_create_cached_handler("posix")
