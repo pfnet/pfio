@@ -34,18 +34,14 @@ class FileSystemHandlerList(object):
         return ("posix", path, False)
 
     def get_or_create_cached_handler(self, fs_type: str) -> IO:
-
-        self._handler_mt_lock.acquire()
-
-        if fs_type in self._handler_cache:
-            # get handler from cache
-            handler = self._handler_cache[fs_type]
-        else:
-            # create a new handler
-            handler = create_fs_handler(fs_type)
-            self._handler_cache[fs_type] = handler
-
-        self._handler_mt_lock.release()
+        with self._handler_mt_lock:
+            if fs_type in self._handler_cache:
+                # get handler from cache
+                handler = self._handler_cache[fs_type]
+            else:
+                # create a new handler
+                handler = create_fs_handler(fs_type)
+                self._handler_cache[fs_type] = handler
 
         return handler
 
