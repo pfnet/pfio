@@ -32,39 +32,9 @@ def create_dummy_keytab(tmpd, dummy_username):
 class TestHdfsHandler(unittest.TestCase):
 
     def setUp(self):
-        self.test_string = "this is a test string\n"
-        self.test_string_b = self.test_string.encode("utf-8")
         self.fs = "hdfs"
-        self.tmpfile_name = "tmpfile.txt"
-
-    def tearDown(self):
-
-        with chainerio.create_handler(self.fs) as handler:
-            try:
-                handler.remove(self.tmpfile_name)
-            except IOError:
-                pass
-
-    def test_read_bytes(self):
-
-        with chainerio.create_handler(self.fs) as handler:
-            with handler.open(self.tmpfile_name, "wb") as tmpfile:
-                tmpfile.write(self.test_string_b)
-            with handler.open(self.tmpfile_name, "rb") as f:
-                self.assertEqual(self.test_string_b, f.read())
-
-    def test_read_string(self):
-
-        with chainerio.create_handler(self.fs) as handler:
-            with handler.open(self.tmpfile_name, "w") as tmpfile:
-                tmpfile.write(self.test_string)
-            with handler.open(self.tmpfile_name, "r") as f:
-                self.assertEqual(self.test_string, f.read())
-            with handler.open(self.tmpfile_name, "r") as f:
-                self.assertEqual(self.test_string, f.readline())
 
     def test_read_non_exist(self):
-
         non_exist_file = "non_exist_file.txt"
 
         with chainerio.create_handler(self.fs) as handler:
@@ -154,62 +124,9 @@ class TestHdfsHandler(unittest.TestCase):
         self.assertEqual(username,
                          _parse_principal_name_from_klist(correct_out))
 
-    def test_list(self):
-        with chainerio.create_handler(self.fs) as handler:
-            with handler.open(self.tmpfile_name, "w") as tmpfile:
-                tmpfile.write(self.test_string)
-
-            file_generator = handler.list()
-            self.assertIsInstance(file_generator, Iterable)
-            file_list = list(file_generator)
-            self.assertIn(self.tmpfile_name, file_list, self.tmpfile_name)
-
-            # An exception is raised when the given path is not a directory
-            self.assertRaises(NotADirectoryError, list,
-                              handler.list(self.tmpfile_name))
-            for test_dir_name in ["testmkdir", "testmkdir/"]:
-                nested_dir_name1 = "nested_dir1"
-                nested_dir_name2 = "nested_dir2"
-                nested_file_name = "file"
-                nested_dir1 = os.path.join(test_dir_name, nested_dir_name1)
-                nested_dir2 = os.path.join(test_dir_name, nested_dir_name2)
-                nested_file = os.path.join(nested_dir2,  nested_file_name)
-                nested_file_relative = os.path.join(nested_dir_name2,
-                                                    nested_file_name)
-                handler.makedirs(nested_dir1)
-                handler.makedirs(nested_dir2)
-
-                with handler.open(nested_file, "w") as f:
-                    f.write(self.test_string)
-
-                recursive_file_generator = handler.list(test_dir_name,
-                                                        recursive=True)
-                self.assertIsInstance(recursive_file_generator, Iterable)
-                file_list = list(recursive_file_generator)
-                self.assertIn(nested_dir_name1, file_list)
-                self.assertIn(nested_dir_name2, file_list)
-                self.assertIn(nested_file_relative, file_list)
-
-                normal_file_generator = handler.list(test_dir_name)
-                self.assertIsInstance(recursive_file_generator, Iterable)
-                file_list = list(normal_file_generator)
-                self.assertIn(nested_dir_name1, file_list)
-                self.assertIn(nested_dir_name2, file_list)
-                self.assertNotIn(nested_file_relative, file_list)
-
-                handler.remove(test_dir_name, True)
-
     def test_info(self):
         with chainerio.create_handler(self.fs) as handler:
             self.assertIsInstance(handler.info(), str)
-
-    def test_isdir(self):
-        with chainerio.create_handler(self.fs) as handler:
-            with handler.open(self.tmpfile_name, "w") as tmpfile:
-                tmpfile.write(self.test_string)
-
-            self.assertTrue(handler.isdir("/"))
-            self.assertFalse(handler.isdir(self.tmpfile_name))
 
     def test_mkdir(self):
         test_dir_name = "testmkdir"
@@ -230,7 +147,6 @@ class TestHdfsHandler(unittest.TestCase):
             handler.remove(test_dir_name, True)
 
     def test_picle(self):
-
         pickle_file_name = "test_pickle.pickle"
         test_data = {'test_elem1': b'balabala',
                      'test_elem2': 'balabala'}
@@ -243,17 +159,6 @@ class TestHdfsHandler(unittest.TestCase):
                 self.assertEqual(test_data, loaded_obj)
 
             handler.remove(pickle_file_name, True)
-
-    def test_exists(self):
-        non_exist_file = "non_exist_file.txt"
-
-        with chainerio.create_handler(self.fs) as handler:
-            with handler.open(self.tmpfile_name, "w") as tmpfile:
-                tmpfile.write(self.test_string)
-
-            self.assertTrue(handler.exists(self.tmpfile_name))
-            self.assertTrue(handler.exists("/"))
-            self.assertFalse(handler.exists(non_exist_file))
 
     def test_rename(self):
         with chainerio.create_handler(self.fs) as handler:
@@ -307,3 +212,111 @@ class TestHdfsHandler(unittest.TestCase):
         # pass for now
         # TODO(tianqi) add test after we well defined the stat
         pass
+
+
+@unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
+class TestHdfsHandlerWithFile(unittest.TestCase):
+
+    def setUp(self):
+        self.test_string = "this is a test string\n"
+        self.fs = "hdfs"
+        self.tmpfile_name = "tmpfile.txt"
+
+        with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "wb") as tmpfile:
+                tmpfile.write(self.test_string)
+
+    def tearDown(self):
+        with chainerio.create_handler(self.fs) as handler:
+            try:
+                handler.remove(self.tmpfile_name)
+            except IOError:
+                pass
+
+    def test_read_string(self):
+        with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "r") as f:
+                self.assertEqual(self.test_string, f.read())
+            with handler.open(self.tmpfile_name, "r") as f:
+                self.assertEqual(self.test_string, f.readline())
+
+    def test_list(self):
+        with chainerio.create_handler(self.fs) as handler:
+            file_generator = handler.list()
+            self.assertIsInstance(file_generator, Iterable)
+            file_list = list(file_generator)
+            self.assertIn(self.tmpfile_name, file_list, self.tmpfile_name)
+
+            # An exception is raised when the given path is not a directory
+            self.assertRaises(NotADirectoryError, list,
+                              handler.list(self.tmpfile_name))
+            for test_dir_name in ["testmkdir", "testmkdir/"]:
+                nested_dir_name1 = "nested_dir1"
+                nested_dir_name2 = "nested_dir2"
+                nested_file_name = "file"
+                nested_dir1 = os.path.join(test_dir_name, nested_dir_name1)
+                nested_dir2 = os.path.join(test_dir_name, nested_dir_name2)
+                nested_file = os.path.join(nested_dir2,  nested_file_name)
+                nested_file_relative = os.path.join(nested_dir_name2,
+                                                    nested_file_name)
+                handler.makedirs(nested_dir1)
+                handler.makedirs(nested_dir2)
+
+                with handler.open(nested_file, "w") as f:
+                    f.write(self.test_string)
+
+                recursive_file_generator = handler.list(test_dir_name,
+                                                        recursive=True)
+                self.assertIsInstance(recursive_file_generator, Iterable)
+                file_list = list(recursive_file_generator)
+                self.assertIn(nested_dir_name1, file_list)
+                self.assertIn(nested_dir_name2, file_list)
+                self.assertIn(nested_file_relative, file_list)
+
+                normal_file_generator = handler.list(test_dir_name)
+                self.assertIsInstance(recursive_file_generator, Iterable)
+                file_list = list(normal_file_generator)
+                self.assertIn(nested_dir_name1, file_list)
+                self.assertIn(nested_dir_name2, file_list)
+                self.assertNotIn(nested_file_relative, file_list)
+
+                handler.remove(test_dir_name, True)
+
+    def test_isdir(self):
+        with chainerio.create_handler(self.fs) as handler:
+            self.assertTrue(handler.isdir("/"))
+            self.assertFalse(handler.isdir(self.tmpfile_name))
+
+    def test_exists(self):
+        non_exist_file = "non_exist_file.txt"
+
+        with chainerio.create_handler(self.fs) as handler:
+            self.assertTrue(handler.exists(self.tmpfile_name))
+            self.assertTrue(handler.exists("/"))
+            self.assertFalse(handler.exists(non_exist_file))
+
+
+@unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
+class TestHdfsHandlerWithBinaryFile(unittest.TestCase):
+
+    def setUp(self):
+        test_string = "this is a test string\n"
+        self.test_string_b = test_string.encode("utf-8")
+        self.fs = "hdfs"
+        self.tmpfile_name = "tmpfile.txt"
+
+        with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "wb") as tmpfile:
+                tmpfile.write(self.test_string_b)
+
+    def tearDown(self):
+        with chainerio.create_handler(self.fs) as handler:
+            try:
+                handler.remove(self.tmpfile_name)
+            except IOError:
+                pass
+
+    def test_read_bytes(self):
+        with chainerio.create_handler(self.fs) as handler:
+            with handler.open(self.tmpfile_name, "rb") as f:
+                self.assertEqual(self.test_string_b, f.read())
