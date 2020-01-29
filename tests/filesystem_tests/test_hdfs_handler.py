@@ -223,7 +223,7 @@ class TestHdfsHandlerWithFile(unittest.TestCase):
         self.tmpfile_name = "tmpfile.txt"
 
         with chainerio.create_handler(self.fs) as handler:
-            with handler.open(self.tmpfile_name, "wb") as tmpfile:
+            with handler.open(self.tmpfile_name, "w") as tmpfile:
                 tmpfile.write(self.test_string)
 
     def tearDown(self):
