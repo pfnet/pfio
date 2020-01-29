@@ -61,12 +61,12 @@ class DefaultContext(object):
             handler = uri_or_handler
         else:
             handler, path = self.get_or_create_default_handler(uri_or_handler)
-            handler.root = path
 
-            if handler.root:
-                if not handler.isdir(handler.root):
+            if path:
+                if not handler.isdir(path):
                     raise RuntimeError("""the URI '{}' does not
-                        point to a directory""".format(handler.root))
+                        point to a directory""".format(path))
+            handler.root = path
 
         self._default_context = handler
 
