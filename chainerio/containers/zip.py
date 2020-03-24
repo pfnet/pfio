@@ -200,6 +200,12 @@ class ZipContainer(Container):
                 # is not available before Python 3.6.0
                 return "/" == stat.filename[-1]
         else:
+            file_path = os.path.normpath(file_path)
+            # check if directories are NOT included in the zip
+            if any(name.startswith(file_path + "/")
+                   for name in self.zip_file_obj.namelist()):
+                return True
+
             return False
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
