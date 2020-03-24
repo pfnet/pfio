@@ -12,6 +12,7 @@ import string
 import sys
 import tempfile
 from zipfile import ZipFile
+import subprocess
 
 
 def make_zip(zipfilename, root_dir, base_dir):
@@ -499,7 +500,6 @@ class TestZipHandler(unittest.TestCase):
 
 
 class TestZipHandlerWithLargeData(unittest.TestCase):
-
     def setUp(self):
         # The following zip layout is created for all the tests
         # outside.zip
@@ -559,3 +559,222 @@ class TestZipHandlerWithLargeData(unittest.TestCase):
 
             self.assertEqual(p1.exitcode, 0)
             self.assertEqual(p2.exitcode, 0)
+
+
+class TestZipHandlerListNoDirectory(unittest.TestCase):
+    def setUp(self):
+        # The following zip layout is created for all the tests
+        # The difference is despite showing in the following layout for
+        # readabilty, the directories are not included in the zip
+        # outside.zip
+        # | - testdir1
+        # | - | - testfile1
+        # | - | - testdir2
+        # | - | - | - testfile2
+        # | - testdir3
+        # |   | - testfile3
+        # | - testfile4
+
+        self.test_string = "this is a test string\n"
+        self.fs_handler = chainerio.create_handler("posix")
+
+        # the most outside zip
+        self.zip_file_name = "outside.zip"
+
+        # nested zip and nested file
+        self.tmpdir = tempfile.TemporaryDirectory()
+
+        # directory and file
+        self.dir1_name = "testdir1"
+        self.dir2_name = "testdir2"
+        self.dir3_name = "testdir3"
+        self.testfile1_name = "testfile1"
+        self.testfile2_name = "testfile2"
+        self.testfile3_name = "testfile3"
+        self.testfile4_name = "testfile4"
+
+        # paths used in making outside.zip
+        dir1_path = os.path.join(self.tmpdir.name, self.dir1_name)
+        dir2_path = os.path.join(dir1_path, self.dir2_name)
+        dir3_path = os.path.join(self.tmpdir.name, self.dir3_name)
+        testfile1_path = os.path.join(dir1_path, self.testfile1_name)
+        testfile2_path = os.path.join(dir2_path, self.testfile2_name)
+        testfile3_path = os.path.join(dir3_path, self.testfile3_name)
+        testfile4_path = os.path.join(self.tmpdir.name, self.testfile4_name)
+
+        # paths used in tests
+        for dir in [dir1_path, dir2_path, dir3_path]:
+            os.mkdir(dir)
+
+        for file_path in [testfile1_path, testfile2_path,
+                          testfile3_path, testfile4_path]:
+            with open(file_path, "w") as f:
+                f.write(self.test_string)
+
+        # create zip without directory
+        os.chdir(self.tmpdir.name)
+        cmd = ["zip", "-rD", self.zip_file_name, "."]
+
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+
+        assert stderr == b""
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def test_list(self):
+        with self.fs_handler.open_as_container(self.zip_file_name) as handler:
+            cases = [
+                # default case get the first level from the root
+                {"path_or_prefix": "",
+                 "expected_list": [self.dir1_name,
+                                   self.dir3_name,
+                                   self.testfile4_name],
+                 "recursive": False},
+                # Problem 1 in issue #66
+                {"path_or_prefix": self.dir1_name,
+                 "expected_list": [self.testfile1_name,
+                                   self.dir2_name],
+                 "recursive": False},
+                # problem 2 in issue #66
+                {"path_or_prefix": os.path.join(self.dir1_name,
+                                                self.dir2_name),
+                 "expected_list": [self.testfile2_name],
+                 "recursive": False},
+                # not normalized path
+                {"path_or_prefix": 'testdir1//testfile//../',
+                 "expected_list": [self.testfile1_name,
+                                   self.dir2_name],
+                 "recursive": False},
+                # not normalized path root
+                {"path_or_prefix": 'testdir1//..//',
+                 "expected_list": [self.dir1_name,
+                                   self.dir3_name,
+                                   self.testfile4_name],
+                 "recursive": False},
+                # not normalized path beyond root
+                {"path_or_prefix": '//..//',
+                 "expected_list": [self.dir1_name,
+                                   self.dir3_name,
+                                   self.testfile4_name],
+                 "recursive": False},
+                # not normalized path beyond root
+                {"path_or_prefix": 'testdir1//..//',
+                 "expected_list": [self.dir1_name,
+                                   self.dir3_name,
+                                   self.testfile4_name],
+                 "recursive": False},
+                # starting with slash
+                {"path_or_prefix": '/',
+                 "expected_list": [self.dir1_name,
+                                   self.dir3_name,
+                                   self.testfile4_name],
+                 "recursive": False},
+                # recursive test
+                {"path_or_prefix": '',
+                 "expected_list": [os.path.join(self.dir1_name,
+                                                self.testfile1_name),
+                                   os.path.join(self.dir1_name,
+                                                self.dir2_name,
+                                                self.testfile2_name),
+                                   os.path.join(self.dir3_name,
+                                                self.testfile3_name),
+                                   self.testfile4_name],
+                 "recursive": True},
+                {"path_or_prefix": self.dir1_name,
+                 "expected_list": [self.testfile1_name,
+                                   os.path.join(self.dir2_name,
+                                                self.testfile2_name)],
+                 "recursive": True},
+                # problem 2 in issue #66
+                {"path_or_prefix": self.dir1_name,
+                 "expected_list": [self.testfile1_name,
+                                   os.path.join(self.dir2_name,
+                                                self.testfile2_name)],
+                 "recursive": True},
+                # not normalized path
+                {"path_or_prefix": 'testdir1//testfile//../',
+                 "expected_list": [self.testfile1_name,
+                                   os.path.join(self.dir2_name,
+                                                self.testfile2_name)],
+                 "recursive": True},
+                # not normalized path root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [os.path.join(self.dir1_name,
+                                                self.testfile1_name),
+                                   os.path.join(self.dir1_name,
+                                                self.dir2_name,
+                                                self.testfile2_name),
+                                   os.path.join(self.dir3_name,
+                                                self.testfile3_name),
+                                   self.testfile4_name],
+                 "recursive": True},
+                # not normalized path beyond root
+                {"path_or_prefix": '//..//',
+                 "expected_list": [os.path.join(self.dir1_name,
+                                                self.testfile1_name),
+                                   os.path.join(self.dir1_name,
+                                                self.dir2_name,
+                                                self.testfile2_name),
+                                   os.path.join(self.dir3_name,
+                                                self.testfile3_name),
+                                   self.testfile4_name],
+                 "recursive": True},
+                # not normalized path beyond root
+                {"path_or_prefix": 'testdir2//..//',
+                 "expected_list": [os.path.join(self.dir1_name,
+                                                self.testfile1_name),
+                                   os.path.join(self.dir1_name,
+                                                self.dir2_name,
+                                                self.testfile2_name),
+                                   os.path.join(self.dir3_name,
+                                                self.testfile3_name),
+                                   self.testfile4_name],
+                 "recursive": True},
+                # starting with slash
+                {"path_or_prefix": '/',
+                 "expected_list": [os.path.join(self.dir1_name,
+                                                self.testfile1_name),
+                                   os.path.join(self.dir1_name,
+                                                self.dir2_name,
+                                                self.testfile2_name),
+                                   os.path.join(self.dir3_name,
+                                                self.testfile3_name),
+                                   self.testfile4_name],
+                 "recursive": True}]
+
+            for case in cases:
+                zip_generator = handler.list(case['path_or_prefix'],
+                                             recursive=case['recursive'])
+                zip_list = list(zip_generator)
+                print(case["path_or_prefix"], case['expected_list'], zip_list)
+                self.assertEqual(sorted(case['expected_list']),
+                                 sorted(zip_list))
+
+    def test_list_with_errors(self):
+        with self.fs_handler.open_as_container(self.zip_file_name) as handler:
+            cases = [
+                # non_exist_file
+                {"path_or_prefix": 'does_not_exist',
+                 "error": FileNotFoundError},
+                # not exist but share the prefix
+                {"path_or_prefix": 't',
+                 "error": FileNotFoundError},
+                # broken path
+                {"path_or_prefix": 'testdir1//t/',
+                 "error": FileNotFoundError},
+                # list a file
+                {"path_or_prefix": 'testdir1//testfile1///',
+                 "error": NotADirectoryError},
+                # list a non_exist_dir but share the surfix
+                {"path_or_prefix": 'testdir/',
+                 "error": FileNotFoundError}]
+            for case in cases:
+                with self.assertRaises(case["error"]):
+                    list(handler.list(case['path_or_prefix']))
+
+                with self.assertRaises(case["error"]):
+                    list(handler.list(case['path_or_prefix'], recursive=True))
+
