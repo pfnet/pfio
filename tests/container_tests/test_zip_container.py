@@ -612,6 +612,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
                 f.write(self.test_string)
 
         # create zip without directory
+        self.pwd = os.getcwd()
         os.chdir(self.tmpdir.name)
         cmd = ["zip", "-rD", self.zip_file_name, "."]
 
@@ -622,6 +623,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
         assert stderr == b""
 
     def tearDown(self):
+        os.chdir(self.pwd)
         self.tmpdir.cleanup()
 
     def test_list(self):
@@ -778,3 +780,39 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
                 with self.assertRaises(case["error"]):
                     list(handler.list(case['path_or_prefix'], recursive=True))
 
+    def test_isdir(self):
+        cases = [
+            # path ends with slash
+            {"path_or_prefix": 'testdir1//',
+             "expected": True},
+            # not normalized path
+            {"path_or_prefix": 'testdir1//testfile1',
+             "expected": False},
+            {"path_or_prefix": 'testdir1//..//testdir2/testfile1',
+             "expected": False},
+            # problem 2 in issue #66
+            {"path_or_prefix": self.dir1_name,
+             "expected": True},
+            # not normalized path
+            {"path_or_prefix": 'testdir1//testfile1//../',
+             "expected": True},
+            # not normalized path root
+            {"path_or_prefix": 'testdir1//..//',
+             "expected": False},
+            # not normalized path beyond root
+            {"path_or_prefix": '//..//',
+             "expected": False},
+            # not normalized path beyond root
+            {"path_or_prefix": 'testdir1//..//',
+             "expected": False},
+            # starting with slash
+            {"path_or_prefix": '/',
+             "expected": False}]
+        with self.fs_handler.open_as_container(self.zip_file_name) as handler:
+            for case in cases:
+                self.assertEqual(handler.isdir(case["path_or_prefix"]),
+                                 case["expected"])
+
+            for _dir in ["does_not_exist", "does_not_exist/",
+                         "does/not/exist"]:
+                self.assertFalse(handler.isdir(_dir))
