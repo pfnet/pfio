@@ -53,7 +53,7 @@ setup(
     extras_require={'test': ['pytest', 'flake8', 'autopep8'],
                     'doc': ['sphinx', 'sphinx_rtd_theme']},
     python_requires=">=3.5",
-    install_requires=['krbticket>=1.0.3', 'pyarrow'],
+    install_requires=['krbticket>=1.0.4', 'pyarrow'],
     include_package_data=True,
     zip_safe=False,
 
