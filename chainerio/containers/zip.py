@@ -145,14 +145,13 @@ class ZipContainer(Container):
             given_dir_list = []
 
         if path_or_prefix:
-            if self.exists(path_or_prefix):
-                if not self.isdir(path_or_prefix):
-                    raise NotADirectoryError(
-                        "{} is not a directory".format(path_or_prefix))
-            # check if directories are NOT included in the zip
-            # such kind of zip can be made with "zip -D"
+            if self.exists(path_or_prefix) and not self.isdir(path_or_prefix):
+                raise NotADirectoryError(
+                    "{} is not a directory".format(path_or_prefix))
             elif not any(name.startswith(path_or_prefix + "/")
                          for name in self.zip_file_obj.namelist()):
+                # check if directories are NOT included in the zip
+                # such kind of zip can be made with "zip -D"
                 raise FileNotFoundError(
                     "{} is not found".format(path_or_prefix))
 
