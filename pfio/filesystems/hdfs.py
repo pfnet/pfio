@@ -222,7 +222,26 @@ class HdfsFileSystem(FileSystem):
 
     def stat(self, path):
         self._create_connection()
-        return self.connection.stat(path)
+        info = self.connection.info(path)
+        kind = info['kind']
+        mode = info['permissions']
+        if kind == 'file':
+            mode |= 0x8000          # _S_IFREG
+        elif kind == 'directory':
+            mode |= 0x4000          # _S_IFDIR
+
+        return os.stat_result([
+            mode,                   # st_mode
+            None,                   # st_ino
+            None,                   # st_dev
+            None,                   # st_nlink
+            info['owner'],          # st_uid
+            info['group'],          # st_gid
+            info['size'],           # st_size
+            info['last_accessed'],  # st_atime
+            info['last_modified'],  # st_mtime
+            info['last_modified'],  # st_ctime
+        ])
 
     def __enter__(self):
         return self
