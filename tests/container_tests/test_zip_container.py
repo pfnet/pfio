@@ -1,6 +1,7 @@
 import unittest
 
 import pfio
+
 import io
 import multiprocessing
 import os
@@ -484,6 +485,28 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             with self.assertRaises(FileNotFoundError):
                 handler.stat(path_or_prefix)
+
+    def test_stat_file(self):
+        test_file_name = 'testdir2/testfile1'
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            stat = handler.stat(test_file_name)
+            self.assertIsInstance(stat, pfio.containers.zip.ZipFileStat)
+            self.assertTrue(stat.filename.endswith(test_file_name))
+            self.assertEqual(stat.size, 22)
+            self.assertEqual(stat.mode, 0o100664)
+            self.assertFalse(stat.isdir())
+            self.assertTrue(stat.last_modified)
+
+    def test_stat_directory(self):
+        test_dir_name = 'testdir2/'
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            stat = handler.stat(test_dir_name)
+            self.assertIsInstance(stat, pfio.containers.zip.ZipFileStat)
+            self.assertTrue(stat.filename.endswith(test_dir_name))
+            self.assertEqual(stat.size, 0)
+            self.assertEqual(stat.mode, 0o40775)
+            self.assertTrue(stat.isdir())
+            self.assertTrue(stat.last_modified)
 
     @pytest.mark.skipif(sys.version_info < (3, 6),
                         reason="requires python3.6 or higher")

@@ -1,8 +1,24 @@
 from pfio.filesystem import FileSystem
+from pfio.io import FileStat
 from pfio.io import open_wrapper
 import io
 import os
 import shutil
+
+
+class PosixFileStat(FileStat):
+    def __init__(self, _stat, filename):
+        self.filename = filename
+        self.last_modified = _stat.st_mtime
+        self.last_accessed = _stat.st_atime
+        self.created = _stat.st_ctime
+        self.mode = _stat.st_mode
+        self.size = _stat.st_size
+        self.owner = _stat.st_uid
+        self.group = _stat.st_gid
+        self.inode = _stat.st_ino
+        self.device = _stat.st_dev
+        self.n_link = _stat.st_nlink
 
 
 class PosixFileSystem(FileSystem):
@@ -43,7 +59,7 @@ class PosixFileSystem(FileSystem):
                                                 file.path)
 
     def stat(self, path):
-        return os.stat(path)
+        return PosixFileStat(os.stat(path), path)
 
     def close(self):
         pass

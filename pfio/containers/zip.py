@@ -1,6 +1,8 @@
 from pfio.container import Container
+from pfio.io import FileStat
 from pfio.io import open_wrapper
 import io
+import datetime
 import logging
 import os
 import sys
@@ -12,6 +14,18 @@ from typing import Type, Callable, Any
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
+
+
+class ZipFileStat(FileStat):
+    def __init__(self, zip_info):
+        self.filename = zip_info.filename
+        self.last_modified = datetime.datetime(*zip_info.date_time).timestamp()
+        # https://github.com/python/cpython/blob/3.8/Lib/zipfile.py#L392
+        self.mode = zip_info.external_attr >> 16
+        self.size = zip_info.file_size
+        self.compress_size = zip_info.compress_size
+        self.compress_type = zip_info.compress_type
+        self.CRC = zip_info.CRC
 
 
 class ZipContainer(Container):
@@ -128,7 +142,7 @@ class ZipContainer(Container):
             raise FileNotFoundError(
                 "{} is not found".format(path))
 
-        return self.zip_file_obj.getinfo(actual_path)
+        return ZipFileStat(self.zip_file_obj.getinfo(actual_path))
 
     def list(self, path_or_prefix: str = "", recursive=False):
         self._open_zip_file()
@@ -191,13 +205,7 @@ class ZipContainer(Container):
 
     def isdir(self, file_path: str):
         if self.exists(file_path):
-            stat = self.stat(file_path)
-            if sys.version_info >= (3, 6, ):
-                return stat.is_dir()
-            else:
-                # The `is_dir` function under `ZipInfo` object
-                # is not available before Python 3.6.0
-                return "/" == stat.filename[-1]
+            return self.stat(file_path).isdir()
         else:
             file_path = os.path.normpath(file_path)
             # check if directories are NOT included in the zip

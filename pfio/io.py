@@ -1,4 +1,5 @@
 import abc
+import stat
 from abc import abstractmethod
 from importlib import import_module
 
@@ -22,6 +23,23 @@ def open_wrapper(func):
             file_obj, file_path, mode, buffering, encoding,
             errors, newline, closefd, opener)
     return wrapper
+
+
+class FileStat(abc.ABC):
+    filename = None
+    last_modified = None
+    mode = None
+    size = None
+
+    def isdir(self):
+        return bool(self.mode & 0o40000)
+
+    def __str__(self):
+        return '<{} filename="{}" mode="{}">'.format(
+            type(self).__name__, self.filename, stat.filemode(self.mode))
+
+    def __repr__(self):
+        return str(self.__str__())
 
 
 class IO(abc.ABC):

@@ -1,4 +1,5 @@
 from pfio.filesystem import FileSystem
+from pfio.io import FileStat
 from pfio.io import open_wrapper
 from krbticket import KrbTicket, SingleProcessKrbTicketUpdater
 
@@ -80,6 +81,23 @@ def _run_klist(use_keytab=False):
     except OSError:
         # klist is not found
         return None
+
+
+class HdfsFileStat(FileStat):
+    def __init__(self, info):
+        mode = info['permissions']
+        if info['kind'] == 'file':
+            mode |= 0o100000
+        elif info['kind'] == 'directory':
+            mode |= 0o40000
+
+        self.filename = info['path']
+        self.mode = mode
+        self.size = info['size']
+        self.owner = info['owner']
+        self.group = info['group']
+        self.last_modified = info['last_modified']
+        self.last_accessed = info['last_accessed']
 
 
 class HdfsFileSystem(FileSystem):
@@ -222,26 +240,7 @@ class HdfsFileSystem(FileSystem):
 
     def stat(self, path):
         self._create_connection()
-        info = self.connection.info(path)
-        kind = info['kind']
-        mode = info['permissions']
-        if kind == 'file':
-            mode |= 0x8000          # _S_IFREG
-        elif kind == 'directory':
-            mode |= 0x4000          # _S_IFDIR
-
-        return os.stat_result([
-            mode,                   # st_mode
-            None,                   # st_ino
-            None,                   # st_dev
-            None,                   # st_nlink
-            info['owner'],          # st_uid
-            info['group'],          # st_gid
-            info['size'],           # st_size
-            info['last_accessed'],  # st_atime
-            info['last_modified'],  # st_mtime
-            info['last_modified'],  # st_ctime
-        ])
+        return HdfsFileStat(self.connection.info(path))
 
     def __enter__(self):
         return self
@@ -255,8 +254,7 @@ class HdfsFileSystem(FileSystem):
             self.connection = None
 
     def isdir(self, file_path: str):
-        stat = self.stat(file_path)
-        return "directory" == stat["kind"]
+        return self.stat(file_path).isdir()
 
     def mkdir(self, file_path: str, *args, dir_fd=None):
         self._create_connection()
