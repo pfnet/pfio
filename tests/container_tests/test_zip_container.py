@@ -656,7 +656,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
          False],
         # not normalized path
         ['{}//{}//../'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
-            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+                              NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
          [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
           NO_DIRECTORY_FILENAME_LIST["dir2_name"]],
          False],
@@ -776,7 +776,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
             FileNotFoundError],
         # list a file
         ['{}//{}///'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
-            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+                            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
          NotADirectoryError],
         # list a non_exist_dir but share the surfix
         ['{}/'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"][:-1]),
@@ -795,18 +795,18 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
         ['{}//'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]), True],
         # not normalized path
         ['{}//{}'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
-            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
-            False],
+                         NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         False],
         ['{}//..//{}/{}'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
-            NO_DIRECTORY_FILENAME_LIST["dir2_name"],
-            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
-            False],
+                                NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                                NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         False],
         # problem 2 in issue #66
         [NO_DIRECTORY_FILENAME_LIST["dir1_name"], True],
         # not normalized path
         ['{}//{}//../'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
-            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
-            True],
+                              NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         True],
         # not normalized path root
         ['{}//..//'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]), False],
         # not normalized path beyond root
