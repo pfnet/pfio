@@ -655,8 +655,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
          [NO_DIRECTORY_FILENAME_LIST["testfile2_name"]],
          False],
         # not normalized path
-        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//\
-           {NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}//../',
+        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}//../',  # NOQA
          [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
           NO_DIRECTORY_FILENAME_LIST["dir2_name"]],
          False],
@@ -706,7 +705,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
                        NO_DIRECTORY_FILENAME_LIST["testfile2_name"])],
          True],
         # not normalized path
-        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}//../', # NOQA
+        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}//../',  # NOQA
          [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
           os.path.join(NO_DIRECTORY_FILENAME_LIST["dir2_name"],
                        NO_DIRECTORY_FILENAME_LIST["testfile2_name"])],
@@ -772,7 +771,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
         # broken path
         [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//t/', FileNotFoundError],
         # list a file
-        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}///', # NOQA
+        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}///',  # NOQA
          NotADirectoryError],
         # list a non_exist_dir but share the surfix
         [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}[:-1]/', FileNotFoundError]
@@ -789,14 +788,14 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
         # path ends with slash
         [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//', True],
         # not normalized path
-        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}', # NOQA
+        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}',  # NOQA
             False],
-        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//..//{NO_DIRECTORY_FILENAME_LIST["dir2_name"]}/{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}', # NOQA
+        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//..//{NO_DIRECTORY_FILENAME_LIST["dir2_name"]}/{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}',  # NOQA
             False],
         # problem 2 in issue #66
         [NO_DIRECTORY_FILENAME_LIST["dir1_name"], True],
         # not normalized path
-        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}//../', # NOQA
+        [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//{NO_DIRECTORY_FILENAME_LIST["testfile1_name"]}//../',  # NOQA
             True],
         # not normalized path root
         [f'{NO_DIRECTORY_FILENAME_LIST["dir1_name"]}//..//', False],
