@@ -145,12 +145,15 @@ class ZipContainer(Container):
             given_dir_list = []
 
         if path_or_prefix:
-            if not self.exists(path_or_prefix):
-                raise FileNotFoundError(
-                    "{} is not found".format(path_or_prefix))
-            elif not self.isdir(path_or_prefix):
+            if self.exists(path_or_prefix) and not self.isdir(path_or_prefix):
                 raise NotADirectoryError(
                     "{} is not a directory".format(path_or_prefix))
+            elif not any(name.startswith(path_or_prefix + "/")
+                         for name in self.zip_file_obj.namelist()):
+                # check if directories are NOT included in the zip
+                # such kind of zip can be made with "zip -D"
+                raise FileNotFoundError(
+                    "{} is not found".format(path_or_prefix))
 
         if recursive:
             for name in self.zip_file_obj.namelist():
@@ -196,6 +199,12 @@ class ZipContainer(Container):
                 # is not available before Python 3.6.0
                 return "/" == stat.filename[-1]
         else:
+            file_path = os.path.normpath(file_path)
+            # check if directories are NOT included in the zip
+            if any(name.startswith(file_path + "/")
+                   for name in self.zip_file_obj.namelist()):
+                return True
+
             return False
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):

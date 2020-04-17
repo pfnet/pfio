@@ -12,6 +12,8 @@ import string
 import sys
 import tempfile
 from zipfile import ZipFile
+import subprocess
+from parameterized import parameterized
 
 
 def make_zip(zipfilename, root_dir, base_dir):
@@ -499,7 +501,6 @@ class TestZipHandler(unittest.TestCase):
 
 
 class TestZipHandlerWithLargeData(unittest.TestCase):
-
     def setUp(self):
         # The following zip layout is created for all the tests
         # outside.zip
@@ -559,3 +560,272 @@ class TestZipHandlerWithLargeData(unittest.TestCase):
 
             self.assertEqual(p1.exitcode, 0)
             self.assertEqual(p2.exitcode, 0)
+
+
+NO_DIRECTORY_FILENAME_LIST = {
+    "dir1_name": "testdir1",
+    "dir2_name": "testdir2",
+    "dir3_name": "testdir3",
+    "testfile1_name": "testfile1",
+    "testfile2_name": "testfile2",
+    "testfile3_name": "testfile3",
+    "testfile4_name": "testfile4",
+}
+
+
+class TestZipHandlerListNoDirectory(unittest.TestCase):
+    def setUp(self):
+        # The following zip layout is created for all the tests
+        # The difference is despite showing in the following layout for
+        # readabilty, the directories are not included in the zip
+        # outside.zip
+        # | - testdir1
+        # | - | - testfile1
+        # | - | - testdir2
+        # | - | - | - testfile2
+        # | - testdir3
+        # |   | - testfile3
+        # | - testfile4
+
+        self.test_string = "this is a test string\n"
+        self.fs_handler = chainerio.create_handler("posix")
+
+        # the most outside zip
+        self.zip_file_name = "outside.zip"
+
+        # nested zip and nested file
+        self.tmpdir = tempfile.TemporaryDirectory()
+
+        # directory and file
+        self.dir1_name = NO_DIRECTORY_FILENAME_LIST["dir1_name"]
+        self.dir2_name = NO_DIRECTORY_FILENAME_LIST["dir2_name"]
+        self.dir3_name = NO_DIRECTORY_FILENAME_LIST["dir3_name"]
+        self.testfile1_name = NO_DIRECTORY_FILENAME_LIST["testfile1_name"]
+        self.testfile2_name = NO_DIRECTORY_FILENAME_LIST["testfile2_name"]
+        self.testfile3_name = NO_DIRECTORY_FILENAME_LIST["testfile3_name"]
+        self.testfile4_name = NO_DIRECTORY_FILENAME_LIST["testfile4_name"]
+
+        # paths used in making outside.zip
+        dir1_path = os.path.join(self.tmpdir.name, self.dir1_name)
+        dir2_path = os.path.join(dir1_path, self.dir2_name)
+        dir3_path = os.path.join(self.tmpdir.name, self.dir3_name)
+        testfile1_path = os.path.join(dir1_path, self.testfile1_name)
+        testfile2_path = os.path.join(dir2_path, self.testfile2_name)
+        testfile3_path = os.path.join(dir3_path, self.testfile3_name)
+        testfile4_path = os.path.join(self.tmpdir.name, self.testfile4_name)
+
+        # paths used in tests
+        for dir in [dir1_path, dir2_path, dir3_path]:
+            os.mkdir(dir)
+
+        for file_path in [testfile1_path, testfile2_path,
+                          testfile3_path, testfile4_path]:
+            with open(file_path, "w") as f:
+                f.write(self.test_string)
+
+        # create zip without directory
+        self.pwd = os.getcwd()
+        os.chdir(self.tmpdir.name)
+        cmd = ["zip", "-rD", self.zip_file_name, "."]
+
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+
+        assert stderr == b""
+
+    def tearDown(self):
+        os.chdir(self.pwd)
+        self.tmpdir.cleanup()
+
+    @parameterized.expand([
+        # default case get the first level from the root
+        ["", [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+              NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+              NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         False],
+        # Problem 1 in issue #66
+        [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+         [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
+          NO_DIRECTORY_FILENAME_LIST["dir2_name"]],
+         False],
+        # problem 2 in issue #66
+        [os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                      NO_DIRECTORY_FILENAME_LIST["dir2_name"]),
+         [NO_DIRECTORY_FILENAME_LIST["testfile2_name"]],
+         False],
+        # not normalized path
+        ['{}//{}//../'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                              NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
+          NO_DIRECTORY_FILENAME_LIST["dir2_name"]],
+         False],
+        # not normalized path root
+        ['{}//..//'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]),
+         [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+          NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         False],
+        # not normalized path beyond root
+        ['//..//',
+         [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+          NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         False],
+        # not normalized path beyond root
+        ['{}//..//'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]),
+         [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+          NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         False],
+        # starting with slash
+        ['/', [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+               NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+               NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         False],
+        # recursive test
+        ['',
+         [os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile3_name"]),
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         True],
+        [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+         [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"])],
+         True],
+        # problem 2 in issue #66
+        [NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+         [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"])],
+         True],
+        # not normalized path
+        ['{}//{}//../'.format(
+            NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         [NO_DIRECTORY_FILENAME_LIST["testfile1_name"],
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"])],
+         True],
+        # not normalized path root
+        ['{}//..//'.format(NO_DIRECTORY_FILENAME_LIST["dir2_name"]),
+         [os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile3_name"]),
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         True],
+        # not normalized path beyond root
+        ['//..//',
+         [os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile3_name"]),
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         True],
+        # not normalized path beyond root
+        ['{}//..//../'.format(NO_DIRECTORY_FILENAME_LIST["dir2_name"]),
+         [os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile3_name"]),
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         True],
+        # starting with slash
+        ['/',
+         [os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                       NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile2_name"]),
+          os.path.join(NO_DIRECTORY_FILENAME_LIST["dir3_name"],
+                       NO_DIRECTORY_FILENAME_LIST["testfile3_name"]),
+          NO_DIRECTORY_FILENAME_LIST["testfile4_name"]],
+         True]
+    ])
+    def test_list(self, path_or_prefix, expected_list, recursive):
+        with self.fs_handler.open_as_container(self.zip_file_name) as handler:
+            zip_generator = handler.list(path_or_prefix,
+                                         recursive=recursive)
+            zip_list = list(zip_generator)
+            self.assertEqual(sorted(expected_list),
+                             sorted(zip_list))
+
+    @parameterized.expand([
+        # non_exist_file
+        ['does_not_exist', FileNotFoundError],
+        # not exist but share the prefix
+        ['t', FileNotFoundError],
+        # broken path
+        ['{}//t/'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]),
+            FileNotFoundError],
+        # list a file
+        ['{}//{}///'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                            NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         NotADirectoryError],
+        # list a non_exist_dir but share the surfix
+        ['{}/'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"][:-1]),
+         FileNotFoundError]
+    ])
+    def test_list_with_errors(self, path_or_prefix, error):
+        with self.fs_handler.open_as_container(self.zip_file_name) as handler:
+            with self.assertRaises(error):
+                list(handler.list(path_or_prefix))
+
+            with self.assertRaises(error):
+                list(handler.list(path_or_prefix, recursive=True))
+
+    @parameterized.expand([
+        # path ends with slash
+        ['{}//'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]), True],
+        # not normalized path
+        ['{}//{}'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                         NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         False],
+        ['{}//..//{}/{}'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                                NO_DIRECTORY_FILENAME_LIST["dir2_name"],
+                                NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         False],
+        # problem 2 in issue #66
+        [NO_DIRECTORY_FILENAME_LIST["dir1_name"], True],
+        # not normalized path
+        ['{}//{}//../'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"],
+                              NO_DIRECTORY_FILENAME_LIST["testfile1_name"]),
+         True],
+        # not normalized path root
+        ['{}//..//'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]), False],
+        # not normalized path beyond root
+        ['//..//', False],
+        # not normalized path beyond root
+        ['{}//..//'.format(NO_DIRECTORY_FILENAME_LIST["dir1_name"]), False],
+        # starting with slash
+        ['/', False]
+    ])
+    def test_isdir(self, path_or_prefix, expected):
+        with self.fs_handler.open_as_container(self.zip_file_name) as handler:
+            self.assertEqual(handler.isdir(path_or_prefix),
+                             expected)
+
+    @parameterized.expand([
+        ["does_not_exist"],
+        ["does_not_exist/"],
+        ["does/not/exist"]
+    ])
+    def test_isdir_not_exist(self, dir):
+        with self.fs_handler.open_as_container(self.zip_file_name) as handler:
+            self.assertFalse(handler.isdir(dir))

@@ -50,7 +50,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={'chainerio': package_data},
-    extras_require={'test': ['pytest', 'flake8', 'autopep8'],
+    extras_require={'test': ['pytest', 'flake8', 'autopep8', 'parameterized'],
                     'doc': ['sphinx', 'sphinx_rtd_theme']},
     python_requires=">=3.5",
     install_requires=['krbticket>=1.0.5', 'pyarrow'],
