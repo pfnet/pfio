@@ -35,6 +35,18 @@ def make_random_str(n):
                     for i in range(n)])
 
 
+ZIP_TEST_FILENAME_LIST = {
+    "dir_name1": "testdir1",
+    "dir_name2": "testdir2",
+    "zipped_file_name": "testfile1",
+    "testfile_name": "testfile2",
+    "nested_dir_name": "nested_dir",
+    "nested_zip_file_name": "nested.zip",
+}
+
+NON_EXIST_LIST = ["does_not_exist", "does_not_exist/", "does/not/exist"]
+
+
 class TestZipHandler(unittest.TestCase):
 
     def setUp(self):
@@ -61,16 +73,17 @@ class TestZipHandler(unittest.TestCase):
         # nested zip and nested file
         self.tmpdir = tempfile.TemporaryDirectory()
         self.nested_zipped_file_name = "nested"
-        self.nested_dir_name = "nested_dir/"
+        self.nested_dir_name = ZIP_TEST_FILENAME_LIST["nested_dir_name"]
         self.nested_dir_path = os.path.join(self.tmpdir.name,
                                             self.nested_dir_name)
-        self.nested_zip_file_name = "nested.zip"
+        self.nested_zip_file_name = \
+            ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]
 
         # directory and file
-        self.dir_name1 = "testdir1/"
-        self.dir_name2 = "testdir2/"
-        self.zipped_file_name = "testfile1"
-        self.testfile_name = "testfile2"
+        self.dir_name1 = ZIP_TEST_FILENAME_LIST["dir_name1"]
+        self.dir_name2 = ZIP_TEST_FILENAME_LIST["dir_name2"]
+        self.zipped_file_name = ZIP_TEST_FILENAME_LIST["zipped_file_name"]
+        self.testfile_name = ZIP_TEST_FILENAME_LIST["testfile_name"]
 
         # paths used in making outside.zip
         dir_path1 = os.path.join(self.tmpdir.name, self.dir_name1)
@@ -91,9 +104,6 @@ class TestZipHandler(unittest.TestCase):
             self.dir_name1, self.nested_zip_file_name)
         self.nested_zipped_file_path = os.path.join(
             self.nested_dir_name, self.nested_zipped_file_name)
-
-        self.non_exists_list = ["does_not_exist", "does_not_exist/",
-                                "does/not/exist"]
 
         os.mkdir(dir_path1)
         os.mkdir(dir_path2)
@@ -173,192 +183,188 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(non_exist_file) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
 
-    def test_open_non_normalized_path(self):
-        cases = [
-            # not normalized path
-            {"path_or_prefix": '././testdir2//../testdir2/testfile1',
-             "expected": self.test_string}]
-        for case in cases:
-            with self.fs_handler.open_as_container(
-                    os.path.abspath(self.zip_file_path)) as handler:
-                with handler.open(case['path_or_prefix'], "r") as zipped_file:
-                    self.assertEqual(case['expected'], zipped_file.read())
+    @parameterized.expand([
+        # not normalized path
+        ['././{}//../{}/{}'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                                   ZIP_TEST_FILENAME_LIST["dir_name2"],
+                                   ZIP_TEST_FILENAME_LIST["zipped_file_name"])]
+    ])
+    def test_open_non_normalized_path(self, path_or_prefix):
+        with self.fs_handler.open_as_container(
+                os.path.abspath(self.zip_file_path)) as handler:
+            with handler.open(path_or_prefix, "r") as zipped_file:
+                self.assertEqual(self.test_string, zipped_file.read())
 
-    def test_list(self):
+    @parameterized.expand([
+        # default case get the first level from the root
+        ["",
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         False],
+        # Problem 1 in issue #66
+        [ZIP_TEST_FILENAME_LIST["dir_name2"],
+         [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
+         False],
+        # problem 2 in issue #66
+        [ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
+         False],
+        # not normalized path
+        ['{}//{}//../'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                              ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
+         False],
+        # not normalized path root
+        ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         False],
+        # not normalized path beyond root
+        ['//..//',
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         False],
+        # not normalized path beyond root
+        ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         False],
+        # starting with slash
+        ['/',
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         False],
+        # recursive test
+        ['',
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                       ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                       ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         True],
+        [ZIP_TEST_FILENAME_LIST["dir_name2"],
+         [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
+         True],
+        # problem 2 in issue #66
+        [ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
+         True],
+        # not normalized path
+        ['{}//{}//../'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                              ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
+         True],
+        # not normalized path root
+        ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                       ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                       ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         True],
+        # not normalized path beyond root
+        ['//..//',
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                       ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                       ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         True],
+        # starting with slash
+        ['/',
+         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
+          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                       ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
+          os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                       ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+          ZIP_TEST_FILENAME_LIST["testfile_name"]],
+         True]]
+    )
+    def test_list(self, path_or_prefix, expected_list, recursive):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            cases = [
-                # default case get the first level from the root
-                {"path_or_prefix": "",
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   self.testfile_name],
-                 "recursive": False},
-                # Problem 1 in issue #66
-                {"path_or_prefix": self.dir_name2,
-                 "expected_list": [self.zipped_file_name],
-                 "recursive": False},
-                # problem 2 in issue #66
-                {"path_or_prefix": self.dir_name2.rstrip('/'),
-                 "expected_list": [self.zipped_file_name],
-                 "recursive": False},
-                # not normalized path
-                {"path_or_prefix": 'testdir2//testfile//../',
-                 "expected_list": [self.zipped_file_name],
-                 "recursive": False},
-                # not normalized path root
-                {"path_or_prefix": 'testdir2//..//',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   self.testfile_name],
-                 "recursive": False},
-                # not normalized path beyond root
-                {"path_or_prefix": '//..//',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   self.testfile_name],
-                 "recursive": False},
-                # not normalized path beyond root
-                {"path_or_prefix": 'testdir2//..//',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   self.testfile_name],
-                 "recursive": False},
-                # starting with slash
-                {"path_or_prefix": '/',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   self.testfile_name],
-                 "recursive": False},
-                # recursive test
-                {"path_or_prefix": '',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   os.path.join(self.dir_name1,
-                                                self.nested_zip_file_name),
-                                   os.path.join(self.dir_name2,
-                                                self.zipped_file_name),
-                                   self.testfile_name],
-                 "recursive": True},
-                {"path_or_prefix": self.dir_name2,
-                 "expected_list": [self.zipped_file_name],
-                 "recursive": True},
-                # problem 2 in issue #66
-                {"path_or_prefix": self.dir_name2.rstrip('/'),
-                 "expected_list": [self.zipped_file_name],
-                 "recursive": True},
-                # not normalized path
-                {"path_or_prefix": 'testdir2//testfile//../',
-                 "expected_list": [self.zipped_file_name],
-                 "recursive": True},
-                # not normalized path root
-                {"path_or_prefix": 'testdir2//..//',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   os.path.join(self.dir_name1,
-                                                self.nested_zip_file_name),
-                                   os.path.join(self.dir_name2,
-                                                self.zipped_file_name),
-                                   self.testfile_name],
-                 "recursive": True},
-                # not normalized path beyond root
-                {"path_or_prefix": '//..//',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   os.path.join(self.dir_name1,
-                                                self.nested_zip_file_name),
-                                   os.path.join(self.dir_name2,
-                                                self.zipped_file_name),
-                                   self.testfile_name],
-                 "recursive": True},
-                # not normalized path beyond root
-                {"path_or_prefix": 'testdir2//..//',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   os.path.join(self.dir_name1,
-                                                self.nested_zip_file_name),
-                                   os.path.join(self.dir_name2,
-                                                self.zipped_file_name),
-                                   self.testfile_name],
-                 "recursive": True},
-                # starting with slash
-                {"path_or_prefix": '/',
-                 "expected_list": [self.dir_name1.rstrip('/'),
-                                   self.dir_name2.rstrip('/'),
-                                   os.path.join(self.dir_name1,
-                                                self.nested_zip_file_name),
-                                   os.path.join(self.dir_name2,
-                                                self.zipped_file_name),
-                                   self.testfile_name],
-                 "recursive": True}]
+            zip_generator = handler.list(path_or_prefix,
+                                         recursive=recursive)
+            zip_list = list(zip_generator)
+            self.assertEqual(sorted(expected_list),
+                             sorted(zip_list))
 
-            for case in cases:
-                zip_generator = handler.list(case['path_or_prefix'],
-                                             recursive=case['recursive'])
-                zip_list = list(zip_generator)
-                self.assertEqual(sorted(case['expected_list']),
-                                 sorted(zip_list))
-
-    def test_list_with_errors(self):
+    @parameterized.expand([
+        # non_exist_file
+        ['does_not_exist', FileNotFoundError],
+        # not exist but share the prefix
+        ['{}'.format(ZIP_TEST_FILENAME_LIST["dir_name2"][:1]),
+            FileNotFoundError],
+        # broken path
+        ['{}//{}/'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                          ZIP_TEST_FILENAME_LIST["zipped_file_name"][:1]),
+         FileNotFoundError],
+        # list a file
+        ['{}//{}///'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                            ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         NotADirectoryError]
+    ])
+    def test_list_with_errors(self, path_or_prefix, error):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            cases = [
-                # non_exist_file
-                {"path_or_prefix": 'does_not_exist',
-                 "error": FileNotFoundError},
-                # not exist but share the prefix
-                {"path_or_prefix": 't',
-                 "error": FileNotFoundError},
-                # broken path
-                {"path_or_prefix": 'testdir2//t/',
-                 "error": FileNotFoundError},
-                # list a file
-                {"path_or_prefix": 'testdir2//testfile1///',
-                 "error": NotADirectoryError}]
-            for case in cases:
-                with self.assertRaises(case["error"]):
-                    list(handler.list(case['path_or_prefix']))
+            with self.assertRaises(error):
+                list(handler.list(path_or_prefix))
 
-                with self.assertRaises(case["error"]):
-                    list(handler.list(case['path_or_prefix'], recursive=True))
+            with self.assertRaises(error):
+                list(handler.list(path_or_prefix, recursive=True))
 
     def test_info(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             self.assertIsInstance(handler.info(), str)
 
-    def test_isdir(self):
-        cases = [
-            # path ends with slash
-            {"path_or_prefix": 'testdir2//',
-             "expected": True},
-            # not normalized path
-            {"path_or_prefix": 'testdir2//testfile1',
-             "expected": False},
-            {"path_or_prefix": 'testdir1//..//testdir2/testfile1',
-             "expected": False},
-            # problem 2 in issue #66
-            {"path_or_prefix": self.dir_name2.rstrip('/'),
-             "expected": True},
-            # not normalized path
-            {"path_or_prefix": 'testdir2//testfile1//../',
-             "expected": True},
-            # not normalized path root
-            {"path_or_prefix": 'testdir2//..//',
-             "expected": False},
-            # not normalized path beyond root
-            {"path_or_prefix": '//..//',
-             "expected": False},
-            # not normalized path beyond root
-            {"path_or_prefix": 'testdir2//..//',
-             "expected": False},
-            # starting with slash
-            {"path_or_prefix": '/',
-             "expected": False}]
+    @parameterized.expand([
+        # path ends with slash
+        ['{}//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         True],
+        # not normalized path
+        ['{}//{}'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                         ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         False],
+        ['{}//..//{}/{}'.format(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                                ZIP_TEST_FILENAME_LIST["dir_name2"],
+                                ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         False],
+        # problem 2 in issue #66
+        [ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         True],
+        # not normalized path
+        ['{}//{}//../'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                              ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         True],
+        # not normalized path root
+        ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         False],
+        # not normalized path beyond root
+        ['//..//',
+         False],
+        # starting with slash
+        ['/',
+         False]]
+    )
+    def test_isdir(self, path_or_prefix, expected):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            for case in cases:
-                self.assertEqual(handler.isdir(case["path_or_prefix"]),
-                                 case["expected"])
+            self.assertEqual(handler.isdir(path_or_prefix),
+                             expected)
 
-            for _dir in self.non_exists_list:
-                self.assertFalse(handler.isdir(_dir))
+    @parameterized.expand(NON_EXIST_LIST)
+    def test_isdir_non_exist(self, path_or_prefix):
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            self.assertFalse(handler.isdir(path_or_prefix))
 
     def test_mkdir(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
@@ -389,41 +395,46 @@ class TestZipHandler(unittest.TestCase):
         os.remove(pickle_file_name)
         os.remove(pickle_zip)
 
-    def test_exists(self):
-        cases = [
-            # path ends with slash
-            {"path_or_prefix": 'testdir2//',
-             "expected": True},
-            # not normalized path
-            {"path_or_prefix": 'testdir2//testfile1',
-             "expected": True},
-            {"path_or_prefix": 'testdir1//..//testdir2/testfile1',
-             "expected": True},
-            {"path_or_prefix": 'testdir1//..//testdir2/testfile',
-             "expected": False},
-            # # not normalized path
-            {"path_or_prefix": 'testdir2//testfile//../',
-             "expected": True},
-            # not normalized path root
-            {"path_or_prefix": 'testdir2//..//',
-             "expected": False},
-            # not normalized path beyond root
-            {"path_or_prefix": '//..//',
-             "expected": False},
-            # not normalized path beyond root
-            {"path_or_prefix": 'testdir2//..//',
-             "expected": False},
-            # starting with slash
-            {"path_or_prefix": '/',
-             "expected": False}]
-
+    @parameterized.expand([
+        # path ends with slash
+        ['{}//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         True],
+        # not normalized path
+        ['{}//{}'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                         ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         True],
+        ['{}//..//{}/{}'.format(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                                ZIP_TEST_FILENAME_LIST["dir_name2"],
+                                ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         True],
+        ['{}//..//{}/{}'.format(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                                ZIP_TEST_FILENAME_LIST["dir_name2"],
+                                ZIP_TEST_FILENAME_LIST["zipped_file_name"][:-1]
+                                ),
+         False],
+        # # not normalized path
+        ['{}//{}//../'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                              ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         True],
+        # not normalized path root
+        ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         False],
+        # not normalized path beyond root
+        ['//..//',
+         False],
+        # starting with slash
+        ['/',
+         False]]
+    )
+    def test_exists(self, path_or_prefix, expected):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            for case in cases:
-                self.assertEqual(handler.exists(case["path_or_prefix"]),
-                                 case['expected'])
+            self.assertEqual(handler.exists(path_or_prefix),
+                             expected)
 
-            for case in self.non_exists_list:
-                self.assertFalse(handler.exists(case))
+    @parameterized.expand(NON_EXIST_LIST)
+    def test_not_exists(self, non_exist_file):
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            self.assertFalse(handler.exists(non_exist_file))
 
     def test_remove(self):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
@@ -440,37 +451,39 @@ class TestZipHandler(unittest.TestCase):
                 with nested_zip.open(self.nested_zipped_file_path, "r") as f:
                     self.assertEqual(f.read(), self.nested_test_string)
 
-    def test_stat(self):
-        cases = [
-            # path ends with slash
-            {"path_or_prefix": 'testdir2//',
-             "expected": 'testdir2/'},
-            # not normalized path
-            {"path_or_prefix": 'testdir2//testfile1',
-             "expected": 'testdir2/testfile1'},
-            {"path_or_prefix": 'testdir1//..//testdir2/testfile1',
-             "expected": 'testdir2/testfile1'},
-            {"path_or_prefix": 'testdir2//testfile//../',
-             "expected": 'testdir2/'}]
-
-        non_exists_list = [
-            # not normalized path root
-            'testdir2//..//',
-            # not normalized path beyond root
-            '//..//',
-            # not normalized path beyond root
-            'testdir2//..//',
-            # root
-            '/'] + self.non_exists_list
-
+    @parameterized.expand([
+        # path ends with slash
+        ['{}//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+         '{}/'.format(ZIP_TEST_FILENAME_LIST["dir_name2"])],
+        # not normalized path
+        ['{}//{}'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                         ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         '{}/{}'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                        ZIP_TEST_FILENAME_LIST["zipped_file_name"])],
+        ['{}//..//{}/{}'.format(ZIP_TEST_FILENAME_LIST["dir_name1"],
+                                ZIP_TEST_FILENAME_LIST["dir_name2"],
+                                ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+         '{}/{}'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                        ZIP_TEST_FILENAME_LIST["zipped_file_name"])],
+        ['{}//{}//../'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
+                              ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
+            '{}/'.format(ZIP_TEST_FILENAME_LIST["dir_name2"])]
+    ])
+    def test_stat(self, path_or_prefix, expected):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
-            for case in cases:
-                self.assertEqual(case['expected'],
-                                 handler.stat(case['path_or_prefix']).filename)
+            self.assertEqual(expected, handler.stat(path_or_prefix).filename)
 
-            for _dir in non_exists_list:
-                with self.assertRaises(FileNotFoundError):
-                    handler.stat(_dir)
+    @parameterized.expand([
+        # not normalized path root
+        '{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
+        # not normalized path beyond root
+        '//..//',
+        # root
+        '/'] + NON_EXIST_LIST)
+    def test_stat_non_exist(self, path_or_prefix):
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            with self.assertRaises(FileNotFoundError):
+                handler.stat(path_or_prefix)
 
     @pytest.mark.skipif(sys.version_info < (3, 6),
                         reason="requires python3.6 or higher")
