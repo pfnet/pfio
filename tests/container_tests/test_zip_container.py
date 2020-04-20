@@ -198,8 +198,8 @@ class TestZipHandler(unittest.TestCase):
     @parameterized.expand([
         # default case get the first level from the root
         ["",
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           ZIP_TEST_FILENAME_LIST["testfile_name"]],
          False],
         # Problem 1 in issue #66
@@ -207,7 +207,7 @@ class TestZipHandler(unittest.TestCase):
          [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
          False],
         # problem 2 in issue #66
-        [ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+        [ZIP_TEST_FILENAME_LIST["dir_name2"],
          [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
          False],
         # not normalized path
@@ -217,32 +217,32 @@ class TestZipHandler(unittest.TestCase):
          False],
         # not normalized path root
         ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           ZIP_TEST_FILENAME_LIST["testfile_name"]],
          False],
         # not normalized path beyond root
         ['//..//',
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           ZIP_TEST_FILENAME_LIST["testfile_name"]],
          False],
         # not normalized path beyond root
         ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           ZIP_TEST_FILENAME_LIST["testfile_name"]],
          False],
         # starting with slash
         ['/',
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           ZIP_TEST_FILENAME_LIST["testfile_name"]],
          False],
         # recursive test
         ['',
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
                        ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
@@ -253,7 +253,7 @@ class TestZipHandler(unittest.TestCase):
          [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
          True],
         # problem 2 in issue #66
-        [ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+        [ZIP_TEST_FILENAME_LIST["dir_name2"],
          [ZIP_TEST_FILENAME_LIST["zipped_file_name"]],
          True],
         # not normalized path
@@ -263,8 +263,8 @@ class TestZipHandler(unittest.TestCase):
          True],
         # not normalized path root
         ['{}//..//'.format(ZIP_TEST_FILENAME_LIST["dir_name2"]),
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
                        ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
@@ -273,8 +273,8 @@ class TestZipHandler(unittest.TestCase):
          True],
         # not normalized path beyond root
         ['//..//',
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
                        ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
@@ -283,8 +283,8 @@ class TestZipHandler(unittest.TestCase):
          True],
         # starting with slash
         ['/',
-         [ZIP_TEST_FILENAME_LIST["dir_name1"].rstrip('/'),
-          ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+         [ZIP_TEST_FILENAME_LIST["dir_name1"],
+          ZIP_TEST_FILENAME_LIST["dir_name2"],
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name1"],
                        ZIP_TEST_FILENAME_LIST["nested_zip_file_name"]),
           os.path.join(ZIP_TEST_FILENAME_LIST["dir_name2"],
@@ -340,7 +340,7 @@ class TestZipHandler(unittest.TestCase):
                                 ZIP_TEST_FILENAME_LIST["zipped_file_name"]),
          False],
         # problem 2 in issue #66
-        [ZIP_TEST_FILENAME_LIST["dir_name2"].rstrip('/'),
+        [ZIP_TEST_FILENAME_LIST["dir_name2"],
          True],
         # not normalized path
         ['{}//{}//../'.format(ZIP_TEST_FILENAME_LIST["dir_name2"],
