@@ -4,11 +4,11 @@ import threading
 import tempfile
 import warnings
 
-from chainerio import cache
+from pfio import cache
 import pickle
 
 _DEFAULT_CACHE_PATH = os.path.join(
-    os.getenv('HOME'), ".chainer", "chainerio", "cache")
+    os.getenv('HOME'), ".chainer", "pfio", "cache")
 
 
 class LockContext:
@@ -80,7 +80,7 @@ class FileCache(cache.Cache):
     '''Cache system with local filesystem
 
     Stores cache data in local temporary files, created in
-    ``~/.chainer/chainerio/cache`` by default. Cache data is
+    ``~/.chainer/pfio/cache`` by default. Cache data is
     automatically deleted after the object is collected. When this
     object is not correctly closed, (e.g., the process killed by
     SIGTERM), the cache remains after the death of process.

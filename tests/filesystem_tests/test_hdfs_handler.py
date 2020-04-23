@@ -1,10 +1,10 @@
 import unittest
 
 from collections.abc import Iterable
-from chainerio.filesystems.hdfs import _parse_principal_name_from_klist
-from chainerio.filesystems.hdfs import _parse_principal_name_from_keytab
-from chainerio.filesystems.hdfs import _get_principal_name_from_klist
-from chainerio.filesystems.hdfs import HdfsFileSystem
+from pfio.filesystems.hdfs import _parse_principal_name_from_klist
+from pfio.filesystems.hdfs import _parse_principal_name_from_keytab
+from pfio.filesystems.hdfs import _get_principal_name_from_klist
+from pfio.filesystems.hdfs import HdfsFileSystem
 import pickle
 import shutil
 import subprocess
@@ -12,7 +12,7 @@ import os
 import getpass
 import tempfile
 
-import chainerio
+import pfio
 
 
 def create_dummy_keytab(tmpd, dummy_username):
@@ -37,7 +37,7 @@ class TestHdfsHandler(unittest.TestCase):
     def test_read_non_exist(self):
         non_exist_file = "non_exist_file.txt"
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
 
     @unittest.skipIf(shutil.which('klist') is None, "klist not installed")
@@ -46,8 +46,8 @@ class TestHdfsHandler(unittest.TestCase):
         ticket_cache_backup_path = "/tmp/ccbackup_{}".format(getpass.getuser())
 
         # remove the credential cache
-        if chainerio.exists(ticket_cache_path):
-            chainerio.rename(ticket_cache_path, ticket_cache_backup_path)
+        if pfio.exists(ticket_cache_path):
+            pfio.rename(ticket_cache_path, ticket_cache_backup_path)
         original_ccname = os.environ.get("KRB5CCNAME")
         if original_ccname is not None:
             del os.environ['KRB5CCNAME']
@@ -94,8 +94,8 @@ class TestHdfsHandler(unittest.TestCase):
 
         # restore cache
         # remove the credential cache
-        if chainerio.exists(ticket_cache_backup_path):
-            chainerio.rename(ticket_cache_backup_path, ticket_cache_path)
+        if pfio.exists(ticket_cache_backup_path):
+            pfio.rename(ticket_cache_backup_path, ticket_cache_path)
         if original_ccname is not None:
             os.environ['KRB5CCNAME'] = original_ccname
         # priority 2:
@@ -125,12 +125,12 @@ class TestHdfsHandler(unittest.TestCase):
                          _parse_principal_name_from_klist(correct_out))
 
     def test_info(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertIsInstance(handler.info(), str)
 
     def test_mkdir(self):
         test_dir_name = "testmkdir"
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             handler.mkdir(test_dir_name)
             self.assertTrue(handler.isdir(test_dir_name))
 
@@ -140,7 +140,7 @@ class TestHdfsHandler(unittest.TestCase):
         test_dir_name = "testmkdir/"
         nested_dir_name = test_dir_name + "nested_dir"
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             handler.makedirs(nested_dir_name)
             self.assertTrue(handler.isdir(nested_dir_name))
 
@@ -151,7 +151,7 @@ class TestHdfsHandler(unittest.TestCase):
         test_data = {'test_elem1': b'balabala',
                      'test_elem2': 'balabala'}
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(pickle_file_name, 'wb') as f:
                 pickle.dump(test_data, f)
             with handler.open(pickle_file_name, 'rb') as f:
@@ -161,7 +161,7 @@ class TestHdfsHandler(unittest.TestCase):
             handler.remove(pickle_file_name, True)
 
     def test_rename(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open('src', 'w') as fp:
                 fp.write('foobar')
 
@@ -184,7 +184,7 @@ class TestHdfsHandler(unittest.TestCase):
         nested_dir = os.path.join(test_dir, "nested_file/")
         nested_file = os.path.join(nested_dir, test_file)
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(test_file, 'w') as fp:
                 fp.write('foobar')
 
@@ -222,26 +222,26 @@ class TestHdfsHandlerWithFile(unittest.TestCase):
         self.fs = "hdfs"
         self.tmpfile_name = "tmpfile.txt"
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(self.tmpfile_name, "w") as tmpfile:
                 tmpfile.write(self.test_string)
 
     def tearDown(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             try:
                 handler.remove(self.tmpfile_name)
             except IOError:
                 pass
 
     def test_read_string(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(self.tmpfile_name, "r") as f:
                 self.assertEqual(self.test_string, f.read())
             with handler.open(self.tmpfile_name, "r") as f:
                 self.assertEqual(self.test_string, f.readline())
 
     def test_list(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             file_generator = handler.list()
             self.assertIsInstance(file_generator, Iterable)
             file_list = list(file_generator)
@@ -285,14 +285,14 @@ class TestHdfsHandlerWithFile(unittest.TestCase):
                     handler.remove(test_dir_name, True)
 
     def test_isdir(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertTrue(handler.isdir("/"))
             self.assertFalse(handler.isdir(self.tmpfile_name))
 
     def test_exists(self):
         non_exist_file = "non_exist_file.txt"
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertTrue(handler.exists(self.tmpfile_name))
             self.assertTrue(handler.exists("/"))
             self.assertFalse(handler.exists(non_exist_file))
@@ -307,18 +307,18 @@ class TestHdfsHandlerWithBinaryFile(unittest.TestCase):
         self.fs = "hdfs"
         self.tmpfile_name = "tmpfile.txt"
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(self.tmpfile_name, "wb") as tmpfile:
                 tmpfile.write(self.test_string_b)
 
     def tearDown(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             try:
                 handler.remove(self.tmpfile_name)
             except IOError:
                 pass
 
     def test_read_bytes(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(self.tmpfile_name, "rb") as f:
                 self.assertEqual(self.test_string_b, f.read())

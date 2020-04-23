@@ -10,7 +10,7 @@ import re
 import progressbar
 
 # CHAINERIO import
-import chainerio
+import pfio
 # CHAINERIO import end
 
 
@@ -33,7 +33,7 @@ def split_sentence(s, use_lower):
 
 def count_lines(path):
     # CHAINERIO add
-    with chainerio.load(path, fs_type=fs_type, mode="r", encoding='utf-8', errors='ignore') as f:
+    with pfio.load(path, fs_type=fs_type, mode="r", encoding='utf-8', errors='ignore') as f:
     # CHAINERIO add end
         return sum([1 for _ in f])
 
@@ -42,7 +42,7 @@ def read_file(path, use_lower):
     n_lines = count_lines(path)
     bar = progressbar.ProgressBar()
     # CHAINERIO add
-    with chainerio.load(path, fs_type=fs_type, mode="r", encoding='utf-8', errors='ignore') as f:
+    with pfio.load(path, fs_type=fs_type, mode="r", encoding='utf-8', errors='ignore') as f:
     # CHAINERIO add end
         for line in bar(f, max_value=n_lines):
             words = split_sentence(line, use_lower)

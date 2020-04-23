@@ -1,7 +1,7 @@
 import contextlib
 import threading
 
-from chainerio.cache import Cache
+from pfio.cache import Cache
 
 
 class NaiveCache(Cache):

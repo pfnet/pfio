@@ -1,8 +1,8 @@
-from chainerio.io import IO
-from chainerio.profiler import IOProfiler
+from pfio.io import IO
+from pfio.profiler import IOProfiler
 
 import os
-from chainerio._typing import Optional
+from pfio._typing import Optional
 
 
 class FileSystem(IO):

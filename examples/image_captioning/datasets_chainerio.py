@@ -9,7 +9,7 @@ from chainer import dataset
 from chainer.dataset.convert import to_device
 
 # CHAINERIO import
-import chainerio
+import pfio
 # CHAINERIO import end
 
 
@@ -59,7 +59,7 @@ class MsCocoDataset(dataset.DatasetMixin):
 
         # CHAINERIO load file
         file_name = os.path.join(self.coco_root, self.coco_data, img_file_name)
-        img = Image.open(chainerio.open(file_name, 'rb'))
+        img = Image.open(pfio.open(file_name, 'rb'))
         # CHAINERIO load end
 
         if img.mode == 'RGB':

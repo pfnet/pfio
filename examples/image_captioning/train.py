@@ -9,7 +9,7 @@ from chainer import training
 from chainer.training import extensions
 
 # import datasets
-import datasets_chainerio as datasets
+import datasets_pfio as datasets
 from model import ImageCaptionModel
 
 

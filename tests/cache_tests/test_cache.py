@@ -3,7 +3,7 @@ import pickle
 import random
 
 import pytest
-from chainerio.cache import NaiveCache, FileCache
+from pfio.cache import NaiveCache, FileCache
 
 
 @pytest.mark.parametrize("test_class", [NaiveCache, FileCache])

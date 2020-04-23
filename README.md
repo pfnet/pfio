@@ -1,6 +1,6 @@
-## ChainerIO
+## PFIO
 
-ChainerIO is an IO abstraction library for Chainer, optimized for deep
+PFIO is an IO abstraction library developed by PFN, optimized for deep
 learning training with batteries included. It supports
 
 - Filesystem API abstraction with unified error semantics,
@@ -19,21 +19,21 @@ learning training with batteries included. It supports
 Installation
 
 ```shell
-$ git clone https://github.com/chainer/chainerio.git
-$ cd chainerio
+$ git clone https://github.com/chainer/pfio.git
+$ cd pfio
 $ pip install .
 ```
 
 Documentation
 ```sh
-$ cd chainerio/docs
+$ cd pfio/docs
 $ make html
 $ open build/html/index.html
 ```
 
 Test
 ```sh
-$ cd chainerio
+$ cd pfio
 $ pip install .[test]
 $ pytest
 ```

@@ -1,9 +1,9 @@
-.. ChainerIO documentation master file, created by
+.. PFIO documentation master file, created by
    sphinx-quickstart on Tue Feb 12 12:17:57 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ChainerIO's documentation!
+Welcome to PFIO's documentation!
 =====================================
 
 .. toctree::

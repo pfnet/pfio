@@ -11,7 +11,7 @@ from chainer import training
 from chainer.training import extensions
 
 # CHAINERIO import
-import chainerio
+import pfio
 # CHAINERIO end
 
 import numpy as np
@@ -21,10 +21,10 @@ matplotlib.use('Agg')
 
 mushroomsfile = 'mushrooms.csv'
 # uncomment to use HDFS, remember to put the mushroomsfile to HDFS
-# chainerio.set_root("hdfs")
+# pfio.set_root("hdfs")
 
 # CHAINERIO read file start
-mushroomsdata = chainerio.open(mushroomsfile, 'r')
+mushroomsdata = pfio.open(mushroomsfile, 'r')
 # CHAINERIO read file end
 
 data_array = np.genfromtxt(

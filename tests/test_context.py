@@ -1,6 +1,6 @@
 import unittest
 
-import chainerio
+import pfio
 import os
 import shutil
 import tempfile
@@ -22,19 +22,19 @@ class TestContext(unittest.TestCase):
 
     def test_set_root(self):
         # Set default context globally in this process
-        chainerio.set_root('posix')
+        pfio.set_root('posix')
 
         # Using the context to open local file
-        with chainerio.open(self.tmpfile_path, "r") as fp:
+        with pfio.open(self.tmpfile_path, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
-        chainerio.set_root('file://' + self.tmpdir.name)
-        with chainerio.open(self.tmpfile_name, "r") as fp:
+        pfio.set_root('file://' + self.tmpdir.name)
+        with pfio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
     def test_open_as_container(self):
         # Create a container for testing
-        chainerio.set_root("posix")
+        pfio.set_root("posix")
         zip_file_name = "test"
         zip_file_path = zip_file_name + ".zip"
 
@@ -46,7 +46,7 @@ class TestContext(unittest.TestCase):
 
         shutil.make_archive(zip_file_name, "zip", base_dir=self.tmpdir.name)
 
-        with chainerio.open_as_container(zip_file_path) as container:
+        with pfio.open_as_container(zip_file_path) as container:
             file_generator = container.list()
             file_list = list(file_generator)
             self.assertIn(first_level_dir, file_list)
@@ -67,7 +67,7 @@ class TestContext(unittest.TestCase):
                 self.assertEqual(
                     f.read(), self.test_string_str)
 
-        chainerio.remove(zip_file_path)
+        pfio.remove(zip_file_path)
 
     def test_fs_detection_on_container_posix(self):
         # Create a container for testing
@@ -80,12 +80,12 @@ class TestContext(unittest.TestCase):
 
         shutil.make_archive(zip_file_name, "zip", base_dir=self.tmpdir.name)
 
-        with chainerio.open_as_container(posix_file_path) as container:
+        with pfio.open_as_container(posix_file_path) as container:
             with container.open(file_name_zip, "r") as f:
                 self.assertEqual(
                     f.read(), self.test_string_str)
 
-        chainerio.remove(zip_file_path)
+        pfio.remove(zip_file_path)
 
     @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
     def test_fs_detection_on_container_hdfs(self):
@@ -96,7 +96,7 @@ class TestContext(unittest.TestCase):
         # in the zip, the leading slash will be removed
         file_name_zip = self.tmpfile_path.lstrip('/')
 
-        # TODO(tianqi): add functionality ot chainerio
+        # TODO(tianqi): add functionality ot pfio
         from pyarrow import hdfs
 
         conn = hdfs.connect()
@@ -107,26 +107,26 @@ class TestContext(unittest.TestCase):
 
         shutil.make_archive(zip_file_name, "zip", base_dir=self.tmpdir.name)
 
-        with chainerio.open(hdfs_file_path, "wb") as hdfs_file:
-            with chainerio.open(zip_file_path, "rb") as posix_file:
+        with pfio.open(hdfs_file_path, "wb") as hdfs_file:
+            with pfio.open(zip_file_path, "rb") as posix_file:
                 hdfs_file.write(posix_file.read())
 
-        with chainerio.open_as_container(hdfs_file_path) as container:
+        with pfio.open_as_container(hdfs_file_path) as container:
             with container.open(file_name_zip, "r") as f:
                 self.assertEqual(
                     f.read(), self.test_string_str)
 
-        chainerio.remove(zip_file_path)
-        chainerio.remove(hdfs_file_path)
+        pfio.remove(zip_file_path)
+        pfio.remove(hdfs_file_path)
 
     def test_root_local_override(self):
-        chainerio.set_root('file://' + self.tmpdir.name)
-        with chainerio.open(self.tmpfile_name, "r") as fp:
+        pfio.set_root('file://' + self.tmpdir.name)
+        with pfio.open(self.tmpfile_name, "r") as fp:
             self.assertEqual(fp.read(), self.test_string_str)
 
         # override with full URI
         with open(__file__, "r") as my_script:
-            with chainerio.open('file://' + __file__) as fp:
+            with pfio.open('file://' + __file__) as fp:
                 self.assertEqual(fp.read(), my_script.read().encode("utf-8"))
 
     # override with different filesystem
@@ -141,35 +141,35 @@ class TestContext(unittest.TestCase):
         with conn.open(hdfs_tmpfile, "wb") as f:
             f.write(hdfs_file_string.encode('utf-8'))
 
-        chainerio.set_root("hdfs")
-        with chainerio.open(hdfs_tmpfile, "r") as fp:
+        pfio.set_root("hdfs")
+        with pfio.open(hdfs_tmpfile, "r") as fp:
             self.assertEqual(fp.read(), hdfs_file_string)
 
         # override with full URI
         with open(__file__, "r") as my_script:
-            with chainerio.open("file://" + __file__, "r") as fp:
+            with pfio.open("file://" + __file__, "r") as fp:
                 self.assertEqual(fp.read(), my_script.read())
 
-        with chainerio.open(hdfs_tmpfile, "r") as fp:
+        with pfio.open(hdfs_tmpfile, "r") as fp:
             self.assertEqual(fp.read(), hdfs_file_string)
 
         conn.delete(hdfs_tmpfile)
         conn.close()
 
     def test_create_handler(self):
-        posix_handler = chainerio.create_handler("posix")
+        posix_handler = pfio.create_handler("posix")
         self.assertIsInstance(posix_handler,
-                              chainerio.filesystems.posix.PosixFileSystem)
+                              pfio.filesystems.posix.PosixFileSystem)
 
-        hdfs_handler = chainerio.create_handler("hdfs")
+        hdfs_handler = pfio.create_handler("hdfs")
         self.assertIsInstance(hdfs_handler,
-                              chainerio.filesystems.hdfs.HdfsFileSystem)
+                              pfio.filesystems.hdfs.HdfsFileSystem)
 
-        another_posix_handler = chainerio.create_handler("posix")
+        another_posix_handler = pfio.create_handler("posix")
         self.assertNotEqual(posix_handler, another_posix_handler)
 
         with self.assertRaises(ValueError):
-            chainerio.create_handler("unsupported_scheme")
+            pfio.create_handler("unsupported_scheme")
 
     def test_list(self):
         nested_dir_name1 = "nested_dir1"
@@ -180,40 +180,40 @@ class TestContext(unittest.TestCase):
                                         nested_dir_name2)
         nested_dir_path2_relative = os.path.join(nested_dir_name1,
                                                  nested_dir_name2)
-        chainerio.makedirs(nested_dir_path1)
-        chainerio.makedirs(nested_dir_path2)
+        pfio.makedirs(nested_dir_path1)
+        pfio.makedirs(nested_dir_path2)
 
-        file_list = list(chainerio.list(self.tmpdir.name))
+        file_list = list(pfio.list(self.tmpdir.name))
         self.assertIn(nested_dir_name1, file_list)
         self.assertIn(self.tmpfile_name, file_list)
         self.assertNotIn(nested_dir_path2_relative, file_list)
 
-        file_list = list(chainerio.list(self.tmpdir.name, recursive=True))
+        file_list = list(pfio.list(self.tmpdir.name, recursive=True))
         self.assertIn(nested_dir_name1, file_list)
         self.assertIn(self.tmpfile_name, file_list)
         self.assertIn(nested_dir_path2_relative, file_list)
 
     def test_isdir(self):
-        self.assertTrue(chainerio.isdir("file://" + self.tmpdir.name))
+        self.assertTrue(pfio.isdir("file://" + self.tmpdir.name))
 
     def test_mkdir(self):
         new_tmp_dir = "testmkdir/"
-        chainerio.mkdir("file://" + new_tmp_dir)
+        pfio.mkdir("file://" + new_tmp_dir)
         self.assertTrue(os.path.isdir(new_tmp_dir))
-        chainerio.remove(new_tmp_dir, True)
+        pfio.remove(new_tmp_dir, True)
 
     def test_makedirs(self):
         new_tmp_dir = "testmakedirs/"
         nested_dir = new_tmp_dir + "test_nest_dir"
 
-        chainerio.makedirs("file://" + nested_dir)
+        pfio.makedirs("file://" + nested_dir)
         self.assertTrue(os.path.isdir(nested_dir))
-        chainerio.remove(new_tmp_dir, True)
+        pfio.remove(new_tmp_dir, True)
 
     def test_exists(self):
         non_exist_file = "non_exist_file"
-        self.assertTrue(chainerio.exists(self.tmpdir.name))
-        self.assertFalse(chainerio.exists(non_exist_file))
+        self.assertTrue(pfio.exists(self.tmpdir.name))
+        self.assertFalse(pfio.exists(non_exist_file))
 
     def test_rename(self):
         new_tmp_dir = tempfile.TemporaryDirectory()
@@ -221,19 +221,19 @@ class TestContext(unittest.TestCase):
         try:
             src = os.path.join("file://", new_tmp_dir.name, 'src')
             dst = os.path.join("file://", new_tmp_dir.name, 'dst')
-            with chainerio.open(src, 'w') as fp:
+            with pfio.open(src, 'w') as fp:
                 fp.write('foobar')
 
-            assert chainerio.exists(src)
-            assert not chainerio.exists(dst)
+            assert pfio.exists(src)
+            assert not pfio.exists(dst)
 
-            chainerio.rename(src, dst)
-            with chainerio.open(dst, 'r') as fp:
+            pfio.rename(src, dst)
+            with pfio.open(dst, 'r') as fp:
                 data = fp.read()
                 assert data == 'foobar'
 
-            assert not chainerio.exists(src)
-            assert chainerio.exists(dst)
+            assert not pfio.exists(src)
+            assert pfio.exists(dst)
         finally:
             new_tmp_dir.cleanup()
 
@@ -243,28 +243,28 @@ class TestContext(unittest.TestCase):
         nested_dir = os.path.join(test_dir, "nested_file/")
         nested_file = os.path.join(nested_dir, test_file)
 
-        with chainerio.open(test_file, 'w') as fp:
+        with pfio.open(test_file, 'w') as fp:
             fp.write('foobar')
 
         # test remove on one file
-        self.assertTrue(chainerio.exists(test_file))
-        chainerio.remove(test_file)
-        self.assertFalse(chainerio.exists(test_file))
+        self.assertTrue(pfio.exists(test_file))
+        pfio.remove(test_file)
+        self.assertFalse(pfio.exists(test_file))
 
         # test remove on directory
-        chainerio.makedirs(nested_dir)
-        with chainerio.open(nested_file, 'w') as fp:
+        pfio.makedirs(nested_dir)
+        with pfio.open(nested_file, 'w') as fp:
             fp.write('foobar')
 
-        self.assertTrue(chainerio.exists(test_dir))
-        self.assertTrue(chainerio.exists(nested_dir))
-        self.assertTrue(chainerio.exists(nested_file))
+        self.assertTrue(pfio.exists(test_dir))
+        self.assertTrue(pfio.exists(nested_dir))
+        self.assertTrue(pfio.exists(nested_file))
 
-        chainerio.remove(test_dir, True)
+        pfio.remove(test_dir, True)
 
-        self.assertFalse(chainerio.exists(test_dir))
-        self.assertFalse(chainerio.exists(nested_dir))
-        self.assertFalse(chainerio.exists(nested_file))
+        self.assertFalse(pfio.exists(test_dir))
+        self.assertFalse(pfio.exists(nested_dir))
+        self.assertFalse(pfio.exists(nested_file))
 
     def test_stat(self):
         # pass for now

@@ -1,4 +1,4 @@
-from chainerio.cache import NaiveCache, FileCache
+from pfio.cache import NaiveCache, FileCache
 import time
 import random
 

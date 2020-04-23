@@ -1,6 +1,6 @@
 import collections
 # CHAINERIO import
-import chainerio
+import pfio
 # CHAINERIO import end
 
 
@@ -76,7 +76,7 @@ def read_data(vocab, path):
     data = []
     all_data = []
     # CHAINERIO add
-    with chainerio.open(path, mode="r") as f:
+    with pfio.open(path, mode="r") as f:
     # CHAINERIO add end
             for line in f:
                 sid, content = line.strip().split(' ', 1)

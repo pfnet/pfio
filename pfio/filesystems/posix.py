@@ -1,5 +1,5 @@
-from chainerio.filesystem import FileSystem
-from chainerio.io import open_wrapper
+from pfio.filesystem import FileSystem
+from pfio.io import open_wrapper
 import io
 import os
 import shutil

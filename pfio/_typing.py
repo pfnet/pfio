@@ -3,7 +3,7 @@ import typing
 
 
 # workaround for old CPython bug
-# https://github.com/chainer/chainerio/issues/28
+# https://github.com/chainer/pfio/issues/28
 if sys.version_info < (3, 5, 3):
     class DummyOptional(object):
 

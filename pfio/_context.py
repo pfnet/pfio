@@ -1,17 +1,17 @@
-from chainerio.container import Container
-from chainerio.io import create_fs_handler
-from chainerio.io import IO
+from pfio.container import Container
+from pfio.io import create_fs_handler
+from pfio.io import IO
 import os
 import re
 
-from chainerio._typing import Union
+from pfio._typing import Union
 from typing import Tuple
 
 
 class FileSystemDriverList(object):
     def __init__(self):
         # TODO(tianqi): dynamically create this list
-        # as well as the patterns upon loading the chainerio module.
+        # as well as the patterns upon loading the pfio module.
         self.scheme_list = ["hdfs", "posix"]
         self.posix_pattern = re.compile(r"file:\/\/(?P<path>.+)")
         self.hdfs_pattern = re.compile(r"(?P<path>hdfs:\/\/.+)")

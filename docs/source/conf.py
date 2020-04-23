@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'ChainerIO'
+project = 'PFIO'
 copyright = '2019, Preferred Networks, Inc.'
 author = 'Preferred Networks, Inc.'
 
@@ -110,7 +110,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'ChainerIOdoc'
+htmlhelp_basename = 'PFIOdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -137,7 +137,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'ChainerIO.tex', 'ChainerIO Documentation',
+    (master_doc, 'PFIO.tex', 'PFIO Documentation',
      'Preferred Networks, Inc.', 'manual'),
 ]
 
@@ -147,7 +147,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'chainerio', 'ChainerIO Documentation',
+    (master_doc, 'pfio', 'PFIO Documentation',
      [author], 1)
 ]
 
@@ -158,8 +158,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'ChainerIO', 'ChainerIO Documentation',
-     author, 'ChainerIO', 'One line description of project.',
+    (master_doc, 'PFIO', 'PFIO Documentation',
+     author, 'PFIO', 'One line description of project.',
      'Miscellaneous'),
 ]
 

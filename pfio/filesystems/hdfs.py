@@ -1,5 +1,5 @@
-from chainerio.filesystem import FileSystem
-from chainerio.io import open_wrapper
+from pfio.filesystem import FileSystem
+from pfio.io import open_wrapper
 from krbticket import KrbTicket, SingleProcessKrbTicketUpdater
 
 import subprocess
@@ -11,7 +11,7 @@ import getpass
 import pyarrow
 from pyarrow import hdfs
 
-from chainerio._typing import Optional
+from pfio._typing import Optional
 from typing import Type, Callable, Any
 
 logger = logging.getLogger(__name__)

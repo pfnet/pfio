@@ -2,7 +2,7 @@ import os
 
 import chainer
 from chainer.serializers import load_npz
-import chainerio
+import pfio
 
 
 def _parse_filename(filename, separator='_'):
@@ -34,9 +34,9 @@ def load_snapshot(target, directory, filename=None, fs=None,
                   fail_on_no_file=False):
     assert directory is not None or filename is not None
     if fs is None:
-        fs = chainerio
+        fs = pfio
     elif isinstance(fs, str):
-        fs = chainerio.create_handler(fs)
+        fs = pfio.create_handler(fs)
     else:
         fs = fs
 

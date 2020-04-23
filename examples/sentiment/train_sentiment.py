@@ -21,7 +21,7 @@ from chainer import optimizers
 from chainer import reporter
 from chainer.training import extensions
 
-import data_chainerio as data
+import data_pfio as data
 # import data
 
 import os
