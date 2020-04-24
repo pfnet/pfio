@@ -10,9 +10,9 @@ import chainer.links as L
 from chainer import training
 from chainer.training import extensions
 
-# CHAINERIO import
+# PFIO import
 import pfio
-# CHAINERIO end
+# PFIO end
 
 import numpy as np
 
@@ -23,9 +23,9 @@ mushroomsfile = 'mushrooms.csv'
 # uncomment to use HDFS, remember to put the mushroomsfile to HDFS
 # pfio.set_root("hdfs")
 
-# CHAINERIO read file start
+# PFIO read file start
 mushroomsdata = pfio.open(mushroomsfile, 'r')
-# CHAINERIO read file end
+# PFIO read file end
 
 data_array = np.genfromtxt(
     mushroomsdata, delimiter=',', dtype=str, skip_header=1)

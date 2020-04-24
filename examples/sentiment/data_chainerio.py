@@ -1,10 +1,10 @@
 import codecs
 import re
 
-# CHAINERIO import
+# PFIO import
 import pfio
 # pfio.set_root("hdfs")
-# CHAINERIO import end
+# PFIO import end
 
 class SexpParser(object):
 
@@ -33,9 +33,9 @@ class SexpParser(object):
 
 
 def read_corpus(path, max_size):
-    # CHAINERIO modify
+    # PFIO modify
     with pfio.open(path, mode='r', encoding='utf-8') as f:
-    # CHAINERIO modify end
+    # PFIO modify end
             trees = []
             for line in f:
                 line = line.strip()
