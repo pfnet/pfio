@@ -7,6 +7,21 @@ import shutil
 
 
 class PosixFileStat(FileStat):
+    """Detailed information of a POSIX file
+
+    The information of file/directory is obtained through `os.stat`.
+
+    Attributes:
+        filename (str): Derived from `~FileStat`
+        last_modifled (float): Derived from `~FileStat`.
+        last_accessed (float): UNIX timestamp of atime.
+        created (float): UNIX timestamp of ctime.
+        mode (int): Derived from `~FileStat`
+        size (int): Derived from `~FileStat`
+        owner (int): UID of owner in integer, unlike `~HdfsFileStat.owner`.
+        group (int): GID of the file in integer, unlike `~HdfsFileStat.group`.
+    """
+
     def __init__(self, _stat, filename):
         self.filename = filename
         self.last_modified = _stat.st_mtime

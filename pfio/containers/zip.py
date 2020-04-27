@@ -17,6 +17,19 @@ logger.addHandler(logging.StreamHandler())
 
 
 class ZipFileStat(FileStat):
+    """Detailed information of a file in a Zip
+
+    Attributes:
+        filename (str): Derived from `~FileStat`
+        last_modifled (float): Derived from `~FileStat`.
+            No sub-second precision.
+        mode (int): Derived from `~FileStat`
+        size (int): Derived from `~FileStat`
+        compress_size (int): Compressed file size in the Zip (bytes).
+        compress_type (int): Compression type.
+            Possible values are defined in zipfile module.
+    """
+
     def __init__(self, zip_info):
         self.filename = zip_info.filename
         self.last_modified = float(datetime(*zip_info.date_time).timestamp())

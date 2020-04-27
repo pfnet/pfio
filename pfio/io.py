@@ -26,12 +26,36 @@ def open_wrapper(func):
 
 
 class FileStat(abc.ABC):
+    """Detailed file or directory information abstraction
+
+    `stat` of filesystem/container handlers return an object of
+    subclass of `FileStat`.
+    In addition to the common attribute that the `FileStat` abstract provides,
+    each `FileStat` subclass implements some additional attributes depending on
+    what information the corresponding filesystem or container can handle.
+    The common attributes behave almost the same in spite of filesystem or
+    container type difference.
+
+    Attributes:
+        filename (str): Filename in the filesystem or container.
+        last_modifled (float): UNIX timestamp of mtime. Note that some of
+            filesystems do not have sub-second precision.
+        mode (int): Permission with file type flag (regular file or directory).
+            You can make human-readable interpretation by `stat.filemode`.
+        size (int): Size in bytes. Note that directory may have different size
+            depending on filesystem type.
+    """
     filename = None
     last_modified = None
     mode = None
     size = None
 
     def isdir(self):
+        """Distinguish whether the target is directory, based on the permission flag
+
+        Returns:
+            `True` if directory, `False` otherwise.
+        """
         return bool(self.mode & 0o40000)
 
     def __str__(self):
@@ -149,7 +173,18 @@ class IO(abc.ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def stat(self, path: str) -> dict:
+    def stat(self, path: str) -> FileStat:
+        """Show details of a file
+
+        It returns an object of subclass of `~FileStat`
+        in accordance with filesystem or container type.
+
+        Args:
+            path (str): The path to file
+
+        Returns:
+            `~FileStat` object.
+        """
         raise NotImplementedError()
 
     @abstractmethod

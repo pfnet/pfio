@@ -84,6 +84,21 @@ def _run_klist(use_keytab=False):
 
 
 class HdfsFileStat(FileStat):
+    """Detailed information of a file in HDFS
+
+    Attributes:
+        filename (str): Derived from `~FileStat`
+        last_modifled (float): Derived from `~FileStat`.
+            No sub-second precision.
+        last_accessed (float): UNIX timestamp of last access time.
+            No sub-second precision.
+        mode (int): Derived from `~FileStat`
+        size (int): Derived from `~FileStat`
+        owner (str): Owner of the file. Unlike `~PosixFileStat.owner`,
+            this is a user name string instead of an integer.
+        group (str): Group of the file in string.
+    """
+
     def __init__(self, info):
         mode = info['permissions']
         if info['kind'] == 'file':
