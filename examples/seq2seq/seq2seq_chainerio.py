@@ -15,10 +15,10 @@ import chainer.links as L
 from chainer import training
 from chainer.training import extensions
 
-# CHAINERIO import
-import chainerio
-# chainerio.set_root("hdfs")
-# CHAINERIO import end
+# PFIO import
+import pfio
+# pfio.set_root("hdfs")
+# PFIO import end
 
 
 UNK = 0
@@ -162,16 +162,16 @@ class CalculateBleu(chainer.training.Extension):
 
 
 def count_lines(path):
-    # CHAINERIO add
-    with chainerio.open(path, mode='r') as f:
-    # CHAINERIO add end
+    # PFIO add
+    with pfio.open(path, mode='r') as f:
+    # PFIO add end
         return sum([1 for _ in f])
 
 
 def load_vocabulary(path):
-    # CHAINERIO add
-    with chainerio.open(path, mode='r') as f:
-    # CHAINERIO add end
+    # PFIO add
+    with pfio.open(path, mode='r') as f:
+    # PFIO add end
         # +2 for UNK and EOS
         word_ids = {line.strip(): i + 2 for i, line in enumerate(f)}
     word_ids['<UNK>'] = 0
@@ -185,9 +185,9 @@ def load_data(vocabulary, path):
     data = []
     print('loading...: %s' % path)
 
-    # CHAINERIO add
-    with chainerio.open(path, mode='r') as f:
-    # CHAINERIO add end
+    # PFIO add
+    with pfio.open(path, mode='r') as f:
+    # PFIO add end
             for line in bar(f, max_value=n_lines):
                 words = line.strip().split()
                 array = numpy.array([vocabulary.get(w, UNK)

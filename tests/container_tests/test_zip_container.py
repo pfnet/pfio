@@ -1,6 +1,6 @@
 import unittest
 
-import chainerio
+import pfio
 import io
 import multiprocessing
 import os
@@ -65,7 +65,7 @@ class TestZipHandler(unittest.TestCase):
         self.test_string_b = self.test_string.encode("utf-8")
         self.nested_test_string_b = \
             self.nested_test_string.encode("utf-8")
-        self.fs_handler = chainerio.create_handler("posix")
+        self.fs_handler = pfio.create_handler("posix")
 
         # the most outside zip
         self.zip_file_name = "outside"
@@ -130,7 +130,7 @@ class TestZipHandler(unittest.TestCase):
 
     def tearDown(self):
         self.tmpdir.cleanup()
-        chainerio.remove(self.zip_file_path)
+        pfio.remove(self.zip_file_path)
 
     def test_read_bytes(self):
         with self.fs_handler.open_as_container(
@@ -521,7 +521,7 @@ class TestZipHandlerWithLargeData(unittest.TestCase):
 
         n = 1 << 20
         self.test_string = make_random_str(n)
-        self.fs_handler = chainerio.create_handler("posix")
+        self.fs_handler = pfio.create_handler("posix")
 
         # the most outside zip
         self.zip_file_name = "outside"
@@ -548,7 +548,7 @@ class TestZipHandlerWithLargeData(unittest.TestCase):
 
     def tearDown(self):
         self.tmpdir.cleanup()
-        chainerio.remove(self.zip_file_path)
+        pfio.remove(self.zip_file_path)
 
     def test_read_multi_processes(self):
         barrier = multiprocessing.Barrier(2)
@@ -601,7 +601,7 @@ class TestZipHandlerListNoDirectory(unittest.TestCase):
         # | - testfile4
 
         self.test_string = "this is a test string\n"
-        self.fs_handler = chainerio.create_handler("posix")
+        self.fs_handler = pfio.create_handler("posix")
 
         # the most outside zip
         self.zip_file_name = "outside.zip"

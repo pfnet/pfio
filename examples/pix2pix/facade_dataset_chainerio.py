@@ -3,13 +3,13 @@ from PIL import Image
 from chainer.dataset import dataset_mixin
 import numpy as np
 
-# CHAINERIO import
-import chainerio
-# CHAINERIO import end
+# PFIO import
+import pfio
+# PFIO import end
 
 # download `BASE` dataset from http://cmp.felk.cvut.cz/~tylecr1/facade/
 
-# chainerio.set_root("hdfs")
+# pfio.set_root("hdfs")
 
 class FacadeDataset(dataset_mixin.DatasetMixin):
     def __init__(self, dataDir='./facade/base', data_range=(1, 300)):
@@ -20,13 +20,13 @@ class FacadeDataset(dataset_mixin.DatasetMixin):
         self.dataset = []
 
         for i in range(data_range[0], data_range[1]):
-        # CHAINERIO add
-            img_data = chainerio.open(dataDir+"/cmp_b%04d.jpg" % i, mode='rb')
+        # PFIO add
+            img_data = pfio.open(dataDir+"/cmp_b%04d.jpg" % i, mode='rb')
             img = Image.open(img_data)
 
-            label_data = chainerio.open(dataDir+"/cmp_b%04d.png" % i, mode='rb')
+            label_data = pfio.open(dataDir+"/cmp_b%04d.png" % i, mode='rb')
             label = Image.open(label_data)
-        # CHAINERIO add end
+        # PFIO add end
             w, h = img.size
             r = 286/float(min(w, h))
             # resize images so that min(w, h) == 286

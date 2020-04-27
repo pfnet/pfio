@@ -1,5 +1,5 @@
-from chainerio.container import Container
-from chainerio.io import open_wrapper
+from pfio.container import Container
+from pfio.io import open_wrapper
 import io
 import logging
 import os
@@ -7,7 +7,7 @@ import sys
 import warnings
 import zipfile
 
-from chainerio._typing import Optional
+from pfio._typing import Optional
 from typing import Type, Callable, Any
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class ZipContainer(Container):
 
                 warnings.warn('In Python < 3.7, '
                               'To support opening nested zip as container, '
-                              'ChainerIO has to read '
+                              'PFIO has to read '
                               'the entire nested zip upon open, '
                               'which might cause performance or '
                               'memory issues when the nested zip is huge.',

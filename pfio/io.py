@@ -2,9 +2,9 @@ import abc
 from abc import abstractmethod
 from importlib import import_module
 
-from chainerio.profiler import IOProfiler
+from pfio.profiler import IOProfiler
 
-from chainerio._typing import Optional
+from pfio._typing import Optional
 from typing import Type, Callable, Iterator, Any
 from types import TracebackType
 
@@ -247,7 +247,7 @@ class IO(abc.ABC):
     def _get_container_handler(self, path: str) -> Type['IO']:
         # TODO(tianqi): add detection from path
         # dynamically load module
-        from chainerio.containers.zip import ZipContainer
+        from pfio.containers.zip import ZipContainer
         return ZipContainer
 
     # TODO(tianqi) need to be changed to annotaion when we bump the
@@ -257,7 +257,7 @@ class IO(abc.ABC):
 
         This function opens a container, e.g. zip, instead of a regular file.
         For more details about the container, please refer to the `design \
-                <https://github.com/chainer/chainerio/blob/master/docs/\
+                <https://github.com/chainer/pfio/blob/master/docs/\
                 source/design.rst#containers>`_
 
         Works when the current handler is also a container: nested container.
@@ -267,8 +267,8 @@ class IO(abc.ABC):
 
         Returns:
             A container handler that implements methods defined in
-            :class:`chainerio.container.Container`, which derived from
-            :class:`chainerio.IO`. The type of the container is
+            :class:`pfio.container.Container`, which derived from
+            :class:`pfio.IO`. The type of the container is
             determined by the extension of the given path.
             Currently, only zip is supported.
 
@@ -281,13 +281,13 @@ class IO(abc.ABC):
 # Python version to >=3.7
 def create_fs_handler(fs_type: str, root: str = "") -> 'IO':
     # import for dynamic loading
-    import chainerio.filesystems  # noqa
+    import pfio.filesystems  # noqa
 
     if "" == fs_type:
         fs_type = 'posix'
 
     fs_module = import_module(
-        ".{}".format(fs_type.lower()), 'chainerio.filesystems')
+        ".{}".format(fs_type.lower()), 'pfio.filesystems')
     fs_handler = getattr(fs_module, '{}FileSystem'.format(
         _format_plugin_name(fs_type)))
 

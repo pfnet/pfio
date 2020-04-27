@@ -1,7 +1,7 @@
 import collections
-# CHAINERIO import
-import chainerio
-# CHAINERIO import end
+# PFIO import
+import pfio
+# PFIO import end
 
 
 Query = collections.namedtuple('Query', ['sentence', 'answer', 'fact'])
@@ -75,9 +75,9 @@ def read_data(vocab, path):
     """
     data = []
     all_data = []
-    # CHAINERIO add
-    with chainerio.open(path, mode="r") as f:
-    # CHAINERIO add end
+    # PFIO add
+    with pfio.open(path, mode="r") as f:
+    # PFIO add end
             for line in f:
                 sid, content = line.strip().split(' ', 1)
                 if sid == '1':

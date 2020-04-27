@@ -3,17 +3,17 @@ import os
 from chainer.serializers import save_npz
 from chainer.training.extensions.snapshot_writers import Writer
 
-import chainerio
+import pfio
 
 
 class SimpleWriter(Writer):
     '''Ignores ``outdir`` specified Chainer snapshot
 
     And writes out to arbitrary path including any system supported by
-    ChainerIO. Example usage::
+    PFIO. Example usage::
 
       trainer = Trainer(updater, (10, 'epoch'))
-      writer = chainerio.chainer_extensions.SimpleWriter(
+      writer = pfio.chainer_extensions.SimpleWriter(
           'hdfs:///user/USER/tgan-experiment')
       trainer.extend(snapshot(writer=writer))
 
@@ -35,9 +35,9 @@ class SimpleWriter(Writer):
         self.directory = directory
         self.savefun = save_npz if savefun is None else savefun
         if fs is None:
-            self.fs = chainerio
+            self.fs = pfio
         elif isinstance(fs, str):
-            self.fs = chainerio.create_handler(fs)
+            self.fs = pfio.create_handler(fs)
         else:
             self.fs = fs
 

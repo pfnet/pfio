@@ -1,7 +1,7 @@
 Design
 ------
 
-ChainerIO is an IO abstraction library for Chainer, optimized for deep
+PFIO is an IO abstraction library for Chainer, optimized for deep
 learning training with batteries included. It supports
 
 - Filesystem API abstraction with unified error semantics,
@@ -18,7 +18,7 @@ all of them have Pros and Cons, from cloud storages like Google Cloud
 Stroage and Amazon S3, to on-premise distributed filesystems like
 HDFS. Supporting different filesystems by developers themselves
 creates unnecessary burden on the developers and might reduce the
-portability on the code. That is the motivation of ChainerIO
+portability on the code. That is the motivation of PFIO
 supporting *filesystem abstraction API*.
 
 Also, deep learning training programs have benefited from filesystem
@@ -28,7 +28,7 @@ repeatedly read to iteratively train the model. But such
 non-POSIX-compliant filesystem usually does not provide content
 caching capability and I/O workload of training program would not
 implicitly optmized unlike Posix-based filesystems in Linux.  To help
-with learning on non-POSIX-compliant filesystems, e.g. HDFS, ChainerIO
+with learning on non-POSIX-compliant filesystems, e.g. HDFS, PFIO
 implements *data caching capability in userland*. Moreover, developers
 can choose which data to cache, from the raw files to DNN input NumPy
 array.
@@ -44,7 +44,7 @@ complexity problem.
 
 One of the general problems in filesystems is scalability of metadata
 access, caused by inbalanced ratio of number of files and total
-capacity of one system. ChainerIO supports various *container file
+capacity of one system. PFIO supports various *container file
 formats to aggregate many small files into single large file* with
 metadata mapping, e.g. HDF5, ZIP and Tar (and more in future), by
 taking advantage of the fact that in machine learning training
@@ -55,7 +55,7 @@ files into single file would save a lot of metadata store.
 Architecture
 ++++++++++++
 
-ChainerIO abstracts underlying system with three objects. See API
+PFIO abstracts underlying system with three objects. See API
 documentation for details.
 
 
@@ -82,9 +82,9 @@ instance. It supports
 
 .. code-block:: python
 
-    import chainerio
+    import pfio
     # Create Filesystem Accessor Object
-    with chainerio.create_handler('hdfs://name-service1/') as handler:
+    with pfio.create_handler('hdfs://name-service1/') as handler:
         print(handler.info())
         # TODO(open mode) actually 'r' is not support by hdfs
         # neither is readlines
@@ -102,7 +102,7 @@ instance. It supports
 Filesystem Context
 ~~~~~~~~~~~~~~~~~~
 
-ChainerIO also provides a set of simpler API set using process-wide
+PFIO also provides a set of simpler API set using process-wide
 filesystem context. The context includes target filesystem type and
 service instance, and opened container.
 
@@ -112,23 +112,23 @@ service instance. The default setting is local filesystem.
 
 .. code-block:: python
 
-    import chainerio
+    import pfio
 
     # Same as Python's built-in ``open()`` effectively
-    with chainerio.open('local-file.txt') as fp:
+    with pfio.open('local-file.txt') as fp:
         ...
 
     # Set default context globally in this process
-    chainerio.set_root('hdfs://name-service-cluster1/')
+    pfio.set_root('hdfs://name-service-cluster1/')
 
     # Opens ``some/file.txt`` in HDFS name-service-cluster1,
     # relative path from home directory in HDFS
-    with chainerio.open('some/file.txt', 'r') as fp:
+    with pfio.open('some/file.txt', 'r') as fp:
         for line in fp.readlines():
             print(line)
 
     # Opening container also refers to the default root
-    with chainerio.open_as_container('some/container.zip') as container:
+    with pfio.open_as_container('some/container.zip') as container:
         for name in container.list():
             print(name)
 
@@ -140,7 +140,7 @@ Containers
 
 Abstraction of file containers such as ZIP. It contains a set of (key,
 binary object) pairs. Keys are typically path-like string and binary
-is typically a file content. In ChainerIO keys in a container are
+is typically a file content. In PFIO keys in a container are
 UTF-8 strings. Containers can be nested, e.g. ZIP in ZIP. It supports:
 
 - Showing basic information of the container (info)
@@ -152,13 +152,13 @@ UTF-8 strings. Containers can be nested, e.g. ZIP in ZIP. It supports:
 
 .. code-block:: python
 
-    import chainerio
+    import pfio
     from PIL import Image
     import io
 
-    chainerio.set_root('hdfs://name-service-cluster1/')
+    pfio.set_root('hdfs://name-service-cluster1/')
 
-    with chainerio.open_as_container('some/many-files-dataset.zip') as container:
+    with pfio.open_as_container('some/many-files-dataset.zip') as container:
         print(container.info())
         # List all keys in the container
         for name in container.list(recursive=True):
@@ -179,17 +179,17 @@ Containers can be also a root context with ``set_root`` method:
 
 .. code-block:: python
 
-    import chainerio
-    root_container = chainerio.open_as_container('some/important/container.zip')
+    import pfio
+    root_container = pfio.open_as_container('some/important/container.zip')
     # Same as fs.set_root('some/important/container.zip')
-    chainerio.set_root(root_container)
+    pfio.set_root(root_container)
 
     # Opens a file contained in ``some/important/container.zip``
-    with chainerio.open('some/file.jpg', 'rb') as fp:
+    with pfio.open('some/file.jpg', 'rb') as fp:
         ...
 
     # Iterates over names that matches the prefix
-    for name chainerio.list('some/'):
+    for name pfio.list('some/'):
         ...
 
 File-like Objects
@@ -241,7 +241,7 @@ segments separated by ``/`` and path segments are recommended to only
 use ``[a-z][A-Z][0-9][_-]`` . However, details depend on underlying filesystem
 implementation or containers.
 
-``chainerio.open_as_container`` and ``chainerio.fs.open`` take
+``pfio.open_as_container`` and ``pfio.fs.open`` take
 ``filesystem``, ``uri`` or ``path`` as an argument to identify the
 file to be opened, when the context is a filesystem.  If the context
 is a container, they accept a key as an argument.
@@ -257,39 +257,39 @@ derectory is defined as ``/user/smith``:
 
 .. code-block:: python
 
-    import chainerio
+    import pfio
 
     # Using full URI
-    chainerio.open('hdfs://name-service1/user/smith/path/to/file.txt')
+    pfio.open('hdfs://name-service1/user/smith/path/to/file.txt')
 
     # Using set_root and absolute path
-    chainerio.set_root('hdfs://name-service1/')
-    chainerio.open('/user/smith/path/to/file.txt')
+    pfio.set_root('hdfs://name-service1/')
+    pfio.open('/user/smith/path/to/file.txt')
 
     # Using set root and relative path
-    chainerio.set_root('hdfs')
-    chainerio.open('path/to/file.txt')
+    pfio.set_root('hdfs')
+    pfio.open('path/to/file.txt')
 
     # Overwrite the global setting with full URI
     # Access the posix with the global setting to hdfs
-    chainerio.open('file://path/to/file.txt')
+    pfio.open('file://path/to/file.txt')
 
     # Accessing with filesystem object
-    with chainerio.create_handler('hdfs') as handler:
+    with pfio.create_handler('hdfs') as handler:
         handler.open('file.txt')
 
 
 Major Use Cases
 ++++++++++++++++
 
-With all these primitive concepts and operations ChainerIO supports
+With all these primitive concepts and operations PFIO supports
 various use cases from loading training data, taking snapshots of
 models in the middle of training process, and recording the final
 model.
 
 In order to load training data in Chainer, developers create a
 `dataset` class which derived the `DatasetMixin` from the
-`chainer.dataset` package. ChainerIO will provide several
+`chainer.dataset` package. PFIO will provide several
 implementation replacements for generic datasets included in Chainer
 and other Chainer family libraries.
 
@@ -299,7 +299,7 @@ categorized into two different classes.
 
 1. Inputs and outputs using file object: direct access via
    built-in APIs e.g. `Image` class in PIL, `cv2.image.open` and
-   `pandas.read_hdf`.  In such case, the file object (in ChainerIO, it
+   `pandas.read_hdf`.  In such case, the file object (in PFIO, it
    is implementation of `RawIOBase
    <https://docs.python.org/3/library/io.html#raw-i-o>`_ )
 

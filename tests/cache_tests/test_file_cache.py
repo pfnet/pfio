@@ -1,4 +1,4 @@
-from chainerio.cache import FileCache
+from pfio.cache import FileCache
 import os
 import tempfile
 

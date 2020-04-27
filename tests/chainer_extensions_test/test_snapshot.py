@@ -4,7 +4,7 @@ import shutil
 import tempfile
 import unittest
 
-import chainerio
+import pfio
 
 try:
     import chainer
@@ -13,21 +13,21 @@ try:
     chainer_available = True
 
     # They depend on Chainer
-    from chainerio.chainer_extensions.snapshot_writers import SimpleWriter
-    from chainerio.chainer_extensions import load_snapshot
+    from pfio.chainer_extensions.snapshot_writers import SimpleWriter
+    from pfio.chainer_extensions import load_snapshot
 except Exception:
     chainer_available = False
 
 
 @unittest.skipIf(not chainer_available, "Chainer is not available")
 def test_scan_directory():
-    from chainerio.chainer_extensions.snapshot import _scan_directory
+    from pfio.chainer_extensions.snapshot import _scan_directory
     with tempfile.TemporaryDirectory() as td:
         files = ['tmpfoobar_10', 'foobar_10', 'foobar_123', 'tmpfoobar_10234']
         for file in files:
             pathlib.Path(os.path.join(td, file)).touch()
 
-        latest = _scan_directory(chainerio, td)
+        latest = _scan_directory(pfio, td)
         assert latest is not None
         assert 'foobar_123' == latest
 
@@ -55,8 +55,8 @@ def test_snapshot_hdfs():
     trainer.out = '.'
     trainer._done = True
 
-    with chainerio.create_handler('hdfs') as fs:
-        tmpdir = "some-chainerio-tmp-dir"
+    with pfio.create_handler('hdfs') as fs:
+        tmpdir = "some-pfio-tmp-dir"
         fs.makedirs(tmpdir, exist_ok=True)
         file_list = list(fs.list(tmpdir))
         assert len(file_list) == 0

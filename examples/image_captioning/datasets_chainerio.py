@@ -8,9 +8,9 @@ from pycocotools.coco import COCO
 from chainer import dataset
 from chainer.dataset.convert import to_device
 
-# CHAINERIO import
-import chainerio
-# CHAINERIO import end
+# PFIO import
+import pfio
+# PFIO import end
 
 
 # Vocabulary tokens of BOS (beginning of sentence), EOS (end of sentence),
@@ -57,10 +57,10 @@ class MsCocoDataset(dataset.DatasetMixin):
         img_id = ann['image_id']
         img_file_name = self.coco.loadImgs([img_id])[0]['file_name']
 
-        # CHAINERIO load file
+        # PFIO load file
         file_name = os.path.join(self.coco_root, self.coco_data, img_file_name)
-        img = Image.open(chainerio.open(file_name, 'rb'))
-        # CHAINERIO load end
+        img = Image.open(pfio.open(file_name, 'rb'))
+        # PFIO load end
 
         if img.mode == 'RGB':
             img = np.asarray(img, np.float32).transpose(2, 0, 1)

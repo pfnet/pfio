@@ -11,7 +11,7 @@ import chainer.functions as F
 from chainer import initializers
 import chainer.links as L
 
-import babi_chainerio as babi
+import babi_pfio as babi
 
 
 def bow_encode(embed, sentences):

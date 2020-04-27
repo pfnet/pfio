@@ -8,7 +8,7 @@ import chainer
 from chainer import training
 from chainer.training import extensions
 
-from facade_dataset_chainerio import FacadeDataset
+from facade_dataset_pfio import FacadeDataset
 # from facade_dataset import FacadeDataset
 from facade_visualizer import out_image
 

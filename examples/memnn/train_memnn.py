@@ -6,7 +6,7 @@ import collections
 import chainer
 from chainer.training import extensions
 
-import babi_chainerio as babi
+import babi_pfio as babi
 # import babi
 import memnn
 

@@ -1,4 +1,4 @@
-.. module:: chainerio
+.. module:: pfio
 
 API Reference
 =============
@@ -23,9 +23,9 @@ Toplevel Functions
 
 .. autoclass:: IO
    :members:
-.. autoclass:: chainerio.filesystem.FileSystem
+.. autoclass:: pfio.filesystem.FileSystem
    :members:
-.. autoclass:: chainerio.container.Container
+.. autoclass:: pfio.container.Container
    :members:
 
 .. note:: With environment variable
@@ -42,7 +42,7 @@ Toplevel Functions
 Cache API
 ---------
 
-.. currentmodule:: chainerio.cache
+.. currentmodule:: pfio.cache
 
 .. autoclass:: Cache
    :members:
@@ -56,11 +56,11 @@ Cache API
 Chainer Extensions API
 ----------------------
 
-.. currentmodule:: chainerio.chainer_extensions
+.. currentmodule:: pfio.chainer_extensions
 
 .. autofunction:: load_snapshot
 
-.. currentmodule:: chainerio.chainer_extensions.snapshot_writers
+.. currentmodule:: pfio.chainer_extensions.snapshot_writers
 
 .. autoclass:: SimpleWriter
    :members:

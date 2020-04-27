@@ -6,7 +6,7 @@ import pickle
 import tempfile
 
 
-import chainerio
+import pfio
 
 
 class TestPosixHandler(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestPosixHandler(unittest.TestCase):
 
     def test_read_string(self):
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with tempfile.NamedTemporaryFile("w+t", delete=False) as tmpfile:
                 tmpfile_path = tmpfile.name
                 tmpfile.write(self.test_string_str)
@@ -33,7 +33,7 @@ class TestPosixHandler(unittest.TestCase):
 
     def test_read_bytes(self):
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with tempfile.NamedTemporaryFile("w+b", delete=False) as tmpfile:
                 tmpfile_path = tmpfile.name
                 tmpfile.write(self.test_string_bytes)
@@ -49,7 +49,7 @@ class TestPosixHandler(unittest.TestCase):
         if os.path.exists(non_exist_file):
             os.remove(non_exist_file)
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertRaises(IOError, handler.open, non_exist_file)
 
     def test_list(self):
@@ -74,7 +74,7 @@ class TestPosixHandler(unittest.TestCase):
                 nested_dir_relative_path3 = os.path.join(nested_dir_name1,
                                                          nested_dir_name3)
 
-                with chainerio.create_handler(self.fs) as handler:
+                with pfio.create_handler(self.fs) as handler:
                     handler.makedirs(nested_dir_path1)
                     handler.makedirs(nested_dir_path2)
                     handler.makedirs(nested_dir_path3)
@@ -96,17 +96,17 @@ class TestPosixHandler(unittest.TestCase):
                 tmpdir.cleanup()
 
     def test_info(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertIsInstance(handler.info(), str)
 
     def test_isdir(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertTrue(handler.isdir("/"))
             self.assertFalse(handler.isdir("test_posix_handler.py"))
 
     def test_mkdir(self):
         test_dir_name = "testmkdir"
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             handler.mkdir(test_dir_name)
             self.assertTrue(handler.isdir(test_dir_name))
 
@@ -116,7 +116,7 @@ class TestPosixHandler(unittest.TestCase):
         test_dir_name = "testmkdir/"
         nested_dir_name = test_dir_name + "nested_dir"
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             handler.makedirs(nested_dir_name)
             self.assertTrue(handler.isdir(nested_dir_name))
 
@@ -128,7 +128,7 @@ class TestPosixHandler(unittest.TestCase):
         test_data = {'test_elem1': b'balabala',
                      'test_elem2': 'balabala'}
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(pickle_file_name, 'wb') as f:
                 pickle.dump(test_data, f)
             with handler.open(pickle_file_name, 'rb') as f:
@@ -140,13 +140,13 @@ class TestPosixHandler(unittest.TestCase):
     def test_exists(self):
         non_exist_file = "non_exist_file.txt"
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             self.assertTrue(handler.exists(__file__))
             self.assertTrue(handler.exists("/"))
             self.assertFalse(handler.exists(non_exist_file))
 
     def test_rename(self):
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open('src', 'w') as fp:
                 fp.write('foobar')
 
@@ -169,7 +169,7 @@ class TestPosixHandler(unittest.TestCase):
         nested_dir = os.path.join(test_dir, "nested_file/")
         nested_file = os.path.join(nested_dir, test_file)
 
-        with chainerio.create_handler(self.fs) as handler:
+        with pfio.create_handler(self.fs) as handler:
             with handler.open(test_file, 'w') as fp:
                 fp.write('foobar')
 

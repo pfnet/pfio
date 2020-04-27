@@ -2,7 +2,7 @@ import abc
 from abc import abstractmethod
 import six
 
-from chainerio._typing import Optional
+from pfio._typing import Optional
 from typing import Callable
 
 
@@ -59,5 +59,5 @@ class Cache(six.with_metaclass(abc.ABCMeta)):
         return data
 
 
-from chainerio.cache.naive import NaiveCache  # NOQA
-from chainerio.cache.file_cache import FileCache  # NOQA
+from pfio.cache.naive import NaiveCache  # NOQA
+from pfio.cache.file_cache import FileCache  # NOQA
