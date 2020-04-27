@@ -96,8 +96,8 @@ class HdfsFileStat(FileStat):
         self.size = info['size']
         self.owner = info['owner']
         self.group = info['group']
-        self.last_modified = info['last_modified']
-        self.last_accessed = info['last_accessed']
+        self.last_modified = float(info['last_modified'])
+        self.last_accessed = float(info['last_accessed'])
 
 
 class HdfsFileSystem(FileSystem):

@@ -2,12 +2,12 @@ from pfio.container import Container
 from pfio.io import FileStat
 from pfio.io import open_wrapper
 import io
-import datetime
 import logging
 import os
 import sys
 import warnings
 import zipfile
+from datetime import datetime
 
 from pfio._typing import Optional
 from typing import Type, Callable, Any
@@ -19,7 +19,7 @@ logger.addHandler(logging.StreamHandler())
 class ZipFileStat(FileStat):
     def __init__(self, zip_info):
         self.filename = zip_info.filename
-        self.last_modified = datetime.datetime(*zip_info.date_time).timestamp()
+        self.last_modified = float(datetime(*zip_info.date_time).timestamp())
         # https://github.com/python/cpython/blob/3.8/Lib/zipfile.py#L392
         self.mode = zip_info.external_attr >> 16
         self.size = zip_info.file_size

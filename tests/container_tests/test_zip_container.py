@@ -495,7 +495,7 @@ class TestZipHandler(unittest.TestCase):
             self.assertEqual(stat.size, 22)
             self.assertEqual(stat.mode, 0o100664)
             self.assertFalse(stat.isdir())
-            self.assertTrue(stat.last_modified)
+            self.assertIsInstance(stat.last_modified, float)
 
     def test_stat_directory(self):
         test_dir_name = 'testdir2/'
@@ -506,7 +506,7 @@ class TestZipHandler(unittest.TestCase):
             self.assertEqual(stat.size, 0)
             self.assertEqual(stat.mode, 0o40775)
             self.assertTrue(stat.isdir())
-            self.assertTrue(stat.last_modified)
+            self.assertIsInstance(stat.last_modified, float)
 
     @pytest.mark.skipif(sys.version_info < (3, 6),
                         reason="requires python3.6 or higher")

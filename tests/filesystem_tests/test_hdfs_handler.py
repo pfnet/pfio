@@ -224,6 +224,8 @@ class TestHdfsHandler(unittest.TestCase):
             self.assertEqual(stat.size, 6)
             self.assertFalse(stat.isdir())
             self.assertEqual(stat.mode, 0o100644)
+            self.assertIsInstance(stat.last_accessed, float)
+            self.assertIsInstance(stat.last_modified, float)
             self.assertTrue(abs(stat.last_accessed - ts) < timestamp_eps)
             self.assertTrue(abs(stat.last_modified - ts) < timestamp_eps)
 
@@ -242,6 +244,8 @@ class TestHdfsHandler(unittest.TestCase):
             self.assertEqual(stat.size, 0)
             self.assertTrue(stat.isdir())
             self.assertEqual(stat.mode, 0o40755)
+            self.assertIsInstance(stat.last_accessed, float)
+            self.assertIsInstance(stat.last_modified, float)
             self.assertTrue(stat.last_accessed == 0)
             self.assertTrue(abs(stat.last_modified - ts) < timestamp_eps)
 
