@@ -1,7 +1,6 @@
 import unittest
 
 from collections.abc import Iterable
-import datetime
 import os
 import pickle
 import tempfile
@@ -195,44 +194,47 @@ class TestPosixHandler(unittest.TestCase):
             self.assertFalse(handler.exists(nested_file))
 
     def test_stat_file(self):
-        timestamp_eps = 0.1
         test_file_name = "testfile"
         with pfio.create_handler(self.fs) as handler:
-            ts = datetime.datetime.now().timestamp()
             with handler.open(test_file_name, 'w') as fp:
                 fp.write('foobar')
+
+            expected = os.stat(test_file_name)
 
             stat = handler.stat(test_file_name)
             self.assertIsInstance(stat, PosixFileStat)
             self.assertTrue(stat.filename.endswith(test_file_name))
-            self.assertEqual(stat.size, 6)
-            self.assertEqual(stat.mode, 0o100664)
+            self.assertEqual(stat.size, expected.st_size)
+            self.assertEqual(stat.mode, expected.st_mode)
             self.assertFalse(stat.isdir())
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
-            self.assertTrue(abs(stat.created - ts) < timestamp_eps)
-            self.assertTrue(abs(stat.last_accessed - ts) < timestamp_eps)
-            self.assertTrue(abs(stat.last_modified - ts) < timestamp_eps)
+            self.assertIsInstance(stat.created, float)
+            self.assertEqual(stat.last_accessed, expected.st_atime)
+            self.assertEqual(stat.last_modified, expected.st_mtime)
+            self.assertEqual(stat.created, expected.st_ctime)
 
             handler.remove(test_file_name)
 
     def test_stat_directory(self):
-        timestamp_eps = 0.1
         test_dir_name = "testmkdir"
         with pfio.create_handler(self.fs) as handler:
-            ts = datetime.datetime.now().timestamp()
             handler.mkdir(test_dir_name)
+
+            expected = os.stat(test_dir_name)
 
             stat = handler.stat(test_dir_name)
             self.assertIsInstance(stat, PosixFileStat)
             self.assertTrue(stat.filename.endswith(test_dir_name))
-            self.assertEqual(stat.mode, 0o40775)
+            self.assertEqual(stat.size, expected.st_size)
+            self.assertEqual(stat.mode, expected.st_mode)
             self.assertTrue(stat.isdir())
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
-            self.assertTrue(abs(stat.created - ts) < timestamp_eps)
-            self.assertTrue(abs(stat.last_accessed - ts) < timestamp_eps)
-            self.assertTrue(abs(stat.last_modified - ts) < timestamp_eps)
+            self.assertIsInstance(stat.created, float)
+            self.assertEqual(stat.last_accessed, expected.st_atime)
+            self.assertEqual(stat.last_modified, expected.st_mtime)
+            self.assertEqual(stat.created, expected.st_ctime)
 
             handler.remove(test_dir_name)
 

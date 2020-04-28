@@ -12,7 +12,8 @@ import subprocess
 import os
 import getpass
 import tempfile
-import datetime
+
+from pyarrow import hdfs
 
 import pfio
 
@@ -211,43 +212,49 @@ class TestHdfsHandler(unittest.TestCase):
             self.assertFalse(handler.exists(nested_file))
 
     def test_stat_file(self):
-        timestamp_eps = 2.0
         test_file_name = "testfile"
+
         with pfio.create_handler(self.fs) as handler:
-            ts = datetime.datetime.now().timestamp()
             with handler.open(test_file_name, 'w') as fp:
                 fp.write('foobar')
+
+            conn = hdfs.connect()
+            expected = conn.info(test_file_name)
 
             stat = handler.stat(test_file_name)
             self.assertIsInstance(stat, HdfsFileStat)
             self.assertTrue(stat.filename.endswith(test_file_name))
-            self.assertEqual(stat.size, 6)
+            self.assertEqual(stat.size, expected['size'])
             self.assertFalse(stat.isdir())
-            self.assertEqual(stat.mode, 0o100644)
+            self.assertEqual(stat.mode & 0o777, expected['permissions'])
+            self.assertTrue(stat.mode & 0o100000)
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
-            self.assertTrue(abs(stat.last_accessed - ts) < timestamp_eps)
-            self.assertTrue(abs(stat.last_modified - ts) < timestamp_eps)
+            self.assertEqual(stat.last_accessed, expected['last_accessed'])
+            self.assertEqual(stat.last_modified, expected['last_modified'])
 
             handler.remove(test_file_name)
 
     def test_stat_directory(self):
-        timestamp_eps = 2.0
         test_dir_name = "testmkdir"
         with pfio.create_handler(self.fs) as handler:
-            ts = datetime.datetime.now().timestamp()
             handler.mkdir(test_dir_name)
+
+            conn = hdfs.connect()
+            expected = conn.info(test_dir_name)
 
             stat = handler.stat(test_dir_name)
             self.assertIsInstance(stat, HdfsFileStat)
             self.assertTrue(stat.filename.endswith(test_dir_name))
-            self.assertEqual(stat.size, 0)
+            self.assertEqual(stat.size, expected['size'])
             self.assertTrue(stat.isdir())
-            self.assertEqual(stat.mode, 0o40755)
+            self.assertEqual(stat.mode & 0o777, expected['permissions'])
+            self.assertTrue(stat.mode & 0o40000)
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
             self.assertTrue(stat.last_accessed == 0)
-            self.assertTrue(abs(stat.last_modified - ts) < timestamp_eps)
+            self.assertEqual(stat.last_accessed, expected['last_accessed'])
+            self.assertEqual(stat.last_modified, expected['last_modified'])
 
             handler.remove(test_dir_name)
 

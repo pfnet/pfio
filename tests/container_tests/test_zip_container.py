@@ -13,6 +13,7 @@ import string
 import sys
 import tempfile
 from zipfile import ZipFile
+from datetime import datetime
 import subprocess
 from parameterized import parameterized
 
@@ -488,25 +489,35 @@ class TestZipHandler(unittest.TestCase):
 
     def test_stat_file(self):
         test_file_name = 'testdir2/testfile1'
+        expected = ZipFile(self.zip_file_path).getinfo(test_file_name)
+
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             stat = handler.stat(test_file_name)
             self.assertIsInstance(stat, pfio.containers.zip.ZipFileStat)
             self.assertTrue(stat.filename.endswith(test_file_name))
-            self.assertEqual(stat.size, 22)
-            self.assertEqual(stat.mode, 0o100664)
+            self.assertEqual(stat.size, expected.file_size)
+            self.assertEqual(stat.mode, expected.external_attr >> 16)
             self.assertFalse(stat.isdir())
+
+            expected_mtime = datetime(*expected.date_time).timestamp()
             self.assertIsInstance(stat.last_modified, float)
+            self.assertEqual(stat.last_modified, expected_mtime)
 
     def test_stat_directory(self):
         test_dir_name = 'testdir2/'
+        expected = ZipFile(self.zip_file_path).getinfo(test_dir_name)
+
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             stat = handler.stat(test_dir_name)
             self.assertIsInstance(stat, pfio.containers.zip.ZipFileStat)
             self.assertTrue(stat.filename.endswith(test_dir_name))
-            self.assertEqual(stat.size, 0)
-            self.assertEqual(stat.mode, 0o40775)
+            self.assertEqual(stat.size, expected.file_size)
+            self.assertEqual(stat.mode, expected.external_attr >> 16)
             self.assertTrue(stat.isdir())
+
+            expected_mtime = datetime(*expected.date_time).timestamp()
             self.assertIsInstance(stat.last_modified, float)
+            self.assertEqual(stat.last_modified, expected_mtime)
 
     @pytest.mark.skipif(sys.version_info < (3, 6),
                         reason="requires python3.6 or higher")
