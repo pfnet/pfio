@@ -20,25 +20,37 @@ class ZipFileStat(FileStat):
     """Detailed information of a file in a Zip
 
     Attributes:
-        filename (str): Derived from `~FileStat`
+        filename (str): Derived from `~FileStat`.
+        orig_filename (str): ``ZipFile.orig_filename``.
+        comment (str): ``ZipFile.comment``.
         last_modifled (float): Derived from `~FileStat`.
             No sub-second precision.
-        mode (int): Derived from `~FileStat`
-        size (int): Derived from `~FileStat`
-        compress_size (int): Compressed file size in the Zip (bytes).
-        compress_type (int): Compression type.
-            Possible values are defined in zipfile module.
+        mode (int): Derived from `~FileStat`.
+        size (int): Derived from `~FileStat`.
+        create_system (int): ``ZipFile.create_system``.
+        create_version (int): ``ZipFile.create_version``.
+        extract_version (int): ``ZipFile.extract_version``.
+        flag_bits (int): ``ZipFile.flag_bits``.
+        volume (int): ``ZipFile.volume``.
+        internal_attr (int): ``ZipFile.internal_attr``.
+        external_attr (int): ``ZipFile.external_attr``.
+        header_offset (int): ``ZipFile.header_offset``.
+        compress_size (int): ``ZipFile.compress_size``.
+        compress_type (int): ``ZipFile.compress_type``.
+        CRC (int): ``ZipFile.CRC``.
     """
 
     def __init__(self, zip_info):
-        self.filename = zip_info.filename
         self.last_modified = float(datetime(*zip_info.date_time).timestamp())
         # https://github.com/python/cpython/blob/3.8/Lib/zipfile.py#L392
         self.mode = zip_info.external_attr >> 16
         self.size = zip_info.file_size
-        self.compress_size = zip_info.compress_size
-        self.compress_type = zip_info.compress_type
-        self.CRC = zip_info.CRC
+
+        for k in ('filename', 'orig_filename', 'comment', 'create_system',
+                  'create_version', 'extract_version', 'flag_bits',
+                  'volume', 'internal_attr', 'external_attr', 'CRC',
+                  'header_offset', 'compress_size', 'compress_type'):
+            setattr(self, k, getattr(zip_info, k))
 
 
 class ZipContainer(Container):

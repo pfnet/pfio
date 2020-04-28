@@ -204,15 +204,20 @@ class TestPosixHandler(unittest.TestCase):
             stat = handler.stat(test_file_name)
             self.assertIsInstance(stat, PosixFileStat)
             self.assertTrue(stat.filename.endswith(test_file_name))
-            self.assertEqual(stat.size, expected.st_size)
-            self.assertEqual(stat.mode, expected.st_mode)
             self.assertFalse(stat.isdir())
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
             self.assertIsInstance(stat.created, float)
-            self.assertEqual(stat.last_accessed, expected.st_atime)
-            self.assertEqual(stat.last_modified, expected.st_mtime)
-            self.assertEqual(stat.created, expected.st_ctime)
+            keys = (('last_modified', 'st_mtime'),
+                    ('last_accessed', 'st_atime'),
+                    ('last_modified_ns', 'st_mtime_ns'),
+                    ('last_accessed_ns', 'st_atime_ns'),
+                    ('created', 'st_ctime'), ('created_ns', 'st_ctime_ns'),
+                    ('mode', 'st_mode'), ('size', 'st_size'),
+                    ('uid', 'st_uid'), ('gid', 'st_gid'), ('ino', 'st_ino'),
+                    ('dev', 'st_dev'), ('nlink', 'st_nlink'))
+            for k, kexpect in keys:
+                self.assertEqual(getattr(stat, k), getattr(expected, kexpect))
 
             handler.remove(test_file_name)
 
@@ -226,15 +231,20 @@ class TestPosixHandler(unittest.TestCase):
             stat = handler.stat(test_dir_name)
             self.assertIsInstance(stat, PosixFileStat)
             self.assertTrue(stat.filename.endswith(test_dir_name))
-            self.assertEqual(stat.size, expected.st_size)
-            self.assertEqual(stat.mode, expected.st_mode)
             self.assertTrue(stat.isdir())
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
             self.assertIsInstance(stat.created, float)
-            self.assertEqual(stat.last_accessed, expected.st_atime)
-            self.assertEqual(stat.last_modified, expected.st_mtime)
-            self.assertEqual(stat.created, expected.st_ctime)
+            keys = (('last_modified', 'st_mtime'),
+                    ('last_accessed', 'st_atime'),
+                    ('last_modified_ns', 'st_mtime_ns'),
+                    ('last_accessed_ns', 'st_atime_ns'),
+                    ('created', 'st_ctime'), ('created_ns', 'st_ctime_ns'),
+                    ('mode', 'st_mode'), ('size', 'st_size'),
+                    ('uid', 'st_uid'), ('gid', 'st_gid'), ('ino', 'st_ino'),
+                    ('dev', 'st_dev'), ('nlink', 'st_nlink'))
+            for k, kexpect in keys:
+                self.assertEqual(getattr(stat, k), getattr(expected, kexpect))
 
             handler.remove(test_dir_name)
 

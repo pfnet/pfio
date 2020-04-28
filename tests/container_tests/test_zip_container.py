@@ -503,6 +503,12 @@ class TestZipHandler(unittest.TestCase):
             self.assertIsInstance(stat.last_modified, float)
             self.assertEqual(stat.last_modified, expected_mtime)
 
+            for k in ('filename', 'orig_filename', 'comment', 'create_system',
+                      'create_version', 'extract_version', 'flag_bits',
+                      'volume', 'internal_attr', 'external_attr', 'CRC',
+                      'header_offset', 'compress_size', 'compress_type'):
+                self.assertEqual(getattr(stat, k), getattr(expected, k))
+
     def test_stat_directory(self):
         test_dir_name = 'testdir2/'
         expected = ZipFile(self.zip_file_path).getinfo(test_dir_name)
@@ -518,6 +524,12 @@ class TestZipHandler(unittest.TestCase):
             expected_mtime = datetime(*expected.date_time).timestamp()
             self.assertIsInstance(stat.last_modified, float)
             self.assertEqual(stat.last_modified, expected_mtime)
+
+            for k in ('filename', 'orig_filename', 'comment', 'create_system',
+                      'create_version', 'extract_version', 'flag_bits',
+                      'volume', 'internal_attr', 'external_attr', 'CRC',
+                      'header_offset', 'compress_size', 'compress_type'):
+                self.assertEqual(getattr(stat, k), getattr(expected, k))
 
     @pytest.mark.skipif(sys.version_info < (3, 6),
                         reason="requires python3.6 or higher")

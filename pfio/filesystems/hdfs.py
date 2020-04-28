@@ -87,16 +87,19 @@ class HdfsFileStat(FileStat):
     """Detailed information of a file in HDFS
 
     Attributes:
-        filename (str): Derived from `~FileStat`
+        filename (str): Derived from `~FileStat`.
         last_modifled (float): Derived from `~FileStat`.
             No sub-second precision.
         last_accessed (float): UNIX timestamp of last access time.
             No sub-second precision.
-        mode (int): Derived from `~FileStat`
-        size (int): Derived from `~FileStat`
+        mode (int): Derived from `~FileStat`.
+        size (int): Derived from `~FileStat`.
         owner (str): Owner of the file. Unlike `~PosixFileStat.owner`,
             this is a user name string instead of an integer.
         group (str): Group of the file in string.
+        replication (int): Number of replications of the file in HDFS.
+        block_size (int): Block size in bytes.
+        kind (str): Group of the file in string.
     """
 
     def __init__(self, info):
@@ -108,11 +111,11 @@ class HdfsFileStat(FileStat):
 
         self.filename = info['path']
         self.mode = mode
-        self.size = info['size']
-        self.owner = info['owner']
-        self.group = info['group']
         self.last_modified = float(info['last_modified'])
         self.last_accessed = float(info['last_accessed'])
+        for k in ('size', 'owner', 'group', 'replication',
+                  'block_size', 'kind'):
+            setattr(self, k, info[k])
 
 
 class HdfsFileSystem(FileSystem):

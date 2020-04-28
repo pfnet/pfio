@@ -224,14 +224,14 @@ class TestHdfsHandler(unittest.TestCase):
             stat = handler.stat(test_file_name)
             self.assertIsInstance(stat, HdfsFileStat)
             self.assertTrue(stat.filename.endswith(test_file_name))
-            self.assertEqual(stat.size, expected['size'])
             self.assertFalse(stat.isdir())
             self.assertEqual(stat.mode & 0o777, expected['permissions'])
             self.assertTrue(stat.mode & 0o100000)
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
-            self.assertEqual(stat.last_accessed, expected['last_accessed'])
-            self.assertEqual(stat.last_modified, expected['last_modified'])
+            for k in ('size', 'owner', 'group', 'replication',
+                      'block_size', 'kind', 'last_accessed', 'last_modified'):
+                self.assertEqual(getattr(stat, k), expected[k])
 
             handler.remove(test_file_name)
 
@@ -246,15 +246,14 @@ class TestHdfsHandler(unittest.TestCase):
             stat = handler.stat(test_dir_name)
             self.assertIsInstance(stat, HdfsFileStat)
             self.assertTrue(stat.filename.endswith(test_dir_name))
-            self.assertEqual(stat.size, expected['size'])
             self.assertTrue(stat.isdir())
             self.assertEqual(stat.mode & 0o777, expected['permissions'])
             self.assertTrue(stat.mode & 0o40000)
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
-            self.assertTrue(stat.last_accessed == 0)
-            self.assertEqual(stat.last_accessed, expected['last_accessed'])
-            self.assertEqual(stat.last_modified, expected['last_modified'])
+            for k in ('size', 'owner', 'group', 'replication',
+                      'block_size', 'kind', 'last_accessed', 'last_modified'):
+                self.assertEqual(getattr(stat, k), expected[k])
 
             handler.remove(test_dir_name)
 
