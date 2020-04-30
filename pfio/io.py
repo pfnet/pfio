@@ -30,20 +30,20 @@ class FileStat(abc.ABC):
 
     `stat` of filesystem/container handlers return an object of
     subclass of `FileStat`.
-    In addition to the common attribute that the `FileStat` abstract provides,
+    In addition to the common attributes that the `FileStat` abstract provides,
     each `FileStat` subclass implements some additional attributes depending on
     what information the corresponding filesystem or container can handle.
-    The common attributes behave almost the same in spite of filesystem or
+    The common attributes have the same behavior despite filesystem or
     container type difference.
 
     Attributes:
         filename (str): Filename in the filesystem or container.
-        last_modifled (float): UNIX timestamp of mtime. Note that some of
-            filesystems do not have sub-second precision.
+        last_modifled (float): UNIX timestamp of mtime. Note that some
+            filesystems or containers do not have sub-second precision.
         mode (int): Permission with file type flag (regular file or directory).
-            You can make human-readable interpretation by `stat.filemode`.
-        size (int): Size in bytes. Note that directory may have different size
-            depending on filesystem type.
+            You can make a human-readable interpretation by `stat.filemode`.
+        size (int): Size in bytes. Note that directories may have different
+            sizes depending on the filesystem or container type.
     """
     filename = None
     last_modified = None
@@ -51,7 +51,7 @@ class FileStat(abc.ABC):
     size = None
 
     def isdir(self):
-        """Distinguish whether the target is directory, based on the permission flag
+        """Returns whether the target is a directory, based on the permission flag
 
         Returns:
             `True` if directory, `False` otherwise.

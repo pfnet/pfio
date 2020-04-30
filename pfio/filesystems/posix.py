@@ -9,7 +9,7 @@ import shutil
 class PosixFileStat(FileStat):
     """Detailed information of a POSIX file
 
-    The information of file/directory is obtained through `os.stat`.
+    The information of file/directory is obtained through the `os.stat`.
 
     Attributes:
         filename (str): Derived from `~FileStat`.
