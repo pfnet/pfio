@@ -28,23 +28,29 @@ def open_wrapper(func):
 class FileStat(abc.ABC):
     """Detailed file or directory information abstraction
 
-    `stat` of filesystem/container handlers return an object of
-    subclass of `FileStat`.
-    In addition to the common attributes that the `FileStat` abstract provides,
-    each `FileStat` subclass implements some additional attributes depending on
-    what information the corresponding filesystem or container can handle.
+    :meth:`pfio.IO.stat` of filesystem/container handlers return an object of
+    subclass of ``FileStat``.
+    In addition to the common attributes that the ``FileStat`` abstract
+    provides, each ``FileStat`` subclass implements some additional
+    attributes depending on what information the corresponding filesystem or
+    container can handle.
     The common attributes have the same behavior despite filesystem or
     container type difference.
 
     Attributes:
-        filename (str): Filename in the filesystem or container.
-        last_modifled (float): UNIX timestamp of mtime. Note that some
+        filename (str):
+            Filename in the filesystem or container.
+        last_modifled (float):
+            UNIX timestamp of mtime. Note that some
             filesystems or containers do not have sub-second precision.
-        mode (int): Permission with file type flag (regular file or directory).
-            You can make a human-readable interpretation by `stat.filemode`.
-        size (int): Size in bytes. Note that directories may have different
+        mode (int):
+            Permission with file type flag (regular file or directory).
+            You can make a human-readable interpretation by
+            `stat.filemode <https://docs.python.org/3/library/stat.html#stat.filemode>`_.
+        size (int):
+            Size in bytes. Note that directories may have different
             sizes depending on the filesystem or container type.
-    """
+    """     # NOQA
     filename = None
     last_modified = None
     mode = None
@@ -176,14 +182,14 @@ class IO(abc.ABC):
     def stat(self, path: str) -> FileStat:
         """Show details of a file
 
-        It returns an object of subclass of `~FileStat`
+        It returns an object of subclass of :class:`pfio.io.FileStat`
         in accordance with filesystem or container type.
 
         Args:
             path (str): The path to file
 
         Returns:
-            `~FileStat` object.
+            :class:`pfio.io.FileStat` object.
         """
         raise NotImplementedError()
 
