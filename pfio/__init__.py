@@ -157,7 +157,7 @@ def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
                 according to the scheme.
                 See :func:`create_handler` for supported scheme.
 
-            2. an uri of directory (string): set the context
+            2. a uri of directory (string): set the context
                 to use the corresponding handler and set
                 the root path to the given directory.
 
