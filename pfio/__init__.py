@@ -15,7 +15,7 @@ def open_as_container(path: str) -> IO:
        Call the corresponding :func:`IO.open_as_container` upon the
        default handler.
 
-       The ``path`` can be a POSIX path or an URI.
+       The ``path`` can be a POSIX path or a URI.
 
     """
     global _DEFAULT_CONTEXT
@@ -30,7 +30,7 @@ def list(path_or_prefix: Optional[str] = None,
 
        Call the corresponding :func:`IO.list` upon the default handler.
 
-       The ``path`` can be a POSIX path or an URI.
+       The ``path`` can be a POSIX path or a URI.
 
     """
 
@@ -73,7 +73,7 @@ def open(file_path: str, mode: str = 'rb',
     If a POSIX path is given, the method use the default handler,
     and identifies the file from root path.
     See :func:`set_root` for details about root path and default handler.
-    If an URI is given, right filesystem handler is automatically chosen
+    If a URI is given, right filesystem handler is automatically chosen
     by the library, according to the scheme included in the URI.
 
     """
@@ -91,7 +91,7 @@ def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
 
     The context here refers to the default handler and the root path.
     The default handler points to a filesystem or a container which
-    PFIO uses when called without an URI.
+    PFIO uses when called without a URI.
     Handlers can be created by :func:`create_handlen` with
     the name of scheme. See the case 3 in the following example.
 
@@ -157,7 +157,7 @@ def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
                 according to the scheme.
                 See :func:`create_handler` for supported scheme.
 
-            2. an uri of directory (string): set the context
+            2. a uri of directory (string): set the context
                 to use the corresponding handler and set
                 the root path to the given directory.
 
@@ -208,7 +208,7 @@ def isdir(path: str) -> bool:
 
     Call the corresponding :func:`IO.isdir` upon the default handler.
 
-    The ``path`` can be a POSIX path or an URI.
+    The ``path`` can be a POSIX path or a URI.
     """
     global _DEFAULT_CONTEXT
     default_context = _DEFAULT_CONTEXT
@@ -224,7 +224,7 @@ def mkdir(path: str, mode: int = 0o777, *,
 
     Call the corresponding :func:`IO.mkdir` upon the default handler.
 
-    The ``path`` can be a POSIX path or an URI.
+    The ``path`` can be a POSIX path or a URI.
 
     """
     global _DEFAULT_CONTEXT
@@ -241,7 +241,7 @@ def makedirs(path: str, mode: int = 0o777,
 
     Call the corresponding :func:`IO.makedirs` upon the default handler.
 
-    The ``path`` can be a POSIX path or an URI.
+    The ``path`` can be a POSIX path or a URI.
 
     """
     global _DEFAULT_CONTEXT
@@ -257,7 +257,7 @@ def exists(path: str) -> bool:
 
     Call the corresponding :func:`IO.exists` upon the default handler.
 
-    The ``path`` can be a POSIX path or an URI. or URIs.
+    The ``path`` can be a POSIX path or a URI. or URIs.
 
     """
     global _DEFAULT_CONTEXT
@@ -299,7 +299,7 @@ def remove(path: str, recursive: bool = False) -> None:
     Args:
         path (str): the target path to remove. The ``path`` can be a
         regular file or a directory.
-        The ``path`` can be a POSIX file path or an URI.
+        The ``path`` can be a POSIX file path or a URI.
 
         recursive (bool): When the given path is a directory,
             all the files and directories under it will be removed.

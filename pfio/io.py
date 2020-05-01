@@ -263,7 +263,7 @@ class IO(abc.ABC):
 
         Args:
             path (str): the ``path`` to the target file. The ``path`` can be a
-            POSIX path or an URI.
+            POSIX path or a URI.
 
         Returns:
             ``True`` when the file or directory exists,
