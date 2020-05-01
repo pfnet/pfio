@@ -5,12 +5,15 @@ from pfio.filesystems.hdfs import _parse_principal_name_from_klist
 from pfio.filesystems.hdfs import _parse_principal_name_from_keytab
 from pfio.filesystems.hdfs import _get_principal_name_from_klist
 from pfio.filesystems.hdfs import HdfsFileSystem
+from pfio.filesystems.hdfs import HdfsFileStat
 import pickle
 import shutil
 import subprocess
 import os
 import getpass
 import tempfile
+
+from pyarrow import hdfs
 
 import pfio
 
@@ -208,10 +211,51 @@ class TestHdfsHandler(unittest.TestCase):
             self.assertFalse(handler.exists(nested_dir))
             self.assertFalse(handler.exists(nested_file))
 
-    def test_stat(self):
-        # pass for now
-        # TODO(tianqi) add test after we well defined the stat
-        pass
+    def test_stat_file(self):
+        test_file_name = "testfile"
+
+        with pfio.create_handler(self.fs) as handler:
+            with handler.open(test_file_name, 'w') as fp:
+                fp.write('foobar')
+
+            conn = hdfs.connect()
+            expected = conn.info(test_file_name)
+
+            stat = handler.stat(test_file_name)
+            self.assertIsInstance(stat, HdfsFileStat)
+            self.assertTrue(stat.filename.endswith(test_file_name))
+            self.assertFalse(stat.isdir())
+            self.assertEqual(stat.mode & 0o777, expected['permissions'])
+            self.assertTrue(stat.mode & 0o100000)
+            self.assertIsInstance(stat.last_accessed, float)
+            self.assertIsInstance(stat.last_modified, float)
+            for k in ('size', 'owner', 'group', 'replication',
+                      'block_size', 'kind', 'last_accessed', 'last_modified'):
+                self.assertEqual(getattr(stat, k), expected[k])
+
+            handler.remove(test_file_name)
+
+    def test_stat_directory(self):
+        test_dir_name = "testmkdir"
+        with pfio.create_handler(self.fs) as handler:
+            handler.mkdir(test_dir_name)
+
+            conn = hdfs.connect()
+            expected = conn.info(test_dir_name)
+
+            stat = handler.stat(test_dir_name)
+            self.assertIsInstance(stat, HdfsFileStat)
+            self.assertTrue(stat.filename.endswith(test_dir_name))
+            self.assertTrue(stat.isdir())
+            self.assertEqual(stat.mode & 0o777, expected['permissions'])
+            self.assertTrue(stat.mode & 0o40000)
+            self.assertIsInstance(stat.last_accessed, float)
+            self.assertIsInstance(stat.last_modified, float)
+            for k in ('size', 'owner', 'group', 'replication',
+                      'block_size', 'kind', 'last_accessed', 'last_modified'):
+                self.assertEqual(getattr(stat, k), expected[k])
+
+            handler.remove(test_dir_name)
 
 
 @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")

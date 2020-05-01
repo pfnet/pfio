@@ -1,8 +1,46 @@
 from pfio.filesystem import FileSystem
+from pfio.io import FileStat
 from pfio.io import open_wrapper
 import io
 import os
 import shutil
+
+
+class PosixFileStat(FileStat):
+    """Detailed information of a POSIX file
+
+    The information of file/directory is obtained through the `os.stat`.
+
+    Attributes:
+        filename (str): Derived from `~FileStat`.
+        last_modified (float): Derived from `~FileStat`.
+            ``os.stat_result.st_mtime``.
+        last_accessed (float): ``os.stat_result.st_atime``.
+        created (float): ``os.stat_result.st_ctime``.
+        last_modified_ns (int): ``os.stat_result.st_mtime_ns``.
+        last_accessed_ns (int): ``os.stat_result.st_atime_ns``.
+        created_ns (float): ``os.stat_result.st_ctime``.
+        mode (int): Derived from `~FileStat`. ``os.stat_result.st_mode``.
+        size (int): Derived from `~FileStat`. ``os.stat_result.st_size``.
+        owner (int): UID of owner in integer.
+        group (int): GID of the file in integer.
+        inode (int): ``os.stat_result.st_ino``.
+        device (int): ``os.stat_result.st_dev``.
+        nlink (int): ``os.stat_result.st_nlink``.
+    """
+
+    def __init__(self, _stat, filename):
+        keys = (('last_modified', 'st_mtime'),
+                ('last_accessed', 'st_atime'),
+                ('last_modified_ns', 'st_mtime_ns'),
+                ('last_accessed_ns', 'st_atime_ns'),
+                ('created', 'st_ctime'), ('created_ns', 'st_ctime_ns'),
+                ('mode', 'st_mode'), ('size', 'st_size'), ('uid', 'st_uid'),
+                ('gid', 'st_gid'), ('ino', 'st_ino'), ('dev', 'st_dev'),
+                ('nlink', 'st_nlink'))
+        for k, ksrc in keys:
+            setattr(self, k, getattr(_stat, ksrc))
+        self.filename = filename
 
 
 class PosixFileSystem(FileSystem):
@@ -43,7 +81,7 @@ class PosixFileSystem(FileSystem):
                                                 file.path)
 
     def stat(self, path):
-        return os.stat(path)
+        return PosixFileStat(os.stat(path), path)
 
     def close(self):
         pass

@@ -1,4 +1,5 @@
 from pfio.container import Container
+from pfio.io import FileStat
 from pfio.io import open_wrapper
 import io
 import logging
@@ -6,12 +7,50 @@ import os
 import sys
 import warnings
 import zipfile
+from datetime import datetime
 
 from pfio._typing import Optional
 from typing import Type, Callable, Any
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
+
+
+class ZipFileStat(FileStat):
+    """Detailed information of a file in a Zip
+
+    Attributes:
+        filename (str): Derived from `~FileStat`.
+        orig_filename (str): ``ZipFile.orig_filename``.
+        comment (str): ``ZipFile.comment``.
+        last_modifled (float): Derived from `~FileStat`.
+            No sub-second precision.
+        mode (int): Derived from `~FileStat`.
+        size (int): Derived from `~FileStat`.
+        create_system (int): ``ZipFile.create_system``.
+        create_version (int): ``ZipFile.create_version``.
+        extract_version (int): ``ZipFile.extract_version``.
+        flag_bits (int): ``ZipFile.flag_bits``.
+        volume (int): ``ZipFile.volume``.
+        internal_attr (int): ``ZipFile.internal_attr``.
+        external_attr (int): ``ZipFile.external_attr``.
+        header_offset (int): ``ZipFile.header_offset``.
+        compress_size (int): ``ZipFile.compress_size``.
+        compress_type (int): ``ZipFile.compress_type``.
+        CRC (int): ``ZipFile.CRC``.
+    """
+
+    def __init__(self, zip_info):
+        self.last_modified = float(datetime(*zip_info.date_time).timestamp())
+        # https://github.com/python/cpython/blob/3.8/Lib/zipfile.py#L392
+        self.mode = zip_info.external_attr >> 16
+        self.size = zip_info.file_size
+
+        for k in ('filename', 'orig_filename', 'comment', 'create_system',
+                  'create_version', 'extract_version', 'flag_bits',
+                  'volume', 'internal_attr', 'external_attr', 'CRC',
+                  'header_offset', 'compress_size', 'compress_type'):
+            setattr(self, k, getattr(zip_info, k))
 
 
 class ZipContainer(Container):
@@ -128,7 +167,7 @@ class ZipContainer(Container):
             raise FileNotFoundError(
                 "{} is not found".format(path))
 
-        return self.zip_file_obj.getinfo(actual_path)
+        return ZipFileStat(self.zip_file_obj.getinfo(actual_path))
 
     def list(self, path_or_prefix: str = "", recursive=False):
         self._open_zip_file()
@@ -191,13 +230,7 @@ class ZipContainer(Container):
 
     def isdir(self, file_path: str):
         if self.exists(file_path):
-            stat = self.stat(file_path)
-            if sys.version_info >= (3, 6, ):
-                return stat.is_dir()
-            else:
-                # The `is_dir` function under `ZipInfo` object
-                # is not available before Python 3.6.0
-                return "/" == stat.filename[-1]
+            return self.stat(file_path).isdir()
         else:
             file_path = os.path.normpath(file_path)
             # check if directories are NOT included in the zip

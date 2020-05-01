@@ -21,6 +21,9 @@ Toplevel Functions
 .. autofunction:: set_root
 .. autofunction:: get_root_dir
 
+.. autoclass:: pfio.io.FileStat
+   :members:
+
 .. autoclass:: IO
    :members:
 .. autoclass:: pfio.filesystem.FileSystem

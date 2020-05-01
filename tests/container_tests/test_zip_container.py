@@ -1,6 +1,7 @@
 import unittest
 
 import pfio
+
 import io
 import multiprocessing
 import os
@@ -12,6 +13,7 @@ import string
 import sys
 import tempfile
 from zipfile import ZipFile
+from datetime import datetime
 import subprocess
 from parameterized import parameterized
 
@@ -484,6 +486,50 @@ class TestZipHandler(unittest.TestCase):
         with self.fs_handler.open_as_container(self.zip_file_path) as handler:
             with self.assertRaises(FileNotFoundError):
                 handler.stat(path_or_prefix)
+
+    def test_stat_file(self):
+        test_file_name = 'testdir2/testfile1'
+        expected = ZipFile(self.zip_file_path).getinfo(test_file_name)
+
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            stat = handler.stat(test_file_name)
+            self.assertIsInstance(stat, pfio.containers.zip.ZipFileStat)
+            self.assertTrue(stat.filename.endswith(test_file_name))
+            self.assertEqual(stat.size, expected.file_size)
+            self.assertEqual(stat.mode, expected.external_attr >> 16)
+            self.assertFalse(stat.isdir())
+
+            expected_mtime = datetime(*expected.date_time).timestamp()
+            self.assertIsInstance(stat.last_modified, float)
+            self.assertEqual(stat.last_modified, expected_mtime)
+
+            for k in ('filename', 'orig_filename', 'comment', 'create_system',
+                      'create_version', 'extract_version', 'flag_bits',
+                      'volume', 'internal_attr', 'external_attr', 'CRC',
+                      'header_offset', 'compress_size', 'compress_type'):
+                self.assertEqual(getattr(stat, k), getattr(expected, k))
+
+    def test_stat_directory(self):
+        test_dir_name = 'testdir2/'
+        expected = ZipFile(self.zip_file_path).getinfo(test_dir_name)
+
+        with self.fs_handler.open_as_container(self.zip_file_path) as handler:
+            stat = handler.stat(test_dir_name)
+            self.assertIsInstance(stat, pfio.containers.zip.ZipFileStat)
+            self.assertTrue(stat.filename.endswith(test_dir_name))
+            self.assertEqual(stat.size, expected.file_size)
+            self.assertEqual(stat.mode, expected.external_attr >> 16)
+            self.assertTrue(stat.isdir())
+
+            expected_mtime = datetime(*expected.date_time).timestamp()
+            self.assertIsInstance(stat.last_modified, float)
+            self.assertEqual(stat.last_modified, expected_mtime)
+
+            for k in ('filename', 'orig_filename', 'comment', 'create_system',
+                      'create_version', 'extract_version', 'flag_bits',
+                      'volume', 'internal_attr', 'external_attr', 'CRC',
+                      'header_offset', 'compress_size', 'compress_type'):
+                self.assertEqual(getattr(stat, k), getattr(expected, k))
 
     @pytest.mark.skipif(sys.version_info < (3, 6),
                         reason="requires python3.6 or higher")
