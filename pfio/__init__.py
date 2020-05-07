@@ -92,7 +92,7 @@ def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
     The context here refers to the default handler and the root path.
     The default handler points to a filesystem or a container which
     PFIO uses when called without a URI.
-    Handlers can be created by :func:`create_handlen` with
+    Handlers can be created by :func:`create_handler` with
     the name of scheme. See the case 3 in the following example.
 
     Example::
