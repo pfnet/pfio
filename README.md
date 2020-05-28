@@ -19,7 +19,7 @@ learning training with batteries included. It supports
 Installation
 
 ```shell
-$ git clone https://github.com/chainer/pfio.git
+$ git clone https://github.com/pfnet/pfio.git
 $ cd pfio
 $ pip install .
 ```
