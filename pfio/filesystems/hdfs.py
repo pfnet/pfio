@@ -6,6 +6,7 @@ from krbticket import KrbTicket, SingleProcessKrbTicketUpdater
 import subprocess
 import re
 import io
+from io import IOBase
 import logging
 import os
 import getpass

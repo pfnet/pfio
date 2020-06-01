@@ -2,6 +2,7 @@ import abc
 import stat
 from abc import abstractmethod
 from importlib import import_module
+from io import IOBase
 
 from pfio.profiler import IOProfiler
 
