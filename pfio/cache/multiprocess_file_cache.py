@@ -88,7 +88,7 @@ class MultiprocessFileCache(cache.Cache):
         assert 0 <= i < self.length
 
         offset = self.buflen * i
-        index_fd = os.open(self.index_file, os.O_RDONLY)
+        index_fd = os.open(self.index_file, os.O_RDONLY | os.O_NOATIME)
         fcntl.flock(index_fd, fcntl.LOCK_SH)
         buf = os.pread(index_fd, self.buflen, offset)
         (o, l) = unpack('Qq', buf)
@@ -96,7 +96,7 @@ class MultiprocessFileCache(cache.Cache):
             fcntl.flock(index_fd, fcntl.LOCK_UN)
             return None
 
-        data_fd = os.open(self.data_file, os.O_RDONLY)
+        data_fd = os.open(self.data_file, os.O_RDONLY | os.O_NOATIME)
         with os.fdopen(data_fd, 'rb') as f:
             f.seek(o)
             data = f.read(l)
