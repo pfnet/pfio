@@ -1,3 +1,4 @@
+import errno
 import fcntl
 import os
 import tempfile
@@ -34,20 +35,33 @@ class MultiprocessFileCache(cache.Cache):
             self.data_file = data_cache_file
 
         if not index_cache_file:
-            indexfp, self.index_file = tempfile.mkstemp(dir=self.dir)
+            index_fd, self.index_file = tempfile.mkstemp(dir=self.dir)
         else:
             self.index_file = index_cache_file
             flag = os.O_WRONLY | os.O_TRUNC | os.O_CREAT
-            indexfp = os.open(index_cache_file, flag)
+            index_fd = os.open(index_cache_file, flag)
 
-        # Initialize index file with index=0, size=-1
-        buf = pack('Qq', 0, -1)
-        self.buflen = calcsize('Qq')
-        assert self.buflen == 16
-        for i in range(self.length):
-            offset = self.buflen * i
-            r = os.pwrite(indexfp, buf, offset)
-            assert r == self.buflen
+        try:
+            fcntl.flock(index_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+            # Fill up index file by index=0, size=-1
+            buf = pack('Qq', 0, -1)
+            self.buflen = calcsize('Qq')
+            assert self.buflen == 16
+            for i in range(self.length):
+                offset = self.buflen * i
+                r = os.pwrite(index_fd, buf, offset)
+                assert r == self.buflen
+
+            # Clear data file
+            os.close(os.open(self.data_file, os.O_WRONLY | os.O_TRUNC))
+
+            fcntl.flock(index_fd, fcntl.LOCK_UN)
+        except OSError as ose:
+            # Lock acquisition error -> No problem, since other worker
+            # should be already working on it
+            if ose.errno not in (errno.EACCESS, errno.EAGAIN):
+                raise
 
     def get_offsets(self):
         fd = os.open(self.index_file, os.O_RDONLY)
@@ -98,7 +112,7 @@ class MultiprocessFileCache(cache.Cache):
 
         except OSError as ose:
             # Disk full (ENOSPC) possibly by cache; just warn and keep running
-            if ose.errno == 28:
+            if ose.errno == errno.ENOSPC:
                 warnings.warn(ose.strerror, RuntimeWarning)
                 return False
             else:
@@ -149,8 +163,11 @@ class MultiprocessFileCache(cache.Cache):
         if not self.closed:
             self.closed = True
             if self.cleanup:
-                os.unlink(self.data_file)
-                os.unlink(self.index_file)
+                # FIXME: Not atomic
+                if os.path.exists(self.data_file):
+                    os.unlink(self.data_file)
+                if os.path.exists(self.index_file):
+                    os.unlink(self.index_file)
             self.data_file = None
             self.index_file = None
 
