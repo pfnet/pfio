@@ -3,7 +3,7 @@ import os
 import tempfile
 import warnings
 
-from multiprocessing import RawArray, Value
+from struct import pack, unpack, calcsize
 
 from pfio import cache
 from pfio.cache.file_cache import _DEFAULT_CACHE_PATH
@@ -25,9 +25,27 @@ class MultiprocessFileCache(cache.Cache):
         os.makedirs(self.dir, exist_ok=True)
 
         self.closed = False
-        self.offsets = RawArray('i', [-1] * self.length)
-        self.lengths = RawArray('i', [0] * self.length)
         _, self.data_file = tempfile.mkstemp(dir=self.dir)
+        indexfp, self.index_file = tempfile.mkstemp(dir=self.dir)
+
+        # Initialize index file with index=0, size=-1
+        buf = pack('Qq', 0, -1)
+        self.buflen = calcsize('Qq')
+        assert self.buflen == 16
+        for i in range(self.length):
+            offset = self.buflen * i
+            r = os.pwrite(indexfp, buf, offset)
+            assert r == self.buflen
+
+    def get_offsets(self):
+        fd = os.open(self.index_file, os.O_RDONLY)
+        offsets = []
+        for i in range(self.length):
+            offset = self.buflen * i
+            buf = os.pread(fd, self.buflen, offset)
+            (o, l) = unpack('Qq', buf)
+            offsets.append(o)
+        return offsets
 
     def __len__(self):
         return self.length
@@ -41,19 +59,24 @@ class MultiprocessFileCache(cache.Cache):
         return data
 
     def _get(self, i):
-        assert i >= 0 and i < self.length
-        o = self.offsets[i]
-        l = self.lengths[i]
-        if l <= 0 or o < 0:
+        assert 0 <= i < self.length
+
+        offset = self.buflen * i
+        index_fd = os.open(self.index_file, os.O_RDONLY)
+        fcntl.flock(index_fd, fcntl.LOCK_SH)
+        buf = os.pread(index_fd, self.buflen, offset)
+        (o, l) = unpack('Qq', buf)
+        if l < 0 or o < 0:
+            fcntl.flock(index_fd, fcntl.LOCK_UN)
             return None
 
-        with open(self.data_file, 'rb') as f:
-            fcntl.fcntl(f.fileno(), fcntl.LOCK_SH)
+        data_fd = os.open(self.data_file, os.O_RDONLY)
+        with os.fdopen(data_fd, 'rb') as f:
             f.seek(o)
             data = f.read(l)
-            fcntl.fcntl(f.fileno(), fcntl.LOCK_UN)
-            assert len(data) == l
-            return data
+        fcntl.flock(index_fd, fcntl.LOCK_UN)
+        assert len(data) == l
+        return data
 
     def put(self, i, data):
         try:
@@ -72,25 +95,33 @@ class MultiprocessFileCache(cache.Cache):
     def _put(self, i, data):
         if self.closed:
             return
-        assert i >= 0 and i < self.length
+        assert 0 <= i < self.length
 
-        o = self.offsets[i]
-        l = self.lengths[i]
-        if 0 < l or 0 <= o:
+        offset = self.buflen * i
+        index_fd = os.open(self.index_file, os.O_RDWR)
+        fcntl.flock(index_fd, fcntl.LOCK_EX)
+        buf = os.pread(index_fd, self.buflen, offset)
+        (o, l) = unpack('Qq', buf)
+
+        if l >= 0 and o >= 0:
+            # Already data exists
+            fcntl.flock(index_fd, fcntl.LOCK_UN)
             return False
 
-        fd = os.open(self.data_file, os.O_APPEND | os.O_WRONLY)
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        with os.fdopen(fd, 'ab') as f:
+        data_fd = os.open(self.data_file, os.O_APPEND | os.O_WRONLY)
+        with os.fdopen(data_fd, 'ab') as f:
             pos = f.tell()
+
+            # Write the position to the index file
+            buf = pack('Qq', pos, len(data))
+            r = os.pwrite(index_fd, buf, offset)
+            assert r == self.buflen
+
+            # Write the data
             assert f.write(data) == len(data)
-            f.flush()
 
-            self.offsets[i] = pos
-            self.lengths[i] = len(data)
-            fcntl.flock(fd, fcntl.LOCK_UN)
-
-            return True
+        fcntl.flock(index_fd, fcntl.LOCK_UN)
+        return True
 
     def __enter__(self):
         return self
@@ -99,13 +130,14 @@ class MultiprocessFileCache(cache.Cache):
         self.close()
 
     def __del__(self):
+        # https://github.com/python/cpython/blob/3.8/Lib/tempfile.py#L437
         self.close()
 
     def close(self):
         if not self.closed:
             self.closed = True
-            # https://github.com/python/cpython/blob/3.8/Lib/tempfile.py#L437
             os.unlink(self.data_file)
+            os.unlink(self.index_file)
             self.data_file = None
 
     @property
