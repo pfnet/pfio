@@ -1,3 +1,4 @@
+from io import IOBase
 from pfio._context import DefaultContext
 from pfio.version import __version__  # NOQA
 

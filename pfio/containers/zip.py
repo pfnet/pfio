@@ -2,6 +2,7 @@ from pfio.container import Container
 from pfio.io import FileStat
 from pfio.io import open_wrapper
 import io
+from io import IOBase
 import logging
 import os
 import sys
