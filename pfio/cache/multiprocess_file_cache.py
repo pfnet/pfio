@@ -13,7 +13,9 @@ import pickle
 class MultiprocessFileCache(cache.Cache):
 
     def __init__(self, length, do_pickle=False,
-                 dir=None, verbose=False):
+                 dir=None, verbose=False,
+                 index_cache_file=None, data_cache_file=None,
+                 cleanup=True):
         self.length = length
         self.do_pickle = do_pickle
         assert self.length > 0
@@ -24,9 +26,19 @@ class MultiprocessFileCache(cache.Cache):
             self.dir = dir
         os.makedirs(self.dir, exist_ok=True)
 
+        self.cleanup = cleanup
         self.closed = False
-        _, self.data_file = tempfile.mkstemp(dir=self.dir)
-        indexfp, self.index_file = tempfile.mkstemp(dir=self.dir)
+        if not data_cache_file:
+            _, self.data_file = tempfile.mkstemp(dir=self.dir)
+        else:
+            self.data_file = data_cache_file
+
+        if not index_cache_file:
+            indexfp, self.index_file = tempfile.mkstemp(dir=self.dir)
+        else:
+            self.index_file = index_cache_file
+            flag = os.O_WRONLY | os.O_TRUNC | os.O_CREAT
+            indexfp = os.open(index_cache_file, flag)
 
         # Initialize index file with index=0, size=-1
         buf = pack('Qq', 0, -1)
@@ -136,9 +148,11 @@ class MultiprocessFileCache(cache.Cache):
     def close(self):
         if not self.closed:
             self.closed = True
-            os.unlink(self.data_file)
-            os.unlink(self.index_file)
+            if self.cleanup:
+                os.unlink(self.data_file)
+                os.unlink(self.index_file)
             self.data_file = None
+            self.index_file = None
 
     @property
     def multiprocess_safe(self) -> bool:
