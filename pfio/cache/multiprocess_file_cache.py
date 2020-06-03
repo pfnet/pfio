@@ -156,18 +156,22 @@ class MultiprocessFileCache(cache.Cache):
         self.close()
 
     def __del__(self):
-        # https://github.com/python/cpython/blob/3.8/Lib/tempfile.py#L437
         self.close()
+
+    def _deleter(self, fn, unlink=os.unlink):
+        # https://github.com/python/cpython/blob/3.8/Lib/tempfile.py#L430-L437
+        try:
+            unlink(fn)
+        except FileNotFoundError:
+            # Other worker may have already deleted it
+            pass
 
     def close(self):
         if not self.closed:
             self.closed = True
             if self.cleanup:
-                # FIXME: Not atomic
-                if os.path.exists(self.data_file):
-                    os.unlink(self.data_file)
-                if os.path.exists(self.index_file):
-                    os.unlink(self.index_file)
+                self._deleter(self.data_file)
+                self._deleter(self.index_file)
             self.data_file = None
             self.index_file = None
 
