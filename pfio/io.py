@@ -317,7 +317,7 @@ class IO(abc.ABC):
 
         This function opens a container, e.g. zip, instead of a regular file.
         For more details about the container, please refer to the `design \
-                <https://github.com/chainer/pfio/blob/master/docs/\
+                <https://github.com/pfnet/pfio/blob/master/docs/\
                 source/design.rst#containers>`_
 
         Works when the current handler is also a container: nested container.

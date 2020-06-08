@@ -181,7 +181,7 @@ def create_handler(scheme: str) -> IO:
     1. posix
     2. hdfs
 
-    See `scheme <https://github.com/chainer/pfio/blob/master/\
+    See `scheme <https://github.com/pfnet/pfio/blob/master/\
             docs/source/design.rst#uri-expression-of-file-paths>`_
     for more details.
 

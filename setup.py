@@ -29,7 +29,7 @@ setup(
     description='PFN IO library',
     author='Tianqi Xu, Kota Uenishi',
     author_email='tianqi@preferred.jp, kota@preferred.jp',
-    url='http://github.com/chainer/pfio',
+    url='http://github.com/pfnet/pfio',
     classifiers=[
         'Development Status :: 3 - Alpha',
 
