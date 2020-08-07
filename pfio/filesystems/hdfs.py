@@ -1,7 +1,6 @@
 from pfio.filesystem import FileSystem
 from pfio.io import FileStat
 from pfio.io import open_wrapper
-from krbticket import KrbTicket, SingleProcessKrbTicketUpdater
 
 import subprocess
 import re
@@ -150,14 +149,6 @@ class HdfsFileSystem(FileSystem):
     def _create_connection(self):
         if None is self.connection:
             logger.debug('creating connection')
-
-            # Updater automatically let kinit take ``KRB5_KTNAME``
-            # variable. If /etc/krb5.keytab doesn't exist, krbticket
-            # tries to update the ticket with ``kinit -R`` as much as
-            # possible.
-            self.ticket = KrbTicket.get_or_init(
-                self.username, updater_class=SingleProcessKrbTicketUpdater)
-            self.ticket.updater_start()
 
             connection = hdfs.connect()
             assert connection is not None
