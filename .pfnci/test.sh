@@ -5,7 +5,7 @@ source /root/.bash_docker
 pyenv global 3.5.2 3.6.8 3.7.2
 tox && :
 tox_status=$?
-pip install .[doc]
+pip install .[doc] --no-cache-dir
 cd docs && make html && :
 sphinx_status=$?
 echo "tox_status=${tox_status}"
