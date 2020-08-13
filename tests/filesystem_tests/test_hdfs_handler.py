@@ -123,7 +123,7 @@ class TestHdfsHandler(unittest.TestCase):
     def test_get_principal_name_from_klist(self):
         username = 'fake_user!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
         service = 'fake_service!\"#$%&\'()*+,-./:;<=>?[\\]^ _`{|}~'
-        correct_out = 'Ticket cache: FILE:/tmp/krb5cc_sdfa\nDefault principal: {}@{}\nValid starting       Expires              Service principal\n10/01/2019 12:44:18  10/08/2019 12:44:14   krbtgt/service@service\nrenew until 10/22/2019 15:04:20'.format(username, service) # NOQA
+        correct_out = 'Ticket cache: FILE:/tmp/krb5cc_sdfa\nDefault principal: {}@{}\nValid starting       Expires              Service principal\n10/01/2019 12:44:18  10/08/2019 12:44:14   krbtgt/service@service\nrenew until 10/22/2019 15:04:20'.format(username, service)  # NOQA
         self.assertEqual(username,
                          _parse_principal_name_from_klist(correct_out))
 
