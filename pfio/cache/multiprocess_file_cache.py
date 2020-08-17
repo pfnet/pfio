@@ -25,12 +25,14 @@ class _NoOpenNamedTemporaryFile(object):
 
     # Set here since __del__ checks it
     name = None
+    master_pid = None
 
-    def __init__(self, dir):
+    def __init__(self, dir, master_pid):
         _, self.name = tempfile.mkstemp(dir=dir)
+        self.master_pid = master_pid
 
-    def close(self, unlink=os.unlink):
-        if self.name:
+    def close(self, unlink=os.unlink, getpid=os.getpid):
+        if self.name and self.master_pid == getpid():
             unlink(self.name)
             self.name = None
 
@@ -98,8 +100,8 @@ class MultiprocessFileCache(cache.Cache):
         self.closed = False
         self._frozen = False
         self._master_pid = os.getpid()
-        self.data_file = _NoOpenNamedTemporaryFile(dir=self.dir)
-        self.index_file = _NoOpenNamedTemporaryFile(dir=self.dir)
+        self.data_file = _NoOpenNamedTemporaryFile(self.dir, self._master_pid)
+        self.index_file = _NoOpenNamedTemporaryFile(self.dir, self._master_pid)
         index_fd = os.open(self.index_file.name, os.O_RDWR)
 
         try:
@@ -223,10 +225,9 @@ class MultiprocessFileCache(cache.Cache):
             pass
 
     def close(self):
-        if not self.closed:
-            if os.getpid() == self._master_pid:
-                self.data_file.close()
-                self.index_file.close()
+        if not self.closed and os.getpid() == self._master_pid:
+            self.data_file.close()
+            self.index_file.close()
             self.closed = True
             self.data_file = None
             self.index_file = None

@@ -3,18 +3,30 @@ import pickle
 import random
 
 import pytest
-from pfio.cache import NaiveCache, FileCache
+from pfio.cache import NaiveCache, FileCache, MultiprocessFileCache
 
 
-@pytest.mark.parametrize("test_class", [NaiveCache, FileCache])
+def make_cache(test_class, mt_safe, do_pickle, length):
+    if test_class != MultiprocessFileCache:
+        cache = test_class(length, multithread_safe=mt_safe,
+                           do_pickle=do_pickle)
+        assert not cache.multiprocess_safe
+        assert cache.multithread_safe == mt_safe
+    else:
+        cache = test_class(length, do_pickle=do_pickle)
+        assert cache.multiprocess_safe
+        assert cache.multithread_safe
+    return cache
+
+
+@pytest.mark.parametrize("test_class", [NaiveCache, FileCache,
+                                        MultiprocessFileCache])
 @pytest.mark.parametrize("mt_safe", [True, False])
 @pytest.mark.parametrize("do_pickle", [True, False])
 @pytest.mark.parametrize("do_shuffle", [True, False])
 def test_cache(test_class, mt_safe, do_pickle, do_shuffle):
     length = l = 1024
-    cache = test_class(l, multithread_safe=mt_safe, do_pickle=do_pickle)
-    assert not cache.multiprocess_safe
-    assert cache.multithread_safe == mt_safe
+    cache = make_cache(test_class, mt_safe, do_pickle, l)
 
     if not do_pickle:
         def getter(x):
@@ -55,7 +67,8 @@ def _getbin(i):
     return blob
 
 
-@pytest.mark.parametrize("test_class", [NaiveCache, FileCache])
+@pytest.mark.parametrize("test_class", [NaiveCache, FileCache,
+                                        MultiprocessFileCache])
 @pytest.mark.parametrize("mt_safe", [True, False])
 @pytest.mark.parametrize("length", [
     pytest.param(-1, marks=pytest.mark.xfail),
@@ -63,9 +76,7 @@ def _getbin(i):
     1, 20, 100, 1000])
 def test_cache_blob(test_class, mt_safe, length):
     l = length
-    cache = test_class(l, multithread_safe=mt_safe, do_pickle=False)
-    assert not cache.multiprocess_safe
-    assert cache.multithread_safe == mt_safe
+    cache = make_cache(test_class, mt_safe, False, l)
 
     for i in range(l):
 
