@@ -11,6 +11,47 @@ from pfio.cache.file_cache import _DEFAULT_CACHE_PATH
 import pickle
 
 
+class _NoOpenNamedTemporaryFile(object):
+    """Temporary file class
+
+    This class warps mkstemp and implements auto-clean mechanism.
+    The reason why we cannot use the tempfile.NamedTemporaryFile is that
+    it has an unpicklable member because it opens the created temporary file,
+    which makes it impossible to pass over to worker processes.
+
+    The auto cleanup mechanism is based on CPython tempfile implementation.
+    https://github.com/python/cpython/blob/3.8/Lib/tempfile.py#L406-L446
+    """
+
+    # Set here since __del__ checks it
+    name = None
+
+    def __init__(self, dir):
+        _, self.name = tempfile.mkstemp(dir=dir)
+
+    def close(self, unlink=os.unlink):
+        if self.name:
+            unlink(self.name)
+            self.name = None
+
+    def __del__(self):
+        self.close()
+
+
+class _DummyTemporaryFile(object):
+    """Dummy tempfile class that imitates the _NoOpenNamedTemporaryFile
+
+    This class is used for MultiprocessFileCache.preload.
+    The cache file fed from outside shouldn't be automatically deleted
+    by close(), so it uses this dummy cache class.
+    """
+    def __init__(self, name):
+        self.name = name
+
+    def close(self):
+        pass
+
+
 class MultiprocessFileCache(cache.Cache):
     '''Multiprocess-safe cache system with local filesystem
 
@@ -57,8 +98,9 @@ class MultiprocessFileCache(cache.Cache):
         self.closed = False
         self._frozen = False
         self._master_pid = os.getpid()
-        _, self.data_file = tempfile.mkstemp(dir=self.dir)
-        index_fd, self.index_file = tempfile.mkstemp(dir=self.dir)
+        self.data_file = _NoOpenNamedTemporaryFile(dir=self.dir)
+        self.index_file = _NoOpenNamedTemporaryFile(dir=self.dir)
+        index_fd = os.open(self.index_file.name, os.O_RDWR)
 
         try:
             fcntl.flock(index_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -71,9 +113,6 @@ class MultiprocessFileCache(cache.Cache):
                 offset = self.buflen * i
                 r = os.pwrite(index_fd, buf, offset)
                 assert r == self.buflen
-
-            # Clear data file
-            os.close(os.open(self.data_file, os.O_WRONLY | os.O_TRUNC))
         except OSError as ose:
             # Lock acquisition error -> No problem, since other worker
             # should be already working on it
@@ -105,7 +144,7 @@ class MultiprocessFileCache(cache.Cache):
         assert 0 <= i < self.length
 
         offset = self.buflen * i
-        index_fd = os.open(self.index_file, os.O_RDONLY | os.O_NOATIME)
+        index_fd = os.open(self.index_file.name, os.O_RDONLY | os.O_NOATIME)
         fcntl.flock(index_fd, fcntl.LOCK_SH)
         buf = os.pread(index_fd, self.buflen, offset)
         (o, l) = unpack('Qq', buf)
@@ -113,7 +152,7 @@ class MultiprocessFileCache(cache.Cache):
             fcntl.flock(index_fd, fcntl.LOCK_UN)
             return None
 
-        data_fd = os.open(self.data_file, os.O_RDONLY | os.O_NOATIME)
+        data_fd = os.open(self.data_file.name, os.O_RDONLY | os.O_NOATIME)
         with os.fdopen(data_fd, 'rb') as f:
             f.seek(o)
             data = f.read(l)
@@ -144,7 +183,7 @@ class MultiprocessFileCache(cache.Cache):
         assert 0 <= i < self.length
 
         offset = self.buflen * i
-        index_fd = os.open(self.index_file, os.O_RDWR)
+        index_fd = os.open(self.index_file.name, os.O_RDWR)
         fcntl.flock(index_fd, fcntl.LOCK_EX)
         buf = os.pread(index_fd, self.buflen, offset)
         (o, l) = unpack('Qq', buf)
@@ -154,7 +193,7 @@ class MultiprocessFileCache(cache.Cache):
             fcntl.flock(index_fd, fcntl.LOCK_UN)
             return False
 
-        data_fd = os.open(self.data_file, os.O_APPEND | os.O_WRONLY)
+        data_fd = os.open(self.data_file.name, os.O_APPEND | os.O_WRONLY)
         with os.fdopen(data_fd, 'ab') as f:
             pos = f.tell()
 
@@ -175,9 +214,6 @@ class MultiprocessFileCache(cache.Cache):
     def __exit__(self, *exc):
         self.close()
 
-    def __del__(self):
-        self.close()
-
     def _deleter(self, fn, unlink=os.unlink):
         # https://github.com/python/cpython/blob/3.8/Lib/tempfile.py#L430-L437
         try:
@@ -189,8 +225,8 @@ class MultiprocessFileCache(cache.Cache):
     def close(self):
         if not self.closed:
             if os.getpid() == self._master_pid:
-                self._deleter(self.data_file)
-                self._deleter(self.index_file)
+                self.data_file.close()
+                self.index_file.close()
             self.closed = True
             self.data_file = None
             self.index_file = None
@@ -216,10 +252,10 @@ class MultiprocessFileCache(cache.Cache):
             raise ValueError('Specified cache "{}" not found in {}'
                              .format(name, self.dir))
 
-        self._deleter(self.data_file)
-        self._deleter(self.index_file)
-        os.link(ld_index_file, self.index_file)
-        os.link(ld_data_file, self.data_file)
+        self.data_file.close()
+        self.index_file.close()
+        self.data_file = _DummyTemporaryFile(ld_data_file)
+        self.index_file = _DummyTemporaryFile(ld_index_file)
         self._frozen = True
 
     def preserve(self, name):
@@ -237,16 +273,21 @@ class MultiprocessFileCache(cache.Cache):
 
         index_file = os.path.join(self.dir, '{}.cachei'.format(name))
         data_file = os.path.join(self.dir, '{}.cached'.format(name))
-        fd = os.open(self.index_file, os.O_RDONLY)
+
+        if any(os.path.exists(p) for p in (index_file, data_file)):
+            raise ValueError('Specified cache name "{}" already exists in {}'
+                             .format(name, self.dir))
+
+        fd = os.open(self.index_file.name, os.O_RDONLY)
         try:
             fcntl.flock(fd, fcntl.LOCK_EX)
-            os.link(self.index_file, index_file)
-            os.link(self.data_file, data_file)
+            os.link(self.index_file.name, index_file)
+            os.link(self.data_file.name, data_file)
 
         except OSError as ose:
             # Lock acquisition error -> No problem, since other worker
             # should be already working on it
-            if ose.errno not in (errno.EACCESS, errno.EAGAIN):
+            if ose.errno not in (errno.EACCES, errno.EAGAIN):
                 raise
         finally:
             fcntl.flock(fd, fcntl.LOCK_UN)
