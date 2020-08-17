@@ -77,7 +77,7 @@ class MultiprocessFileCache(cache.Cache):
         except OSError as ose:
             # Lock acquisition error -> No problem, since other worker
             # should be already working on it
-            if ose.errno not in (errno.EACCESS, errno.EAGAIN):
+            if ose.errno not in (errno.EACCES, errno.EAGAIN):
                 raise
         finally:
             fcntl.flock(index_fd, fcntl.LOCK_UN)
