@@ -216,14 +216,6 @@ class MultiprocessFileCache(cache.Cache):
     def __exit__(self, *exc):
         self.close()
 
-    def _deleter(self, fn, unlink=os.unlink):
-        # https://github.com/python/cpython/blob/3.8/Lib/tempfile.py#L430-L437
-        try:
-            unlink(fn)
-        except FileNotFoundError:
-            # Another worker may have already deleted it
-            pass
-
     def close(self):
         if not self.closed and os.getpid() == self._master_pid:
             self.data_file.close()
@@ -243,6 +235,9 @@ class MultiprocessFileCache(cache.Cache):
         '''
         if self._frozen:
             return
+
+        if self._master_pid != os.getpid():
+            raise RuntimeError("Cannot preload a cache in a worker process")
 
         # Overwrite the current cache by the specified cache file.
         # This is needed to prevent the specified cache files are deleted when

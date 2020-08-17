@@ -101,6 +101,28 @@ def test_preload_error_not_found():
         cache.close()
 
 
+def test_preload_error_subprocess():
+    pipe_recv, pipe_send = multiprocessing.Pipe(False)
+
+    def child(c, pipe):
+        try:
+            c.preload('preserved')
+        except Exception as e:
+            pipe.send(pickle.dumps(e))
+        finally:
+            pipe.close()
+
+    with tempfile.TemporaryDirectory() as d:
+        cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
+        p = multiprocessing.Process(target=child, args=(cache, pipe_send))
+        p.start()
+        p.join()
+        cache.close()
+
+        e = pickle.loads(pipe_recv.recv())
+        assert isinstance(e, RuntimeError)
+
+
 def test_enospc(monkeypatch):
     def mock_pread(_fd, _buf, _offset):
         ose = OSError(28, "No space left on device")
