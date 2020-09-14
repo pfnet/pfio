@@ -55,23 +55,21 @@ class _DummyTemporaryFile(object):
 
 
 class MultiprocessFileCache(cache.Cache):
-    '''Multiprocess-safe cache system with local filesystem
+    '''The Multiprocess-safe cache system on a local filesystem
 
-    Stores cache data in local temporary files, created in
-    ``~/.pfio/cache`` by default. Cache data is
-    automatically deleted after the object is collected. When this
-    object is not correctly closed, (e.g., the process killed by
-    SIGTERM), the cache remains after the death of process.
+    Stores cache data in local temporary files, created in ``~/.pfio/cache``
+    by default. It automatically deletes the cache data after the object is
+    collected. When this object is not correctly closed (e.g., the process
+    killed by SIGKILL), the cache remains after the process's death.
 
     This class supports handling a cache from multiple processes.
     A MultiprocessFileCache object can be handed over to another process
     through the pickle. Calling ``get`` and ``put`` in each process will
-    look into the same cache files which are created by the initializer.
-    The temporary cache files will persist until the MultiprocessFileCache
-    object is destroyed in the original process it is created.
-    This means that even after the worker processes are destroyed,
-    the MultiprocessFileCache object can be passed to another processes,
-    with the cache files remain accessible.
+    look into the same cache files with flock-based locking. The temporary
+    cache files will persist as long as the MultiprocessFileCache object is
+    alive in the original process that creates it.
+    Therefore, even after destroying the worker processes,
+    the MultiprocessFileCache object can still be passed to another process.
 
     Arguments:
         length (int): Length of the cache array.
