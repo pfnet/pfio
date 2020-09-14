@@ -122,6 +122,7 @@ class MultiprocessFileCache(cache.Cache):
                 raise
         finally:
             fcntl.flock(index_fd, fcntl.LOCK_UN)
+            os.close(index_fd)
 
     def __len__(self):
         return self.length
@@ -148,18 +149,21 @@ class MultiprocessFileCache(cache.Cache):
         offset = self.buflen * i
         index_fd = os.open(self.index_file.name, os.O_RDONLY | os.O_NOATIME)
         fcntl.flock(index_fd, fcntl.LOCK_SH)
-        buf = os.pread(index_fd, self.buflen, offset)
-        (o, l) = unpack('Qq', buf)
+        index_entry = os.pread(index_fd, self.buflen, offset)
+        (o, l) = unpack('Qq', index_entry)
         if l < 0 or o < 0:
             fcntl.flock(index_fd, fcntl.LOCK_UN)
+            os.close(index_fd)
             return None
 
         data_fd = os.open(self.data_file.name, os.O_RDONLY | os.O_NOATIME)
-        with os.fdopen(data_fd, 'rb') as f:
-            f.seek(o)
-            data = f.read(l)
-        fcntl.flock(index_fd, fcntl.LOCK_UN)
+        data = os.pread(data_fd, l, o)
         assert len(data) == l
+
+        os.close(data_fd)
+        fcntl.flock(index_fd, fcntl.LOCK_UN)
+        os.close(index_fd)
+
         return data
 
     def put(self, i, data):
@@ -184,30 +188,28 @@ class MultiprocessFileCache(cache.Cache):
             return
         assert 0 <= i < self.length
 
-        offset = self.buflen * i
+        index_offset = self.buflen * i
         index_fd = os.open(self.index_file.name, os.O_RDWR)
         fcntl.flock(index_fd, fcntl.LOCK_EX)
-        buf = os.pread(index_fd, self.buflen, offset)
+        buf = os.pread(index_fd, self.buflen, index_offset)
         (o, l) = unpack('Qq', buf)
 
         if l >= 0 and o >= 0:
             # Already data exists
             fcntl.flock(index_fd, fcntl.LOCK_UN)
+            os.close(index_fd)
             return False
 
         data_fd = os.open(self.data_file.name, os.O_APPEND | os.O_WRONLY)
-        with os.fdopen(data_fd, 'ab') as f:
-            pos = f.tell()
+        data_pos = os.lseek(data_fd, 0, os.SEEK_END)
+        index_entry = pack('Qq', data_pos, len(data))
+        assert os.pwrite(index_fd, index_entry, index_offset) == self.buflen
+        assert os.pwrite(data_fd, data, data_pos) == len(data)
 
-            # Write the position to the index file
-            buf = pack('Qq', pos, len(data))
-            r = os.pwrite(index_fd, buf, offset)
-            assert r == self.buflen
-
-            # Write the data
-            assert f.write(data) == len(data)
-
+        os.close(data_fd)
         fcntl.flock(index_fd, fcntl.LOCK_UN)
+        os.close(index_fd)
+
         return True
 
     def __enter__(self):
@@ -287,3 +289,4 @@ class MultiprocessFileCache(cache.Cache):
                 raise
         finally:
             fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
