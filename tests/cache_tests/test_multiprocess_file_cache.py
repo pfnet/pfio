@@ -1,3 +1,4 @@
+from pfio.cache import FileCache
 from pfio.cache import MultiprocessFileCache
 import multiprocessing
 import os
@@ -111,6 +112,26 @@ def test_preservation():
         # No temporary cache file should remain,
         # and the preserved cache should be kept.
         assert os.listdir(d) == ['preserved.cached', 'preserved.cachei']
+
+
+def test_preservation_interoperability():
+    with tempfile.TemporaryDirectory() as d:
+        cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        cache.preserve('preserved')
+
+        cache.close()
+
+        cache2 = FileCache(10, dir=d, do_pickle=True)
+
+        cache2.preload('preserved')
+        for i in range(10):
+            assert str(i) == cache2.get(i)
+
+        cache2.close()
 
 
 def test_preservation_error_already_exists():

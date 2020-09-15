@@ -358,6 +358,8 @@ class MultiprocessFileCache(cache.Cache):
         to the cache.  ``name`` is the prefix of the persistent
         files.
 
+        The preserved cache can also be preloaded by :class:`~FileCache`.
+
         Be noted that ``preserve()`` can be called only by the master process
         i.e., the process where ``__init__()`` is called,
         in order to prevent inconsistency.

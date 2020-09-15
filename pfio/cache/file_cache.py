@@ -293,6 +293,9 @@ class FileCache(cache.Cache):
         to the cache.  ``name`` is the prefix of the persistent
         files.
 
+        The preserved cache can also be preloaded by
+        :class:`~MultiprocessFileCache`.
+
         .. note:: This feature is experimental.
 
         '''
