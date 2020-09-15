@@ -151,6 +151,9 @@ class MultiprocessFileCache(cache.Cache):
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
 
+        verbose (bool):
+            Print detailed logs of the cache.
+
     '''  # NOQA
 
     def __init__(self, length, do_pickle=False,
@@ -172,6 +175,10 @@ class MultiprocessFileCache(cache.Cache):
         self.data_file = _NoOpenNamedTemporaryFile(self.dir, self._master_pid)
         self.index_file = _NoOpenNamedTemporaryFile(self.dir, self._master_pid)
         index_fd = os.open(self.index_file.name, os.O_RDWR)
+
+        if self.verbose:
+            print('created index file:', self.index_file.name)
+            print('created data file:', self.data_file.name)
 
         try:
             fcntl.flock(index_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)

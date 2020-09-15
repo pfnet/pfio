@@ -100,6 +100,8 @@ class FileCache(cache.Cache):
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
 
+        verbose (bool):
+            Print detailed logs of the cache.
     '''
 
     def __init__(self, length, multithread_safe=False, do_pickle=False,
