@@ -122,6 +122,11 @@ class MultiprocessFileCache(cache.Cache):
             fcntl.flock(index_fd, fcntl.LOCK_UN)
             os.close(index_fd)
 
+        # Open lazily at the first call of get or put in each child process
+        self._fd_pid = None
+        self.index_fd = None
+        self.data_fd = None
+
     def __len__(self):
         return self.length
 
@@ -141,27 +146,28 @@ class MultiprocessFileCache(cache.Cache):
             data = pickle.loads(data)
         return data
 
+    def _open_fds(self):
+        pid = os.getpid()
+        if self._fd_pid != pid:
+            self._fd_pid = pid
+            self.index_fd = os.open(self.index_file.name, os.O_RDWR)
+            self.data_fd = os.open(self.data_file.name, os.O_RDWR)
+
     def _get(self, i):
         assert 0 <= i < self.length
 
+        self._open_fds()
         offset = self.buflen * i
-        index_fd = os.open(self.index_file.name, os.O_RDONLY | os.O_NOATIME)
-        fcntl.flock(index_fd, fcntl.LOCK_SH)
-        index_entry = os.pread(index_fd, self.buflen, offset)
+        fcntl.flock(self.index_fd, fcntl.LOCK_SH)
+        index_entry = os.pread(self.index_fd, self.buflen, offset)
         (o, l) = unpack('Qq', index_entry)
         if l < 0 or o < 0:
-            fcntl.flock(index_fd, fcntl.LOCK_UN)
-            os.close(index_fd)
+            fcntl.flock(self.index_fd, fcntl.LOCK_UN)
             return None
 
-        data_fd = os.open(self.data_file.name, os.O_RDONLY | os.O_NOATIME)
-        data = os.pread(data_fd, l, o)
+        data = os.pread(self.data_fd, l, o)
         assert len(data) == l
-
-        os.close(data_fd)
-        fcntl.flock(index_fd, fcntl.LOCK_UN)
-        os.close(index_fd)
-
+        fcntl.flock(self.index_fd, fcntl.LOCK_UN)
         return data
 
     def put(self, i, data):
@@ -186,28 +192,24 @@ class MultiprocessFileCache(cache.Cache):
             return
         assert 0 <= i < self.length
 
-        index_offset = self.buflen * i
-        index_fd = os.open(self.index_file.name, os.O_RDWR)
-        fcntl.flock(index_fd, fcntl.LOCK_EX)
-        buf = os.pread(index_fd, self.buflen, index_offset)
+        self._open_fds()
+        index_ofst = self.buflen * i
+        fcntl.flock(self.index_fd, fcntl.LOCK_EX)
+        buf = os.pread(self.index_fd, self.buflen, index_ofst)
         (o, l) = unpack('Qq', buf)
 
         if l >= 0 and o >= 0:
             # Already data exists
-            fcntl.flock(index_fd, fcntl.LOCK_UN)
-            os.close(index_fd)
+            fcntl.flock(self.index_fd, fcntl.LOCK_UN)
             return False
 
-        data_fd = os.open(self.data_file.name, os.O_APPEND | os.O_WRONLY)
-        data_pos = os.lseek(data_fd, 0, os.SEEK_END)
+        data_pos = os.lseek(self.data_fd, 0, os.SEEK_END)
         index_entry = pack('Qq', data_pos, len(data))
-        assert os.pwrite(index_fd, index_entry, index_offset) == self.buflen
-        assert os.pwrite(data_fd, data, data_pos) == len(data)
-
-        os.close(data_fd)
-        fcntl.flock(index_fd, fcntl.LOCK_UN)
-        os.close(index_fd)
-
+        assert os.pwrite(self.index_fd, index_entry, index_ofst) == self.buflen
+        assert os.pwrite(self.data_fd, data, data_pos) == len(data)
+        os.fsync(self.index_fd)
+        os.fsync(self.data_fd)
+        fcntl.flock(self.index_fd, fcntl.LOCK_UN)
         return True
 
     def __enter__(self):
@@ -217,12 +219,21 @@ class MultiprocessFileCache(cache.Cache):
         self.close()
 
     def close(self):
-        if not self.closed and os.getpid() == self._master_pid:
+        pid = os.getpid()
+
+        if pid == self._fd_pid:
+            os.close(self.data_fd)
+            os.close(self.index_fd)
+            self._fd_pid = None
+
+        if not self.closed and pid == self._master_pid:
             self.data_file.close()
             self.index_file.close()
             self.closed = True
             self.data_file = None
             self.index_file = None
+            self.data_fd = None
+            self.index_fd = None
 
     def preload(self, name):
         '''Load the cache saved by ``preserve()``
@@ -250,6 +261,8 @@ class MultiprocessFileCache(cache.Cache):
 
         self.data_file.close()
         self.index_file.close()
+        self.data_fd = None
+        self.index_fd = None
         self.data_file = _DummyTemporaryFile(ld_data_file)
         self.index_file = _DummyTemporaryFile(ld_index_file)
         self._frozen = True
@@ -274,9 +287,9 @@ class MultiprocessFileCache(cache.Cache):
             raise ValueError('Specified cache name "{}" already exists in {}'
                              .format(name, self.dir))
 
-        fd = os.open(self.index_file.name, os.O_RDONLY)
+        self._open_fds()
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX)
+            fcntl.flock(self.index_fd, fcntl.LOCK_EX)
             os.link(self.index_file.name, index_file)
             os.link(self.data_file.name, data_file)
 
@@ -286,5 +299,4 @@ class MultiprocessFileCache(cache.Cache):
             if ose.errno not in (errno.EACCES, errno.EAGAIN):
                 raise
         finally:
-            fcntl.flock(fd, fcntl.LOCK_UN)
-            os.close(fd)
+            fcntl.flock(self.index_fd, fcntl.LOCK_UN)
