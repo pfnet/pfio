@@ -71,6 +71,77 @@ class MultiprocessFileCache(cache.Cache):
     Therefore, even after destroying the worker processes,
     the MultiprocessFileCache object can still be passed to another process.
 
+    .. admonition:: Example
+
+       The MultiprocessFileCache is particularly useful when combined with
+       the multiple worker option of the PyTorch DataLoader.
+
+       Let us suppose we have a file that includes a list of paths to images.
+       ::
+
+           /path/to/image1.jpg
+           /path/to/image2.jpg
+           ...
+           /path/to/imageN.jpg
+
+       The PyTorch Dataset class with MultiprocessFileCache can be
+       implemented as follows.
+       In ``__getitem__``, we first need to try to take the data of the
+       specified index by calling ``MultiprocessFileCache.get``.
+       It will return the data if it is already cached, or ``None`` otherwise,
+       therefore we can load the data from the filesystem only when necessary,
+       and then add it to the cache.
+       ::
+
+       >>> from pfio.cache import MultiprocessFileCache
+       >>>
+       >>> class MyDataset(torch.utils.data.Dataset):
+       >>>     def __init__(self, image_paths):
+       >>>         self.paths = image_paths
+       >>>         self.cache = MultiprocessFileCache(len(image_paths),
+       >>>                                            do_pickle=True)
+       >>>
+       >>>     def __len__(self):
+       >>>         return len(self.paths)
+       >>>
+       >>>     def __getitem__(self, i):
+       >>>         x = self.cache.get(i)
+       >>>         if not x:
+       >>>             x = cv2.imread(self.paths[i]).transpose(2, 0, 1)
+       >>>             self.cache.put(i, x)
+       >>>         return torch.Tensor(x)
+
+       When iterating over the dataset, it is common to load the data
+       concurrently to hide file IO bottleneck by setting higher ``num_workers``
+       in PyTorch DataLoader.
+       https://pytorch.org/docs/stable/data.html
+
+       In this case, the dataset is distributed to each worker process
+       i.e., ``__getitem__`` of the dataset will be called by a different
+       process that initialized it.
+       The ``MultiprocessFileCache`` object held by the dataset in each worker
+       looks at the same cache file and handles the concurrent access based on
+       the ``flock`` system call.
+       Therefore the data inserted to the cache by a worker process
+       can be accessed from another worker process.
+       ::
+
+       >>> image_paths = open('/path/to/image_list.txt').read().splitlines()
+       >>> dataset = MyDataset(image_paths)
+       >>> loader = DataLoader(dataset,
+       >>>                     batch_size=64,
+       >>>                     num_workers=8,
+       >>>                     pin_memory=True)
+       >>>
+       >>> for epoch in range(10):
+       >>>     for batch in loader:
+       >>>         ...
+
+       In case your task does not require concurrent data loading,
+       i.e., ``num_workers=0`` in DataLoader, :class:`~FileCache` behaves
+       identically but with less overhead.
+       
+
     Arguments:
         length (int): Length of the cache array.
 
@@ -80,7 +151,7 @@ class MultiprocessFileCache(cache.Cache):
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
 
-    '''
+    '''  # NOQA
 
     def __init__(self, length, do_pickle=False,
                  dir=None, verbose=False):
@@ -241,6 +312,10 @@ class MultiprocessFileCache(cache.Cache):
         After loading the files, no data can be added to the cache.
         ``name`` is the prefix of the persistent files.
 
+        Be noted that ``preload()`` can be called only by the master process
+        i.e., the process where ``__init__()`` is called,
+        in order to prevent inconsistency.
+
         .. note:: This feature is experimental.
 
         '''
@@ -275,6 +350,11 @@ class MultiprocessFileCache(cache.Cache):
         ``preload()`` method. After preservation, no data can be added
         to the cache.  ``name`` is the prefix of the persistent
         files.
+
+        Be noted that ``preserve()`` can be called only by the master process
+        i.e., the process where ``__init__()`` is called,
+        in order to prevent inconsistency.
+
 
         .. note:: This feature is experimental.
 

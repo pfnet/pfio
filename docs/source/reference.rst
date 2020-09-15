@@ -56,6 +56,9 @@ Cache API
 .. autoclass:: FileCache
    :members: preserve, preload
 
+.. autoclass:: MultiprocessFileCache
+   :members: preserve, preload
+
 Chainer Extensions API
 ----------------------
 
