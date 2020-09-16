@@ -73,74 +73,48 @@ class MultiprocessFileCache(cache.Cache):
 
     .. admonition:: Example
 
-       The MultiprocessFileCache is particularly useful when combined with
-       the multiple worker option of the PyTorch DataLoader.
-
-       Let us suppose we have a file that includes a list of paths to images.
+       Using MultiprocessFileCache is similar to the :class:`~NaiveCache`
+       and :class:`~FileCache`.
        ::
 
-           /path/to/image1.jpg
-           /path/to/image2.jpg
-           ...
-           /path/to/imageN.jpg
+           from pfio.cache import MultiprocessFileCache
+       
+           class MyDataset(torch.utils.data.Dataset):
+               def __init__(self, image_paths):
+                   self.paths = image_paths
+                   self.cache = MultiprocessFileCache(len(image_paths), do_pickle=True)
 
-       The PyTorch Dataset class with MultiprocessFileCache can be
-       implemented as follows.
-       In ``__getitem__``, we first need to try to take the data of the
-       specified index by calling ``MultiprocessFileCache.get``.
-       It will return the data if it is already cached, or ``None`` otherwise,
-       therefore we can load the data from the filesystem only when necessary,
-       and then add it to the cache.
-       ::
-
-       >>> from pfio.cache import MultiprocessFileCache
-       >>>
-       >>> class MyDataset(torch.utils.data.Dataset):
-       >>>     def __init__(self, image_paths):
-       >>>         self.paths = image_paths
-       >>>         self.cache = MultiprocessFileCache(len(image_paths),
-       >>>                                            do_pickle=True)
-       >>>
-       >>>     def __len__(self):
-       >>>         return len(self.paths)
-       >>>
-       >>>     def __getitem__(self, i):
-       >>>         x = self.cache.get(i)
-       >>>         if not x:
-       >>>             x = cv2.imread(self.paths[i]).transpose(2, 0, 1)
-       >>>             self.cache.put(i, x)
-       >>>         return torch.Tensor(x)
+               ...
 
        When iterating over the dataset, it is common to load the data
        concurrently to hide file IO bottleneck by setting higher ``num_workers``
        in PyTorch DataLoader.
        https://pytorch.org/docs/stable/data.html
+       ::
+
+           image_paths = open('/path/to/image_list.txt').read().splitlines()
+           dataset = MyDataset(image_paths)
+           loader = DataLoader(dataset, batch_size=64, num_workers=8)  # Parallel data loading
+       
+           for epoch in range(10):
+               for batch in loader:
+                   ...
 
        In this case, the dataset is distributed to each worker process
-       i.e., ``__getitem__`` of the dataset will be called by a different
+       i.e., ``__getitem__`` of the dataset will be called in a different
        process that initialized it.
        The ``MultiprocessFileCache`` object held by the dataset in each worker
        looks at the same cache file and handles the concurrent access based on
        the ``flock`` system call.
        Therefore the data inserted to the cache by a worker process
-       can be accessed from another worker process.
-       ::
-
-       >>> image_paths = open('/path/to/image_list.txt').read().splitlines()
-       >>> dataset = MyDataset(image_paths)
-       >>> loader = DataLoader(dataset,
-       >>>                     batch_size=64,
-       >>>                     num_workers=8,
-       >>>                     pin_memory=True)
-       >>>
-       >>> for epoch in range(10):
-       >>>     for batch in loader:
-       >>>         ...
+       can be accessed from another worker process safely.
 
        In case your task does not require concurrent data loading,
-       i.e., ``num_workers=0`` in DataLoader, :class:`~FileCache` behaves
-       identically but with less overhead.
-       
+       i.e., ``num_workers=0`` in DataLoader, consider using :class:`~FileCache`
+       as it has less overhead for concurrency control.
+
+       The persisted cache files created by ``preserve()`` can be used for
+       :meth:`FileCache.preload` and vice versa.
 
     Arguments:
         length (int): Length of the cache array.
@@ -358,12 +332,11 @@ class MultiprocessFileCache(cache.Cache):
         to the cache.  ``name`` is the prefix of the persistent
         files.
 
-        The preserved cache can also be preloaded by :class:`~FileCache`.
-
         Be noted that ``preserve()`` can be called only by the master process
         i.e., the process where ``__init__()`` is called,
         in order to prevent inconsistency.
 
+        The preserved cache can also be preloaded by :class:`~FileCache`.
 
         .. note:: This feature is experimental.
 
