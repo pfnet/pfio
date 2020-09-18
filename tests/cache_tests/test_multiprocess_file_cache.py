@@ -149,6 +149,33 @@ def test_preservation_error_already_exists():
         cache.close()
 
 
+def test_preserve_error_subprocess():
+    pipe_recv, pipe_send = multiprocessing.Pipe(False)
+
+    def child(c, pipe):
+        try:
+            c.preserve('preserved')
+        except Exception as e:
+            pipe.send(pickle.dumps(e))
+        finally:
+            pipe.close()
+
+    with tempfile.TemporaryDirectory() as d:
+        cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        # Run preservation in the subprocess
+        p = multiprocessing.Process(target=child, args=(cache, pipe_send))
+        p.start()
+        p.join()
+        cache.close()
+
+        e = pickle.loads(pipe_recv.recv())
+        assert isinstance(e, RuntimeError)
+
+
 def test_preload_error_not_found():
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
@@ -171,6 +198,7 @@ def test_preload_error_subprocess():
             pipe.close()
 
     with tempfile.TemporaryDirectory() as d:
+        # Run preload in the subprocess
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
         p = multiprocessing.Process(target=child, args=(cache, pipe_send))
         p.start()

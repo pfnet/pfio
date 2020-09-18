@@ -342,6 +342,9 @@ class MultiprocessFileCache(cache.Cache):
 
         '''
 
+        if self._master_pid != os.getpid():
+            raise RuntimeError("Cannot preserve a cache in a worker process")
+
         index_file = os.path.join(self.dir, '{}.cachei'.format(name))
         data_file = os.path.join(self.dir, '{}.cached'.format(name))
 
