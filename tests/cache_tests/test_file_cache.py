@@ -1,4 +1,5 @@
 from pfio.cache import FileCache
+from pfio.cache import MultiprocessFileCache
 import os
 import tempfile
 
@@ -47,6 +48,27 @@ def test_preservation():
 
         # Imitating a new process, fresh load
         cache2 = FileCache(10, dir=d, do_pickle=True)
+
+        cache2.preload('preserved')
+        for i in range(10):
+            assert str(i) == cache2.get(i)
+
+
+def test_preservation_interoperability():
+    with tempfile.TemporaryDirectory() as d:
+        cache = FileCache(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        cache.preserve('preserved')
+
+        for i in range(10):
+            assert str(i) == cache.get(i)
+
+        cache.close()
+
+        cache2 = MultiprocessFileCache(10, dir=d, do_pickle=True)
 
         cache2.preload('preserved')
         for i in range(10):

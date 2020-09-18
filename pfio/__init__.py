@@ -6,6 +6,8 @@ from pfio.io import IO
 from pfio._typing import Optional, Union
 from typing import Iterator, Any, Callable, Type
 
+import pfio.cache  # NOQA
+
 
 _DEFAULT_CONTEXT = DefaultContext()
 

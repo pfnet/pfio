@@ -61,3 +61,4 @@ class Cache(six.with_metaclass(abc.ABCMeta)):
 
 from pfio.cache.naive import NaiveCache  # NOQA
 from pfio.cache.file_cache import FileCache  # NOQA
+from pfio.cache.multiprocess_file_cache import MultiprocessFileCache  # NOQA
