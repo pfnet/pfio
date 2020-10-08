@@ -95,3 +95,53 @@ def test_cache_blob(test_class, mt_safe, length):
         data = cache.get(i)
         assert data is not None
         assert _getbin(i) == data
+
+
+def test_index_range_naive():
+    l = 10
+    cache = make_cache(NaiveCache, True, False, l)
+
+    # Index check for Put
+
+    cache.put(-1, pickle.dumps(9 ** 2))
+
+    for i in range(l - 1):
+        cache.put(i, pickle.dumps(i * 2))
+
+    with pytest.raises(IndexError):
+        cache.put(l, pickle.dumps('too large'))
+
+    # Index check for Get
+
+    with pytest.raises(IndexError):
+        cache.get(l)
+
+    assert pickle.loads(cache.get(-1)) == 9 ** 2
+    assert pickle.loads(cache.get(9)) == 9 ** 2
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_index_range_get(test_class):
+    l = 10
+    cache = make_cache(test_class, True, False, l)
+
+    for i in range(l):
+        cache.put(i, pickle.dumps(i * 2))
+
+    with pytest.raises(IndexError):
+        cache.get(-1)
+
+    with pytest.raises(IndexError):
+        cache.get(l)
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_index_range_put(test_class):
+    l = 10
+    cache = make_cache(test_class, True, False, l)
+
+    with pytest.raises(IndexError):
+        cache.put(-1, pickle.dumps('negative'))
+
+    with pytest.raises(IndexError):
+        cache.put(l, pickle.dumps('too large'))
