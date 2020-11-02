@@ -143,7 +143,7 @@ def test_preservation_error_already_exists():
 
         cache.preserve('preserved')
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FileExistsError):
             cache.preserve('preserved')
 
         cache.close()
@@ -180,7 +180,7 @@ def test_preload_error_not_found():
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FileNotFoundError):
             cache.preload('preserved')
 
         cache.close()

@@ -313,8 +313,9 @@ class MultiprocessFileCache(cache.Cache):
         ld_index_file = os.path.join(self.dir, '{}.cachei'.format(name))
         ld_data_file = os.path.join(self.dir, '{}.cached'.format(name))
         if any(not os.path.exists(p) for p in (ld_index_file, ld_data_file)):
-            raise ValueError('Specified cache "{}" not found in {}'
-                             .format(name, self.dir))
+            msg = 'Specified cache named "{}" not found in {}' \
+                  .format(name, self.dir)
+            raise FileNotFoundError(msg)
 
         self.data_file.close()
         self.index_file.close()
@@ -350,8 +351,9 @@ class MultiprocessFileCache(cache.Cache):
         data_file = os.path.join(self.dir, '{}.cached'.format(name))
 
         if any(os.path.exists(p) for p in (index_file, data_file)):
-            raise ValueError('Specified cache name "{}" already exists in {}'
-                             .format(name, self.dir))
+            msg = 'Specified cache named "{}" already exists in {}' \
+                  .format(name, self.dir)
+            raise FileExistsError(msg)
 
         self._open_fds()
         try:
