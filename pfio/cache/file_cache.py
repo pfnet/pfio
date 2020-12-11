@@ -81,7 +81,7 @@ class DummyLock:
 class FileCache(cache.Cache):
     '''Cache system with local filesystem
 
-    Stores cache data in local temporary files, created in
+    Stores cache data in a local temporary file created in
     ``~/.pfio/cache`` by default. Cache data is
     automatically deleted after the object is collected. When this
     object is not correctly closed, (e.g., the process killed by
@@ -286,10 +286,10 @@ class FileCache(cache.Cache):
     def preload(self, name):
         '''Load the cache saved by ``preserve()``
 
-        After loading the files, no data can be added to the cache.
-        ``name`` is the prefix of the persistent files. To use cache
+        ``cache_path`` is the path to the persistent file. To use cache
         in ``multiprocessing`` environment, call this method at every
         forked process, except the process that called ``preserve()``.
+        After the preload, no data can be added to the cache.
 
         .. note:: This feature is experimental.
 
@@ -305,12 +305,13 @@ class FileCache(cache.Cache):
             self._frozen = True
 
     def preserve(self, name):
-        '''Preserve the cache as persistent files on the disk
+        '''Preserve the cache as a persistent file on the disk
 
-        Once the cache is preserved, cache files will not be removed
-        at cache close. To read data from preserved files, use
+        Saves the current cache into ``cache_path``.
+        Once the cache is preserved, the cache file will not be removed
+        at cache close. To read data from the preserved file, use
         ``preload()`` method. After preservation, no data can be added
-        to the cache.  ``name`` is the prefix of the persistent files.
+        to the cache.
 
         The preserved cache can also be preloaded by
         :class:`~MultiprocessFileCache`.

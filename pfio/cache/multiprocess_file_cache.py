@@ -59,7 +59,7 @@ class _DummyTemporaryFile(object):
 class MultiprocessFileCache(cache.Cache):
     '''The Multiprocess-safe cache system on a local filesystem
 
-    Stores cache data in local temporary files, created in ``~/.pfio/cache``
+    Stores cache data in a local temporary file, created in ``~/.pfio/cache``
     by default. It automatically deletes the cache data after the object is
     collected. When this object is not correctly closed (e.g., the process
     killed by SIGKILL), the cache remains after the process's death.
@@ -67,8 +67,8 @@ class MultiprocessFileCache(cache.Cache):
     This class supports handling a cache from multiple processes.
     A MultiprocessFileCache object can be handed over to another process
     through the pickle. Calling ``get`` and ``put`` in each process will
-    look into the same cache files with flock-based locking. The temporary
-    cache files will persist as long as the MultiprocessFileCache object is
+    look into the same cache file with flock-based locking. The temporary
+    cache file will persist as long as the MultiprocessFileCache object is
     alive in the original process that creates it.
     Therefore, even after destroying the worker processes,
     the MultiprocessFileCache object can still be passed to another process.
@@ -115,7 +115,7 @@ class MultiprocessFileCache(cache.Cache):
        i.e., ``num_workers=0`` in DataLoader, consider using :class:`~FileCache`
        as it has less overhead for concurrency control.
 
-       The persisted cache files created by ``preserve()`` can be used for
+       The persisted cache file created by ``preserve()`` can be used for
        :meth:`FileCache.preload` and vice versa.
 
     Arguments:
@@ -327,7 +327,7 @@ class MultiprocessFileCache(cache.Cache):
             raise RuntimeError("Cannot preload a cache in a worker process")
 
         # Overwrite the current cache by the specified cache file.
-        # This is needed to prevent the specified cache files are deleted when
+        # This is needed to prevent the specified cache file are deleted when
         # the cache object is destroyed.
         ld_cache_file = os.path.join(self.dir, name)
         if not os.path.exists(ld_cache_file):
@@ -342,8 +342,8 @@ class MultiprocessFileCache(cache.Cache):
     def preserve(self, name):
         '''Preserve the cache as a persistent file on the disk
 
-        Once the cache is preserved, cache files will not be removed
-        at cache close. To read data from preserved files, use
+        Once the cache is preserved, the cache file will not be removed
+        at cache close. To read data from preserved file, use
         ``preload()`` method. After preservation, no data can be added
         to the cache. ``name`` is the name of the persistent files saved into
         the cache directory.
