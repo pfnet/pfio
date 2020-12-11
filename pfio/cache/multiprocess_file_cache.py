@@ -298,11 +298,18 @@ class MultiprocessFileCache(cache.Cache):
         i.e., the process where ``__init__()`` is called,
         in order to prevent inconsistency.
 
+        Returns:
+            bool: Returns True if succeed.
+
         .. note:: This feature is experimental.
 
         '''
         if self._frozen:
-            return
+            if self.verbose:
+                print("Failed to preload the cache from {}: "
+                      "The cache is already frozen."
+                      .format(name))
+            return False
 
         if self._master_pid != os.getpid():
             raise RuntimeError("Cannot preload a cache in a worker process")
@@ -313,9 +320,11 @@ class MultiprocessFileCache(cache.Cache):
         ld_index_file = os.path.join(self.dir, '{}.cachei'.format(name))
         ld_data_file = os.path.join(self.dir, '{}.cached'.format(name))
         if any(not os.path.exists(p) for p in (ld_index_file, ld_data_file)):
-            msg = 'Specified cache named "{}" not found in {}' \
-                  .format(name, self.dir)
-            raise FileNotFoundError(msg)
+            if self.verbose:
+                print('Failed to ploread the cache from {}: '
+                      'The specified cache not found in {}'
+                      .format(name, self.dir))
+            return False
 
         self.data_file.close()
         self.index_file.close()
@@ -324,6 +333,7 @@ class MultiprocessFileCache(cache.Cache):
         self.data_file = _DummyTemporaryFile(ld_data_file)
         self.index_file = _DummyTemporaryFile(ld_index_file)
         self._frozen = True
+        return True
 
     def preserve(self, name):
         '''Preserve the cache as persistent files on the disk
@@ -340,6 +350,9 @@ class MultiprocessFileCache(cache.Cache):
 
         The preserved cache can also be preloaded by :class:`~FileCache`.
 
+        Returns:
+            bool: Returns True if succeed.
+
         .. note:: This feature is experimental.
 
         '''
@@ -351,9 +364,10 @@ class MultiprocessFileCache(cache.Cache):
         data_file = os.path.join(self.dir, '{}.cached'.format(name))
 
         if any(os.path.exists(p) for p in (index_file, data_file)):
-            msg = 'Specified cache named "{}" already exists in {}' \
-                  .format(name, self.dir)
-            raise FileExistsError(msg)
+            if self.verbose:
+                print('Specified cache named "{}" already exists in {}'
+                      .format(name, self.dir))
+            return False
 
         self._open_fds()
         try:
@@ -368,3 +382,4 @@ class MultiprocessFileCache(cache.Cache):
                 raise
         finally:
             fcntl.flock(self.index_fd, fcntl.LOCK_UN)
+        return True
