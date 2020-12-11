@@ -28,7 +28,7 @@ def test_cleanup():
         for i in range(10):
             cache.put(i, str(i))
 
-        assert len(os.listdir(d)) == 2
+        assert len(os.listdir(d)) == 1
 
         cache.close()
 
@@ -47,7 +47,7 @@ def test_cleanup_subprocess():
 
         # Calling close in the subprocess should not
         # delete the cache files
-        assert len(os.listdir(d)) == 2
+        assert len(os.listdir(d)) == 1
 
         cache.close()
 
@@ -111,7 +111,7 @@ def test_preservation():
 
         # No temporary cache file should remain,
         # and the preserved cache should be kept.
-        assert os.listdir(d) == ['preserved.cached', 'preserved.cachei']
+        assert os.listdir(d) == ['preserved']
 
 
 def test_preservation_interoperability():
@@ -143,7 +143,7 @@ def test_preservation_error_already_exists():
 
         cache.preserve('preserved')
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FileExistsError):
             cache.preserve('preserved')
 
         cache.close()
@@ -180,7 +180,7 @@ def test_preload_error_not_found():
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(FileNotFoundError):
             cache.preload('preserved')
 
         cache.close()
