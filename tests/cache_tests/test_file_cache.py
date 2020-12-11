@@ -54,6 +54,31 @@ def test_preservation():
             assert str(i) == cache2.get(i)
 
 
+def test_preservation_error_already_exists():
+    with tempfile.TemporaryDirectory() as d:
+        cache = FileCache(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        cache.preserve('preserved')
+
+        with pytest.raises(FileExistsError):
+            cache.preserve('preserved')
+
+        cache.close()
+
+
+def test_preload_error_not_found():
+    with tempfile.TemporaryDirectory() as d:
+        cache = FileCache(10, dir=d, do_pickle=True)
+
+        with pytest.raises(FileNotFoundError):
+            cache.preload('preserved')
+
+        cache.close()
+
+
 def test_preservation_interoperability():
     with tempfile.TemporaryDirectory() as d:
         cache = FileCache(10, dir=d, do_pickle=True)
