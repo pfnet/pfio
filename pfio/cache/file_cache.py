@@ -291,18 +291,33 @@ class FileCache(cache.Cache):
         forked process, except the process that called ``preserve()``.
         After the preload, no data can be added to the cache.
 
+        Returns:
+            bool: Returns True if succeed.
+
         .. note:: This feature is experimental.
 
         '''
         if self._frozen:
-            return
+            if self.verbose:
+                print("Failed to preload the cache from {}: "
+                      "The cache is already frozen."
+                      .format(name))
+            return False
 
         cachefile = os.path.join(self.dir, name)
+
+        if any(not os.path.exists(p) for p in (indexfile, datafile)):
+            if self.verbose:
+                print('Failed to ploread the cache from {}: '
+                      'The specified cache not found in {}'
+                      .format(name, self.dir))
+            return False
 
         with self.lock.wrlock():
             self.cachefp.close()
             self.cachefp = open(cachefile, 'rb')
             self._frozen = True
+        return True
 
     def preserve(self, name):
         '''Preserve the cache as a persistent file on the disk
@@ -316,11 +331,20 @@ class FileCache(cache.Cache):
         The preserved cache can also be preloaded by
         :class:`~MultiprocessFileCache`.
 
+        Returns:
+            bool: Returns True if succeed.
+
         .. note:: This feature is experimental.
 
         '''
 
         cachefile = os.path.join(self.dir, name)
+
+        if any(os.path.exists(p) for p in (indexfile, datafile)):
+            if self.verbose:
+                print('Specified cache named "{}" already exists in {}'
+                      .format(name, self.dir))
+            return False
 
         with self.lock.wrlock():
             # Hard link and save them
@@ -329,3 +353,4 @@ class FileCache(cache.Cache):
 
             self.cachefp = open(cachefile, 'rb')
             self._frozen = True
+        return True

@@ -95,14 +95,14 @@ def test_preservation():
         for i in range(10):
             cache.put(i, str(i))
 
-        cache.preserve('preserved')
+        assert cache.preserve('preserved') is True
 
         cache.close()
 
         # Imitating a new process, fresh load
         cache2 = MultiprocessFileCache(10, dir=d, do_pickle=True)
 
-        cache2.preload('preserved')
+        assert cache2.preload('preserved') is True
         for i in range(10):
             assert str(i) == cache2.get(i)
 
@@ -120,13 +120,13 @@ def test_preservation_interoperability():
         for i in range(10):
             cache.put(i, str(i))
 
-        cache.preserve('preserved')
+        assert cache.preserve('preserved') is True
 
         cache.close()
 
         cache2 = FileCache(10, dir=d, do_pickle=True)
 
-        cache2.preload('preserved')
+        assert cache2.preload('preserved') is True
         for i in range(10):
             assert str(i) == cache2.get(i)
 
@@ -140,10 +140,9 @@ def test_preservation_error_already_exists():
         for i in range(10):
             cache.put(i, str(i))
 
-        cache.preserve('preserved')
+        assert cache.preserve('preserved') is True
 
-        with pytest.raises(FileExistsError):
-            cache.preserve('preserved')
+        assert cache.preserve('preserved') is False
 
         cache.close()
 
@@ -179,8 +178,7 @@ def test_preload_error_not_found():
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
 
-        with pytest.raises(FileNotFoundError):
-            cache.preload('preserved')
+        assert cache.preload('preserved') is False
 
         cache.close()
 
