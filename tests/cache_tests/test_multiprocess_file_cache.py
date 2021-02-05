@@ -55,7 +55,7 @@ def test_cleanup_subprocess():
 
 
 def test_multiprocess_consistency():
-    # Condition: 32k samples (8k*4bytes each) cached by 64 workers.
+    # Condition: 32k samples (8k*4bytes each) cached by 32 workers.
     # Each sample is an array of repeated sample index.
     # ie. k-th sample is np.array([k, k, k, ..., k], dtype=np.int32)
     # 32 worker processes simultaneously create such data and insert them into
@@ -77,9 +77,9 @@ def test_multiprocess_consistency():
         # Add tons of data into the cache in parallel
         ps = [multiprocessing.Process(target=child, args=(cache, worker_idx))
               for worker_idx in range(n_workers)]
-        for i, p in enumerate(ps):
+        for p in ps:
             p.start()
-        for i, p in enumerate(ps):
+        for p in ps:
             p.join()
 
         # Get each sample from the cache and check the content

@@ -1,5 +1,6 @@
 import errno
 import fcntl
+import numbers
 import os
 import tempfile
 import warnings
@@ -125,17 +126,32 @@ class MultiprocessFileCache(cache.Cache):
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
 
+        cache_size_limit (None or int): Limitation of the cache size in bytes.
+            If the total amount of cached data reaches the limit,
+            the cache will become frozen and no longer acccept further addition.
+            Data already stored in the cache can be accessed normally.
+            None (default) and 0 is unlimited.
+
         verbose (bool):
             Print detailed logs of the cache.
 
     '''  # NOQA
 
     def __init__(self, length, do_pickle=False,
-                 dir=None, verbose=False):
+                 dir=None, cache_size_limit=None, verbose=False):
         self.length = length
         self.do_pickle = do_pickle
         self.verbose = verbose
         assert self.length > 0
+
+        if not (cache_size_limit is None or
+                (isinstance(cache_size_limit, numbers.Number) and
+                 0 <= cache_size_limit)):
+            msg = "cache_size_limit has to be either None, zero " \
+                  "(both indicate unlimited) or larger than 0. " \
+                  "{} is specified.".format(cache_size_limit)
+            raise ValueError(msg)
+        self.cache_size_limit = cache_size_limit
 
         if dir is None:
             self.dir = _DEFAULT_CACHE_PATH
@@ -223,8 +239,8 @@ class MultiprocessFileCache(cache.Cache):
         return data
 
     def put(self, i, data):
-        if self._frozen:
-            return
+        if self._frozen or self.closed:
+            return False
 
         try:
             if self.do_pickle:
@@ -240,13 +256,18 @@ class MultiprocessFileCache(cache.Cache):
                 raise ose
 
     def _put(self, i, data):
-        if self.closed:
-            return
         assert 0 <= i < self.length
-
         self._open_fds()
-        index_ofst = self.buflen * i
+
         fcntl.flock(self.index_fd, fcntl.LOCK_EX)
+        data_pos = os.lseek(self.data_fd, 0, os.SEEK_END)
+        if self.cache_size_limit:
+            if self.cache_size_limit < (data_pos + len(data)):
+                self._frozen = True
+                fcntl.flock(self.index_fd, fcntl.LOCK_UN)
+                return False
+
+        index_ofst = self.buflen * i
         buf = os.pread(self.index_fd, self.buflen, index_ofst)
         (o, l) = unpack('Qq', buf)
 
@@ -255,7 +276,6 @@ class MultiprocessFileCache(cache.Cache):
             fcntl.flock(self.index_fd, fcntl.LOCK_UN)
             return False
 
-        data_pos = os.lseek(self.data_fd, 0, os.SEEK_END)
         index_entry = pack('Qq', data_pos, len(data))
         assert os.pwrite(self.index_fd, index_entry, index_ofst) == self.buflen
         assert os.pwrite(self.data_fd, data, data_pos) == len(data)
