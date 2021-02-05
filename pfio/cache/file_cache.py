@@ -1,3 +1,4 @@
+import numbers
 import os
 from struct import pack, unpack, calcsize
 import threading
@@ -100,16 +101,31 @@ class FileCache(cache.Cache):
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
 
+        cache_size_limit (None or int): Limitation of the cache size in bytes.
+            If the total amount of cached data reaches the limit,
+            the cache will become frozen and no longer acccept further addition.
+            Data already stored in the cache can be accessed normally.
+            None (default) and 0 is unlimited.
+
         verbose (bool):
             Print detailed logs of the cache.
     '''
 
     def __init__(self, length, multithread_safe=False, do_pickle=False,
-                 dir=None, verbose=False):
+                 dir=None, cache_size_limit=None, verbose=False):
         self._multithread_safe = multithread_safe
         self.length = length
         self.do_pickle = do_pickle
         assert self.length > 0
+
+        if not (cache_size_limit is None or
+                (isinstance(cache_size_limit, numbers.Number) and
+                 0 <= cache_size_limit)):
+            msg = "cache_size_limit has to be either None, zero " \
+                  "(both indicate unlimited) or larger than 0. " \
+                  "{} is specified.".format(cache_size_limit)
+            raise ValueError(msg)
+        self.cache_size_limit = cache_size_limit
 
         if self.multithread_safe:
             self.lock = RWLock()
@@ -186,7 +202,9 @@ class FileCache(cache.Cache):
             return data
 
     def put(self, i, data):
-        assert not self._frozen
+        if self._frozen or self.closed:
+            return False
+
         try:
             if self.do_pickle:
                 data = pickle.dumps(data)
@@ -207,8 +225,12 @@ class FileCache(cache.Cache):
             raise IndexError("index {} out of range ([0, {}])"
                              .format(i, self.length - 1))
 
-        offset = self.buflen * i
+        if self.cache_size_limit:
+            if self.cache_size_limit < (self.pos + len(data)):
+                self._frozen = True
+                return False
 
+        offset = self.buflen * i
         with self.lock.wrlock():
             buf = os.pread(self.indexfp.fileno(), self.buflen, offset)
             (o, l) = unpack('Qq', buf)

@@ -6,16 +6,32 @@ import pytest
 from pfio.cache import NaiveCache, FileCache, MultiprocessFileCache
 
 
-def make_cache(test_class, mt_safe, do_pickle, length):
-    if test_class != MultiprocessFileCache:
+def make_cache(test_class, mt_safe, do_pickle, length,
+               cache_size_limit=None):
+    if test_class == NaiveCache:
+        assert cache_size_limit is None, \
+            "NaiveCache doesn't support cache size limit"
         cache = test_class(length, multithread_safe=mt_safe,
                            do_pickle=do_pickle)
         assert not cache.multiprocess_safe
         assert cache.multithread_safe == mt_safe
-    else:
-        cache = test_class(length, do_pickle=do_pickle)
+
+    elif test_class == FileCache:
+        cache = test_class(length, multithread_safe=mt_safe,
+                           cache_size_limit=cache_size_limit,
+                           do_pickle=do_pickle)
+        assert not cache.multiprocess_safe
+        assert cache.multithread_safe == mt_safe
+
+    elif test_class == MultiprocessFileCache:
+        cache = test_class(length, cache_size_limit=cache_size_limit,
+                           do_pickle=do_pickle,)
         assert cache.multiprocess_safe
         assert cache.multithread_safe
+
+    else:
+        assert False
+
     return cache
 
 
@@ -145,3 +161,62 @@ def test_index_range_put(test_class):
 
     with pytest.raises(IndexError):
         cache.put(l, pickle.dumps('too large'))
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_cache_limit_invalid_limits(test_class):
+    with pytest.raises(ValueError):
+        make_cache(test_class, True, False, 10, cache_size_limit=-1)
+    with pytest.raises(ValueError):
+        make_cache(test_class, True, False, 10, cache_size_limit='10')
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_cache_limit_ok(test_class):
+    sample_size = 10
+    l = 20
+    cache = make_cache(test_class, True, False, l,
+                       cache_size_limit=100)
+
+    # To make sure the order of data to arrive has nothing to do with limitation logic
+    idxs = list(range(l))
+    random.shuffle(idxs)
+
+    # It accepts the data until reaching to size limit
+    data = b'x' * sample_size
+    for i in idxs[:10]:
+        assert cache.put(i, data)
+
+        # To make sure reading the data while putting data
+        # doesn't interfere
+        j = random.randrange(l)
+        cache.get(j)
+
+    # It no longet accept pushing further
+    for i in idxs[10:]:
+        assert not cache.put(i, data)
+
+    # Data already cached should remain intact
+    for i in idxs[:10]:
+        assert cache.get(i) == data
+
+    # Confirm no other data is cached
+    for i in idxs[10:]:
+        assert cache.get(i) is None
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_cache_limit_auto_freeze(test_class):
+    cache = make_cache(test_class, True, False, 10,
+                       cache_size_limit=120)
+
+    data_50bytes = b'x' * 50
+    cache.put(0, data_50bytes)
+    cache.put(1, data_50bytes)
+    assert not cache.put(2, data_50bytes)   # Here it reaches to the limit
+
+    # This cache is now frozen; no longer accepts further put,
+    # although the next data is small enough for the remained size.
+    data_20bytes = b'y' * 20
+    assert not cache.put(3, data_20bytes)
+    assert cache.get(3) is None
