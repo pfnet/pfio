@@ -47,6 +47,7 @@ class _DummyTemporaryFile(object):
     The cache file fed from outside shouldn't be automatically deleted
     by close(), so it uses this dummy cache class.
     """
+
     def __init__(self, name):
         self.name = name
 
@@ -78,7 +79,7 @@ class MultiprocessFileCache(cache.Cache):
        ::
 
            from pfio.cache import MultiprocessFileCache
-       
+
            class MyDataset(torch.utils.data.Dataset):
                def __init__(self, image_paths):
                    self.paths = image_paths
@@ -95,7 +96,7 @@ class MultiprocessFileCache(cache.Cache):
            image_paths = open('/path/to/image_list.txt').read().splitlines()
            dataset = MyDataset(image_paths)
            loader = DataLoader(dataset, batch_size=64, num_workers=8)  # Parallel data loading
-       
+
            for epoch in range(10):
                for batch in loader:
                    ...

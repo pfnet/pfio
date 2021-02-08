@@ -16,7 +16,7 @@ main() {
   docker_args=(docker run  --rm --volume="$(pwd):/repo/" --workdir="/repo/" )
 
   run "${docker_args[@]}" \
-      "chainer/chainerio:latest" \
+      "asia.gcr.io/pfn-public-ci/pfio:latest" \
       bash .pfnci/test.sh
 }
 

@@ -40,9 +40,10 @@ setup(
         'Operating System :: POSIX',
         'Operating System :: POSIX :: Linux',
 
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
 
         'Topic :: System :: Filesystems',
     ],
@@ -52,8 +53,8 @@ setup(
     package_data={'pfio': package_data},
     extras_require={'test': ['pytest', 'flake8', 'autopep8', 'parameterized'],
                     'doc': ['sphinx', 'sphinx_rtd_theme']},
-    python_requires=">=3.5",
-    install_requires=['pyarrow', 'six'],
+    python_requires=">=3.6",
+    install_requires=['pyarrow==3.0.0', 'six'],
     include_package_data=True,
     zip_safe=False,
 

@@ -9,7 +9,7 @@ function install_py()
     pyenv global $PYTHON_VERSION
 }
 
-python_versions=('3.5.2' '3.5.7' '3.6.8' '3.7.2')
+python_versions=('3.6.12' '3.7.9' '3.8.7' '3.9.1')
 PYENV_ROOT=/root/.pyenv
 
 rm -rf $PYENV_ROOT
