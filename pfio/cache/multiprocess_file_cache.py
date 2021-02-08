@@ -207,7 +207,9 @@ class MultiprocessFileCache(cache.Cache):
             self.data_fd = os.open(self.data_file.name, os.O_RDWR)
 
     def _get(self, i):
-        assert 0 <= i < self.length
+        if i < 0 or self.length <= i:
+            raise IndexError("index {} out of range ([0, {}])"
+                             .format(i, self.length - 1))
 
         self._open_fds()
         offset = self.buflen * i
@@ -243,7 +245,9 @@ class MultiprocessFileCache(cache.Cache):
     def _put(self, i, data):
         if self.closed:
             return
-        assert 0 <= i < self.length
+        if i < 0 or self.length <= i:
+            raise IndexError("index {} out of range ([0, {}])"
+                             .format(i, self.length - 1))
 
         self._open_fds()
         index_ofst = self.buflen * i

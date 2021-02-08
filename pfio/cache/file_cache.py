@@ -170,7 +170,10 @@ class FileCache(cache.Cache):
         return data
 
     def _get(self, i):
-        assert i >= 0 and i < self.length
+        if i < 0 or self.length <= i:
+            raise IndexError("index {} out of range ([0, {}])"
+                             .format(i, self.length - 1))
+
         offset = self.buflen * i
         with self.lock.rdlock():
             buf = os.pread(self.indexfp.fileno(), self.buflen, offset)
@@ -200,7 +203,10 @@ class FileCache(cache.Cache):
     def _put(self, i, data):
         if self.closed:
             return
-        assert i >= 0 and i < self.length
+        if i < 0 or self.length <= i:
+            raise IndexError("index {} out of range ([0, {}])"
+                             .format(i, self.length - 1))
+
         offset = self.buflen * i
 
         with self.lock.wrlock():
