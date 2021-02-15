@@ -291,6 +291,10 @@ class FileCache(cache.Cache):
         forked process, except the process that called ``preserve()``.
         After the preload, no data can be added to the cache.
 
+        When it succeeds, it returns ``True``.
+        If there is no cache file with the specified name in
+        the cache directory, it will do nothing but return ``False``.
+
         Returns:
             bool: Returns True if succeed.
 
@@ -327,6 +331,10 @@ class FileCache(cache.Cache):
         at cache close. To read data from the preserved file, use
         ``preload()`` method. After preservation, no data can be added
         to the cache.
+
+        When it succeeds, it returns ``True``.
+        If there is a cache file with the same name already exists in the
+        cache directory, it will do nothing but return ``False``.
 
         The preserved cache can also be preloaded by
         :class:`~MultiprocessFileCache`.
