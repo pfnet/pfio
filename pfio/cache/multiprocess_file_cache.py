@@ -294,9 +294,16 @@ class MultiprocessFileCache(cache.Cache):
         After loading the files, no data can be added to the cache.
         ``name`` is the prefix of the persistent files.
 
+        When it succeeds, it returns ``True``.
+        If there is no cache file with the specified name in
+        the cache directory, it will do nothing but return ``False``.
+
         Be noted that ``preload()`` can be called only by the master process
         i.e., the process where ``__init__()`` is called,
         in order to prevent inconsistency.
+        When using in a multiprocessing environment, you first need to create
+        a ``MultiprocessFileCache`` object, call its ``preload()`` and then
+        pass it to the worker processes.
 
         Returns:
             bool: Returns True if succeed.
@@ -341,8 +348,11 @@ class MultiprocessFileCache(cache.Cache):
         Once the cache is preserved, cache files will not be removed
         at cache close. To read data from preserved files, use
         ``preload()`` method. After preservation, no data can be added
-        to the cache.  ``name`` is the prefix of the persistent
-        files.
+        to the cache.  ``name`` is the prefix of the persistent files.
+
+        When it succeeds, it returns ``True``.
+        If there is a cache file with the same name already exists in the
+        cache directory, it will do nothing but return ``False``.
 
         Be noted that ``preserve()`` can be called only by the master process
         i.e., the process where ``__init__()`` is called,

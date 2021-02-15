@@ -266,6 +266,10 @@ class FileCache(cache.Cache):
         in ``multiprocessing`` environment, call this method at every
         forked process, except the process that called ``preserve()``.
 
+        When it succeeds, it returns ``True``.
+        If there is no cache file with the specified name in
+        the cache directory, it will do nothing but return ``False``.
+
         Returns:
             bool: Returns True if succeed.
 
@@ -307,6 +311,10 @@ class FileCache(cache.Cache):
         ``preload()`` method. After preservation, no data can be added
         to the cache.  ``name`` is the prefix of the persistent
         files.
+
+        When it succeeds, it returns ``True``.
+        If there is a cache file with the same name already exists in the
+        cache directory, it will do nothing but return ``False``.
 
         The preserved cache can also be preloaded by
         :class:`~MultiprocessFileCache`.
