@@ -7,15 +7,10 @@ import argparse
 import chainer
 from chainer import training
 from chainer.training import extensions
-
 from facade_dataset_pfio import FacadeDataset
 # from facade_dataset import FacadeDataset
 from facade_visualizer import out_image
-
-from net import Decoder
-from net import Discriminator
-from net import Encoder
-
+from net import Decoder, Discriminator, Encoder
 from updater import FacadeUpdater
 
 

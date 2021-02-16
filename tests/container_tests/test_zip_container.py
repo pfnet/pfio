@@ -1,21 +1,21 @@
-import unittest
-
-import pfio
-
 import io
 import multiprocessing
 import os
 import pickle
-import pytest
 import random
 import shutil
 import string
+import subprocess
 import sys
 import tempfile
-from zipfile import ZipFile
+import unittest
 from datetime import datetime
-import subprocess
+from zipfile import ZipFile
+
+import pytest
 from parameterized import parameterized
+
+import pfio
 
 
 def make_zip(zipfilename, root_dir, base_dir):

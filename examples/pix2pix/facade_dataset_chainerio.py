@@ -1,10 +1,10 @@
-from PIL import Image
-
-from chainer.dataset import dataset_mixin
 import numpy as np
+from chainer.dataset import dataset_mixin
+from PIL import Image
 
 # PFIO import
 import pfio
+
 # PFIO import end
 
 # download `BASE` dataset from http://cmp.felk.cvut.cz/~tylecr1/facade/

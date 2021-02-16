@@ -3,7 +3,8 @@ import pickle
 import random
 
 import pytest
-from pfio.cache import NaiveCache, FileCache, MultiprocessFileCache
+
+from pfio.cache import FileCache, MultiprocessFileCache, NaiveCache
 
 
 def make_cache(test_class, mt_safe, do_pickle, length,

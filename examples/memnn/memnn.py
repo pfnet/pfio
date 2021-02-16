@@ -2,16 +2,13 @@ import collections
 import json
 import os
 
+import babi_pfio as babi
+import chainer
+import chainer.functions as F
+import chainer.links as L
 import numpy
 import six
-
-import chainer
-from chainer import backend
-import chainer.functions as F
-from chainer import initializers
-import chainer.links as L
-
-import babi_pfio as babi
+from chainer import backend, initializers
 
 
 def bow_encode(embed, sentences):

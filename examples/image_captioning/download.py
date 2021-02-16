@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import argparse
 import os
-from six.moves.urllib import request
 import zipfile
 
+from six.moves.urllib import request
 
 """Download the MSCOCO dataset (images and captions)."""
 

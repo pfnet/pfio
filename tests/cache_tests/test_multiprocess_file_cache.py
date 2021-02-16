@@ -1,13 +1,12 @@
-from pfio.cache import FileCache
-from pfio.cache import MultiprocessFileCache
 import multiprocessing
 import os
 import pickle
 import tempfile
 
 import numpy as np
-
 import pytest
+
+from pfio.cache import FileCache, MultiprocessFileCache
 
 
 def test_pickable():

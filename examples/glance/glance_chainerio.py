@@ -4,19 +4,19 @@
 # `docs/source/glance.rst` accordingly.
 
 import chainer as ch
-from chainer import datasets
 import chainer.functions as F
 import chainer.links as L
-from chainer import training
+import matplotlib
+import numpy as np
+from chainer import datasets, training
 from chainer.training import extensions
 
 # PFIO import
 import pfio
+
 # PFIO end
 
-import numpy as np
 
-import matplotlib
 matplotlib.use('Agg')
 
 mushroomsfile = 'mushrooms.csv'

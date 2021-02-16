@@ -2,10 +2,9 @@
 
 import argparse
 
-import numpy
-
 import babi
 import memnn
+import numpy
 
 
 def main():

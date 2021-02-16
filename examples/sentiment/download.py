@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import os
 import os.path
-from six.moves.urllib import request
 import zipfile
 
+from six.moves.urllib import request
 
 request.urlretrieve(
     'https://nlp.stanford.edu/sentiment/trainDevTestTrees_PTB.zip',

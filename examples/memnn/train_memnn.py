@@ -3,12 +3,11 @@
 import argparse
 import collections
 
-import chainer
-from chainer.training import extensions
-
 import babi_pfio as babi
+import chainer
 # import babi
 import memnn
+from chainer.training import extensions
 
 
 def train(train_data_path, test_data_path, args):

@@ -1,17 +1,13 @@
 import argparse
 
-import numpy
-
 import chainer
-from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
-from chainer import reporter
-from chainer import training
-from chainer.training import extensions
-
 import data
+import numpy
 import thin_stack
+from chainer import cuda, reporter, training
+from chainer.training import extensions
 
 
 def linearize_tree(vocab, root, xp=numpy):

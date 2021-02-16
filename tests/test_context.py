@@ -1,9 +1,9 @@
-import unittest
-
-import pfio
 import os
 import shutil
 import tempfile
+import unittest
+
+import pfio
 
 
 class TestContext(unittest.TestCase):

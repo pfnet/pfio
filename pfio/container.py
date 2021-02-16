@@ -1,7 +1,6 @@
+from pfio._typing import Optional
 from pfio.io import IO
 from pfio.profiler import IOProfiler
-
-from pfio._typing import Optional
 
 
 class Container(IO):

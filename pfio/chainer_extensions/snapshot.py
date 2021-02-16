@@ -2,6 +2,7 @@ import os
 
 import chainer
 from chainer.serializers import load_npz
+
 import pfio
 
 

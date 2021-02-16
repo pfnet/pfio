@@ -2,14 +2,11 @@
 import argparse
 
 import chainer
-from chainer.datasets import TransformDataset
-from chainer import iterators
-from chainer import optimizers
-from chainer import training
-from chainer.training import extensions
-
 # import datasets
 import datasets_pfio as datasets
+from chainer import iterators, optimizers, training
+from chainer.datasets import TransformDataset
+from chainer.training import extensions
 from model import ImageCaptionModel
 
 
