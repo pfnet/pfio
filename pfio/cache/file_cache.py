@@ -310,7 +310,7 @@ class FileCache(cache.Cache):
 
         cachefile = os.path.join(self.dir, name)
 
-        if any(not os.path.exists(p) for p in (indexfile, datafile)):
+        if not os.path.exists(cachefile):
             if self.verbose:
                 print('Failed to ploread the cache from {}: '
                       'The specified cache not found in {}'
@@ -323,7 +323,7 @@ class FileCache(cache.Cache):
             self._frozen = True
         return True
 
-    def preserve(self, name):
+    def preserve(self, name, overwrite=False):
         '''Preserve the cache as a persistent file on the disk
 
         Saves the current cache into ``cache_path``.
@@ -339,6 +339,13 @@ class FileCache(cache.Cache):
         The preserved cache can also be preloaded by
         :class:`~MultiprocessFileCache`.
 
+        Arguments:
+            name (str): Prefix of the preserved file names.
+                ``(name).cachei`` and ``(name).cached`` are created.
+                The files are created in the same directory as the cache
+                (``dir`` option to ``__init__``).
+            overwrite (bool): Overwrite if already exists
+
         Returns:
             bool: Returns True if succeed.
 
@@ -348,7 +355,10 @@ class FileCache(cache.Cache):
 
         cachefile = os.path.join(self.dir, name)
 
-        if any(os.path.exists(p) for p in (indexfile, datafile)):
+        if overwrite:
+            if os.path.exists(cachefile):
+                os.unlink(cachefile)
+        elif os.path.exists(cachefile):
             if self.verbose:
                 print('Specified cache named "{}" already exists in {}'
                       .format(name, self.dir))

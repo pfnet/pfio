@@ -356,7 +356,7 @@ class MultiprocessFileCache(cache.Cache):
         self._frozen = True
         return True
 
-    def preserve(self, name):
+    def preserve(self, name, overwrite=False):
         '''Preserve the cache as a persistent file on the disk
 
         Once the cache is preserved, the cache file will not be removed
@@ -375,6 +375,13 @@ class MultiprocessFileCache(cache.Cache):
 
         The preserved cache can also be preloaded by :class:`~FileCache`.
 
+        Arguments:
+            name (str): Prefix of the preserved file names.
+                ``(name).cachei`` and ``(name).cached`` are created.
+                The files are created in the same directory as the cache
+                (``dir`` option to ``__init__``).
+            overwrite (bool): Overwrite if already exists
+
         Returns:
             bool: Returns True if succeed.
 
@@ -386,7 +393,10 @@ class MultiprocessFileCache(cache.Cache):
             raise RuntimeError("Cannot preserve a cache in a worker process")
 
         cache_file = os.path.join(self.dir, name)
-        if os.path.exists(cache_file):
+        if overwrite:
+            if os.path.exists(cache_file):
+                os.unlink(cache_file)
+        elif os.path.exists(cache_file):
             if self.verbose:
                 print('Specified cache named "{}" already exists in {}'
                       .format(name, self.dir))
