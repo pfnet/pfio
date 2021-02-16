@@ -1,9 +1,9 @@
-from pfio.filesystem import FileSystem
-from pfio.io import FileStat
-from pfio.io import open_wrapper
 import io
 import os
 import shutil
+
+from pfio.filesystem import FileSystem
+from pfio.io import FileStat, open_wrapper
 
 
 class PosixFileStat(FileStat):

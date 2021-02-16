@@ -1,9 +1,9 @@
-from pfio.cache import FileCache
-from pfio.cache import MultiprocessFileCache
 import os
 import tempfile
 
 import pytest
+
+from pfio.cache import FileCache, MultiprocessFileCache
 
 
 def test_enospc(monkeypatch):

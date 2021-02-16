@@ -1,7 +1,7 @@
 import unittest
 
-import pfio
 import chainerio
+import pfio
 
 
 class TestAlias(unittest.TestCase):

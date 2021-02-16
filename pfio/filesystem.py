@@ -1,8 +1,8 @@
+import os
+
+from pfio._typing import Optional
 from pfio.io import IO
 from pfio.profiler import IOProfiler
-
-import os
-from pfio._typing import Optional
 
 
 class FileSystem(IO):

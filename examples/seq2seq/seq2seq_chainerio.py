@@ -3,20 +3,20 @@
 import argparse
 import datetime
 
-from nltk.translate import bleu_score
+import chainer
+import chainer.functions as F
+import chainer.links as L
 import numpy
 import progressbar
 import six
-
-import chainer
-from chainer.backends import cuda
-import chainer.functions as F
-import chainer.links as L
 from chainer import training
+from chainer.backends import cuda
 from chainer.training import extensions
+from nltk.translate import bleu_score
 
 # PFIO import
 import pfio
+
 # pfio.set_root("hdfs")
 # PFIO import end
 

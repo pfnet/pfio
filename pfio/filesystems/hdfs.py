@@ -1,19 +1,18 @@
-from pfio.filesystem import FileSystem
-from pfio.io import FileStat
-from pfio.io import open_wrapper
-
-import subprocess
-import re
+import getpass
 import io
-from io import IOBase
 import logging
 import os
-import getpass
+import re
+import subprocess
+from io import IOBase
+from typing import Any, Callable, Type
+
 import pyarrow
 from pyarrow import hdfs
 
 from pfio._typing import Optional
-from typing import Type, Callable, Any
+from pfio.filesystem import FileSystem
+from pfio.io import FileStat, open_wrapper
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())

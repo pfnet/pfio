@@ -1,21 +1,19 @@
-import unittest
-
-from collections.abc import Iterable
-from pfio.filesystems.hdfs import _parse_principal_name_from_klist
-from pfio.filesystems.hdfs import _parse_principal_name_from_keytab
-from pfio.filesystems.hdfs import _get_principal_name_from_klist
-from pfio.filesystems.hdfs import HdfsFileSystem
-from pfio.filesystems.hdfs import HdfsFileStat
+import getpass
+import os
 import pickle
 import shutil
 import subprocess
-import os
-import getpass
 import tempfile
+import unittest
+from collections.abc import Iterable
 
 from pyarrow import hdfs
 
 import pfio
+from pfio.filesystems.hdfs import (HdfsFileStat, HdfsFileSystem,
+                                   _get_principal_name_from_klist,
+                                   _parse_principal_name_from_keytab,
+                                   _parse_principal_name_from_klist)
 
 
 def create_dummy_keytab(tmpd, dummy_username):

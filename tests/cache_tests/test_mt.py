@@ -1,10 +1,11 @@
-from pfio.cache import NaiveCache, FileCache
-import time
 import random
-
-import pytest
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+
+import pytest
+
+from pfio.cache import FileCache, NaiveCache
 
 
 @pytest.mark.parametrize("test_class", [NaiveCache, FileCache])

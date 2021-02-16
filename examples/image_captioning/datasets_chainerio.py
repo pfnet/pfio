@@ -1,15 +1,15 @@
-from collections import defaultdict
 import os
+from collections import defaultdict
 
 import numpy as np
+from chainer import dataset
+from chainer.dataset.convert import to_device
 from PIL import Image
 from pycocotools.coco import COCO
 
-from chainer import dataset
-from chainer.dataset.convert import to_device
-
 # PFIO import
 import pfio
+
 # PFIO import end
 
 

@@ -1,13 +1,13 @@
 import errno
 import numbers
 import os
-from struct import pack, unpack, calcsize
-import threading
+import pickle
 import tempfile
+import threading
 import warnings
+from struct import calcsize, pack, unpack
 
 from pfio import cache
-import pickle
 
 _DEFAULT_CACHE_PATH = os.path.join(
     os.getenv('HOME'), ".pfio", "cache")

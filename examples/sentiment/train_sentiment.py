@@ -10,21 +10,19 @@ This is Socher's simple recursive model, not RTNN:
 
 import argparse
 import collections
-
-import numpy as np
+import os
 
 import chainer
-from chainer.backends import cuda
 import chainer.functions as F
 import chainer.links as L
-from chainer import optimizers
-from chainer import reporter
+import data_pfio as data
+import numpy as np
+from chainer import optimizers, reporter
+from chainer.backends import cuda
 from chainer.training import extensions
 
-import data_pfio as data
 # import data
 
-import os
 
 
 def convert_tree(vocab, exp):

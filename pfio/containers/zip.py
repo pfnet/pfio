@@ -1,17 +1,16 @@
-from pfio.container import Container
-from pfio.io import FileStat
-from pfio.io import open_wrapper
 import io
-from io import IOBase
 import logging
 import os
 import sys
 import warnings
 import zipfile
 from datetime import datetime
+from io import IOBase
+from typing import Any, Callable, Type
 
 from pfio._typing import Optional
-from typing import Type, Callable, Any
+from pfio.container import Container
+from pfio.io import FileStat, open_wrapper
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())

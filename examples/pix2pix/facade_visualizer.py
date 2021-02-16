@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import os
-from PIL import Image
 
 import chainer
 import chainer.cuda
-from chainer import Variable
 import numpy as np
+from chainer import Variable
+from PIL import Image
 
 
 def out_image(updater, enc, dec, rows, cols, seed, dst):

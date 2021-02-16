@@ -2,14 +2,13 @@ import errno
 import fcntl
 import numbers
 import os
+import pickle
 import tempfile
 import warnings
-
-from struct import pack, unpack, calcsize
+from struct import calcsize, pack, unpack
 
 from pfio import cache
 from pfio.cache.file_cache import _DEFAULT_CACHE_PATH
-import pickle
 
 
 class _NoOpenNamedTemporaryFile(object):

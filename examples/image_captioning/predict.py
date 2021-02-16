@@ -3,14 +3,12 @@ import argparse
 import glob
 import os
 
-import numpy as np
-from PIL import Image
-
 import chainer
-from chainer import serializers
-
 import datasets
+import numpy as np
+from chainer import serializers
 from model import ImageCaptionModel
+from PIL import Image
 
 
 def main():

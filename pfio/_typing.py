@@ -1,7 +1,6 @@
 import sys
 import typing
 
-
 # workaround for old CPython bug
 # https://github.com/pfnet/pfio/issues/28
 if sys.version_info < (3, 5, 3):

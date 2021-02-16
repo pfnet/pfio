@@ -3,12 +3,11 @@ import stat
 from abc import abstractmethod
 from importlib import import_module
 from io import IOBase
-
-from pfio.profiler import IOProfiler
+from types import TracebackType
+from typing import Any, Callable, Iterator, Type
 
 from pfio._typing import Optional
-from typing import Type, Callable, Iterator, Any
-from types import TracebackType
+from pfio.profiler import IOProfiler
 
 
 def open_wrapper(func):

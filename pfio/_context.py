@@ -1,11 +1,10 @@
-from pfio.container import Container
-from pfio.io import create_fs_handler
-from pfio.io import IO
 import os
 import re
+from typing import Tuple
 
 from pfio._typing import Union
-from typing import Tuple
+from pfio.container import Container
+from pfio.io import IO, create_fs_handler
 
 
 class FileSystemDriverList(object):

@@ -1,14 +1,10 @@
 import unittest
 
-import numpy
-
 import chainer
-from chainer import backend
-from chainer import cuda
-from chainer import testing
-from chainer.testing import attr
-
+import numpy
 import thin_stack
+from chainer import backend, cuda, testing
+from chainer.testing import attr
 
 
 class TestThinStackGet(unittest.TestCase):

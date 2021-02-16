@@ -8,13 +8,13 @@ import pfio
 
 try:
     import chainer
-    from chainer.training import extensions
     from chainer import testing
+    from chainer.training import extensions
     chainer_available = True
 
     # They depend on Chainer
-    from pfio.chainer_extensions.snapshot_writers import SimpleWriter
     from pfio.chainer_extensions import load_snapshot
+    from pfio.chainer_extensions.snapshot_writers import SimpleWriter
 except Exception:
     chainer_available = False
 

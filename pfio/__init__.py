@@ -1,13 +1,11 @@
 from io import IOBase
-from pfio._context import DefaultContext
-from pfio.version import __version__  # NOQA
-
-from pfio.io import IO
-from pfio._typing import Optional, Union
-from typing import Iterator, Any, Callable, Type
+from typing import Any, Callable, Iterator, Type
 
 import pfio.cache  # NOQA
-
+from pfio._context import DefaultContext
+from pfio._typing import Optional, Union
+from pfio.io import IO
+from pfio.version import __version__  # NOQA
 
 _DEFAULT_CONTEXT = DefaultContext()
 

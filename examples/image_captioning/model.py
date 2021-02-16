@@ -1,11 +1,10 @@
-import numpy as np
-
 import chainer
+import numpy as np
+from chainer import Variable
 from chainer import functions as F
 from chainer import initializers
 from chainer import links as L
 from chainer import reporter
-from chainer import Variable
 
 
 class ImageCaptionModel(chainer.Chain):

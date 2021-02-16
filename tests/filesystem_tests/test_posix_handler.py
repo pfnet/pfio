@@ -1,9 +1,8 @@
-import unittest
-
-from collections.abc import Iterable
 import os
 import pickle
 import tempfile
+import unittest
+from collections.abc import Iterable
 
 import pfio
 from pfio.filesystems.posix import PosixFileStat

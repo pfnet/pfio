@@ -1,9 +1,10 @@
 import abc
 from abc import abstractmethod
+from typing import Callable
+
 import six
 
 from pfio._typing import Optional
-from typing import Callable
 
 
 class Cache(six.with_metaclass(abc.ABCMeta)):
@@ -59,6 +60,6 @@ class Cache(six.with_metaclass(abc.ABCMeta)):
         return data
 
 
-from pfio.cache.naive import NaiveCache  # NOQA
 from pfio.cache.file_cache import FileCache  # NOQA
 from pfio.cache.multiprocess_file_cache import MultiprocessFileCache  # NOQA
+from pfio.cache.naive import NaiveCache  # NOQA
