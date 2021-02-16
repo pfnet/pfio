@@ -11,7 +11,7 @@ pyenv global 3.9.1
 pip install .[doc]
 cd docs && make html && :
 sphinx_status=$?
+
 echo "tox_status=${tox_status}"
 echo "sphinx_status=${sphinx_status}"
-
 exit $((tox_status || sphinx_status))

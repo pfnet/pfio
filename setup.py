@@ -51,7 +51,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={'pfio': package_data},
-    extras_require={'test': ['pytest', 'flake8', 'autopep8', 'parameterized'],
+    extras_require={'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort'],
                     'doc': ['sphinx', 'sphinx_rtd_theme']},
     python_requires=">=3.6",
     install_requires=['pyarrow==3.0.0', 'six'],
