@@ -1,6 +1,8 @@
 import hashlib
+import os
 import pickle
 import random
+import tempfile
 
 import pytest
 
@@ -233,3 +235,135 @@ def test_cache_limit_auto_freeze(test_class):
     data_20bytes = b'y' * 20
     assert not cache.put(3, data_20bytes)
     assert cache.get(3) is None
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_preservation(test_class):
+    with tempfile.TemporaryDirectory() as d:
+        cache = test_class(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        assert cache.preserve('preserved') is True
+
+        for i in range(10):
+            assert str(i) == cache.get(i)
+
+        cache.close()
+
+        # Imitating a new process, fresh load
+        cache2 = FileCache(10, dir=d, do_pickle=True)
+
+        assert cache2.preload('preserved') is True
+        for i in range(10):
+            assert str(i) == cache2.get(i)
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_preservation_multiple_times(test_class):
+    with tempfile.TemporaryDirectory() as d:
+        cache = test_class(1, dir=d, do_pickle=True)
+        cache.put(0, 'hello')
+        cache.preserve('preserved1')
+        cache.preserve('preserved2')
+
+        cache2 = test_class(1, dir=d, do_pickle=True)
+        cache2.preload('preserved1')
+        assert cache2.get(0) == 'hello'
+
+        cache3 = test_class(1, dir=d, do_pickle=True)
+        cache3.preload('preserved2')
+        assert cache3.get(0) == 'hello'
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_preload_and_preserve(test_class):
+    with tempfile.TemporaryDirectory() as d:
+        cache = test_class(1, dir=d, do_pickle=True)
+        cache.put(0, 'hello')
+        cache.preserve('preserved')
+
+        cache2 = test_class(1, dir=d, do_pickle=True)
+        cache2.preload('preserved')
+        cache2.preserve('preserved2')
+
+        cache3 = test_class(1, dir=d, do_pickle=True)
+        cache3.preload('preserved2')
+        assert cache3.get(0) == 'hello'
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_preservation_error_already_exists(test_class):
+    with tempfile.TemporaryDirectory() as d:
+        cache = test_class(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        assert cache.preserve('preserved') is True
+
+        assert cache.preserve('preserved') is False
+
+        cache.close()
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_preservation_overwrite(test_class):
+    with tempfile.TemporaryDirectory() as d:
+        cache = test_class(10, dir=d, do_pickle=True)
+
+        for i in range(10):
+            cache.put(i, str(i))
+
+        # Create a dummy file
+        with open(os.path.join(d, 'preserved.cachei'), 'wt') as f:
+            f.write('hello')
+
+        cache.preserve('preserved', overwrite=True)
+
+        cache2 = test_class(10, dir=d, do_pickle=True)
+
+        assert cache2.preload('preserved') is True
+        for i in range(10):
+            assert str(i) == cache2.get(i)
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_enospc(test_class, monkeypatch):
+    def mock_pread(_fd, _buf, _offset):
+        ose = OSError(28, "No space left on device")
+        raise ose
+    with monkeypatch.context() as m:
+        m.setattr(os, 'pread', mock_pread)
+
+        with test_class(10) as cache:
+            i = 2
+            with pytest.warns(RuntimeWarning):
+                cache.put(i, str(i))
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_enoent(test_class, monkeypatch):
+    def mock_pread(_fd, _buf, _offset):
+        ose = OSError(2, "No such file or directory")
+        raise ose
+
+    with monkeypatch.context() as m:
+        m.setattr(os, 'pread', mock_pread)
+
+        with test_class(10) as cache:
+
+            with pytest.raises(OSError):
+
+                cache.put(4, str(4))
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_preload_error_not_found(test_class):
+    with tempfile.TemporaryDirectory() as d:
+        cache = test_class(10, dir=d, do_pickle=True)
+
+        assert cache.preload('preserved') is False
+
+        cache.close()
