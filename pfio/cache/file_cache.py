@@ -102,8 +102,8 @@ class FileCache(cache.Cache):
             case home directory is not backed by fast storage device.
 
         cache_size_limit (None or int): Limitation of the cache size in bytes.
-            If the total amount of cached data reaches the limit,
-            the cache will become frozen and no longer acccept further addition.
+            If the total amount of cached data reaches the limit, the cache
+            will become frozen and no longer acccept further addition.
             Data already stored in the cache can be accessed normally.
             None (default) and 0 is unlimited.
 

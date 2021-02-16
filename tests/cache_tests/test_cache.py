@@ -178,7 +178,8 @@ def test_cache_limit_ok(test_class):
     cache = make_cache(test_class, True, False, l,
                        cache_size_limit=100)
 
-    # To make sure the order of data to arrive has nothing to do with limitation logic
+    # To make sure the order of data to arrive
+    # has nothing to do with the size limitation logic
     idxs = list(range(l))
     random.shuffle(idxs)
 
