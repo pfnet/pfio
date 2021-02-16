@@ -12,7 +12,7 @@ learning training with batteries included. It supports
 ## Dependency
 
 - HDFS client and libhdfs for HDFS access
-- Python 3
+- CPython >= 3.6
 
 ## Installation and Document build
 
@@ -35,11 +35,9 @@ Test
 ```sh
 $ cd pfio
 $ pip install .[test]
-$ pytest
+$ pytest tests/
 ```
 
 ## How to use
 
-Please refer to the `Documentation` for more information about the usage.
-Also you can find some examples in
-`examples` directory for usage in Chainer training script examples.
+Please refer to the [official document](https://pfio.readthedocs.io) for more information about the usage.
