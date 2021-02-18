@@ -54,7 +54,7 @@ setup(
     extras_require={'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort'],
                     'doc': ['sphinx', 'sphinx_rtd_theme']},
     python_requires=">=3.6",
-    install_requires=['pyarrow==3.0.0', 'six'],
+    install_requires=['pyarrow==3.0.0'],
     include_package_data=True,
     zip_safe=False,
 
