@@ -2,12 +2,10 @@ import abc
 from abc import abstractmethod
 from typing import Callable
 
-import six
-
 from pfio._typing import Optional
 
 
-class Cache(six.with_metaclass(abc.ABCMeta)):
+class Cache(abc.ABC):
     '''Abstract class to define Cache class interface
 
     This can be instance of ``collections.abc.Sequence`` but so far
