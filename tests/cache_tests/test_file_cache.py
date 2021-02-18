@@ -1,5 +1,6 @@
-from pfio.cache import FileCache, MultiprocessFileCache
 import tempfile
+
+from pfio.cache import FileCache, MultiprocessFileCache
 
 
 def test_preservation_interoperability():
