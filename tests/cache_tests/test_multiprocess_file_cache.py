@@ -88,31 +88,6 @@ def test_multiprocess_consistency():
             assert (data == expected).all()
 
 
-def test_preservation():
-    with tempfile.TemporaryDirectory() as d:
-        cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
-
-        for i in range(10):
-            cache.put(i, str(i))
-
-        cache.preserve('preserved')
-
-        cache.close()
-
-        # Imitating a new process, fresh load
-        cache2 = MultiprocessFileCache(10, dir=d, do_pickle=True)
-
-        cache2.preload('preserved')
-        for i in range(10):
-            assert str(i) == cache2.get(i)
-
-        cache2.close()
-
-        # No temporary cache file should remain,
-        # and the preserved cache should be kept.
-        assert os.listdir(d) == ['preserved']
-
-
 def test_preservation_interoperability():
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
@@ -120,32 +95,17 @@ def test_preservation_interoperability():
         for i in range(10):
             cache.put(i, str(i))
 
-        cache.preserve('preserved')
+        assert cache.preserve('preserved') is True
 
         cache.close()
 
         cache2 = FileCache(10, dir=d, do_pickle=True)
 
-        cache2.preload('preserved')
+        assert cache2.preload('preserved') is True
         for i in range(10):
             assert str(i) == cache2.get(i)
 
         cache2.close()
-
-
-def test_preservation_error_already_exists():
-    with tempfile.TemporaryDirectory() as d:
-        cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
-
-        for i in range(10):
-            cache.put(i, str(i))
-
-        cache.preserve('preserved')
-
-        with pytest.raises(FileExistsError):
-            cache.preserve('preserved')
-
-        cache.close()
 
 
 def test_preserve_error_subprocess():
@@ -179,8 +139,7 @@ def test_preload_error_not_found():
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
 
-        with pytest.raises(FileNotFoundError):
-            cache.preload('preserved')
+        assert cache.preload('preserved') is False
 
         cache.close()
 
@@ -206,32 +165,3 @@ def test_preload_error_subprocess():
 
         e = pickle.loads(pipe_recv.recv())
         assert isinstance(e, RuntimeError)
-
-
-def test_enospc(monkeypatch):
-    def mock_pread(_fd, _buf, _offset):
-        ose = OSError(28, "No space left on device")
-        raise ose
-
-    with monkeypatch.context() as m:
-        m.setattr(os, 'pread', mock_pread)
-
-        with MultiprocessFileCache(10) as cache:
-            i = 2
-            with pytest.warns(RuntimeWarning):
-                cache.put(i, str(i))
-
-
-def test_enoent(monkeypatch):
-    def mock_pread(_fd, _buf, _offset):
-        ose = OSError(2, "No such file or directory")
-        raise ose
-
-    with monkeypatch.context() as m:
-        m.setattr(os, 'pread', mock_pread)
-
-        with MultiprocessFileCache(10) as cache:
-
-            with pytest.raises(OSError):
-
-                cache.put(4, str(4))

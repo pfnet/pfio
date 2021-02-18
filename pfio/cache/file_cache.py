@@ -291,20 +291,39 @@ class FileCache(cache.Cache):
         forked process, except the process that called ``preserve()``.
         After the preload, no data can be added to the cache.
 
+        When it succeeds, it returns ``True``.
+        If there is no cache file with the specified name in
+        the cache directory, it will do nothing but return ``False``.
+
+        Returns:
+            bool: Returns True if succeed.
+
         .. note:: This feature is experimental.
 
         '''
         if self._frozen:
-            return
+            if self.verbose:
+                print("Failed to preload the cache from {}: "
+                      "The cache is already frozen."
+                      .format(name))
+            return False
 
         cachefile = os.path.join(self.dir, name)
+
+        if not os.path.exists(cachefile):
+            if self.verbose:
+                print('Failed to ploread the cache from {}: '
+                      'The specified cache not found in {}'
+                      .format(name, self.dir))
+            return False
 
         with self.lock.wrlock():
             self.cachefp.close()
             self.cachefp = open(cachefile, 'rb')
             self._frozen = True
+        return True
 
-    def preserve(self, name):
+    def preserve(self, name, overwrite=False):
         '''Preserve the cache as a persistent file on the disk
 
         Saves the current cache into ``cache_path``.
@@ -313,14 +332,38 @@ class FileCache(cache.Cache):
         ``preload()`` method. After preservation, no data can be added
         to the cache.
 
+        When it succeeds, it returns ``True``.
+        If there is a cache file with the same name already exists in the
+        cache directory, it will do nothing but return ``False``.
+
         The preserved cache can also be preloaded by
         :class:`~MultiprocessFileCache`.
+
+        Arguments:
+            name (str): Prefix of the preserved file names.
+                ``(name).cachei`` and ``(name).cached`` are created.
+                The files are created in the same directory as the cache
+                (``dir`` option to ``__init__``).
+
+            overwrite (bool): Overwrite if already exists
+
+        Returns:
+            bool: Returns True if succeed.
 
         .. note:: This feature is experimental.
 
         '''
 
         cachefile = os.path.join(self.dir, name)
+
+        if overwrite:
+            if os.path.exists(cachefile):
+                os.unlink(cachefile)
+        elif os.path.exists(cachefile):
+            if self.verbose:
+                print('Specified cache named "{}" already exists in {}'
+                      .format(name, self.dir))
+            return False
 
         with self.lock.wrlock():
             # Hard link and save them
@@ -329,3 +372,4 @@ class FileCache(cache.Cache):
 
             self.cachefp = open(cachefile, 'rb')
             self._frozen = True
+        return True
