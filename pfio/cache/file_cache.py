@@ -344,6 +344,7 @@ class FileCache(cache.Cache):
                 ``(name).cachei`` and ``(name).cached`` are created.
                 The files are created in the same directory as the cache
                 (``dir`` option to ``__init__``).
+
             overwrite (bool): Overwrite if already exists
 
         Returns:
