@@ -1,5 +1,4 @@
-from pfio.cache import FileCache
-from pfio.cache import MultiprocessFileCache
+from pfio.cache import FileCache, MultiprocessFileCache
 import tempfile
 
 
