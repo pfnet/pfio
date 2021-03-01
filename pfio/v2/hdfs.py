@@ -173,8 +173,6 @@ class Hdfs(FS):
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
 
-        self._create_connection()
-
         # hdfs only support open in 'b'
         if 'b' not in mode:
             mode += 'b'
