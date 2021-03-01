@@ -6,7 +6,7 @@ import warnings
 import zipfile
 from datetime import datetime
 
-from .fs import FS, FileStat, open_wrapper
+from .fs import FS, FileStat
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -87,7 +87,6 @@ class Zip(FS):
 
         self.zipobj = zipfile.ZipFile(self.fileobj, mode)
 
-    @open_wrapper
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):

@@ -30,8 +30,7 @@ Or::
 
 from .hdfs import Hdfs, HdfsFileStat  # NOQA
 from .local import Local, LocalFileStat  # NOQA
+from .s3 import S3  # NOQA
 from .zip import Zip, ZipFileStat  # NOQA
-
-# from .s3 import S3
 
 local = Local()

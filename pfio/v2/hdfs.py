@@ -4,15 +4,11 @@ import logging
 import os
 import re
 import subprocess
-from io import IOBase
-from typing import Any, Callable, Type
 
 import pyarrow
 from pyarrow import hdfs
 
-from pfio._typing import Optional
-
-from .fs import FS, FileStat, open_wrapper
+from .fs import FS, FileStat
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -147,40 +143,31 @@ class Hdfs(FS):
     def _get_login_username(self):
         return getpass.getuser()
 
-    def _wrap_fileobject(self, file_obj: Type['IOBase'],
-                         file_path: str, mode: str = 'rb',
-                         buffering: int = -1,
-                         encoding: Optional[str] = None,
-                         errors: Optional[str] = None,
-                         newline: Optional[str] = None,
-                         closefd: bool = True,
-                         opener: Optional[Callable[
-                             [str, int], Any]] = None) -> Type['IOBase']:
-
-        if 'b' not in mode:
-            file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
-        elif 'r' in mode:
-            # Wrapping file_obj with io.BufferedReader to add `peek` support,
-            # which signiciantly improves unpickle performance.
-            file_obj = io.BufferedReader(file_obj)
-        else:
-            file_obj = io.BufferedWriter(file_obj)
-
-        return file_obj
-
-    @open_wrapper
     def open(self, file_path, mode='rb',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
+
+        orig_mode = mode
 
         # hdfs only support open in 'b'
         if 'b' not in mode:
             mode += 'b'
         try:
-            hdfs_file = self.connection.open(file_path, mode)
-            return hdfs_file
+            file_obj = self.connection.open(file_path, mode)
+
         except pyarrow.lib.ArrowIOError as e:
             raise IOError("open file error :{}".format(str(e)))
+
+        if 'b' not in orig_mode:
+            file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
+        elif 'r' in orig_mode:
+            # Wrap file_obj with io.BufferedReader for ``peek()``, to
+            # significiantly improve unpickle performance.
+            file_obj = io.BufferedReader(file_obj)
+        else:
+            file_obj = io.BufferedWriter(file_obj)
+
+        return file_obj
 
     def subfs(self, rel_path):
         return Hdfs(os.path.join(self.cwd, rel_path))

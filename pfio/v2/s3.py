@@ -1,9 +1,67 @@
+import io
 import os
-import shutil
+from types import TracebackType
+from typing import Optional, Type
 
 import boto3
 
-from .fs import FS, open_wrapper
+from .fs import FS
+
+
+class _ObjectReader(io.BufferedReader):
+    def __init__(self, client, bucket, key, mode, kwargs):
+        self.client = client
+        self.res = self.client.get_object(Bucket=bucket,
+                                          Key=key)
+        self.mode = mode
+        self.body = self.res['Body']
+
+    def read(self):
+        if 'b' in self.mode:
+            return self.body.read()
+        else:
+            return self.body.read().decode('utf-8')
+
+    def close(self):
+        return self.body.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> bool:
+        self.close()
+
+
+class _ObjectWriter(io.BufferedWriter):
+    def __init__(self, client, bucket, key, mode, kwargs):
+        self.client = client
+        self.bucket = bucket
+        self.key = key
+        if 'b' in mode:
+            self.buf = b''
+        else:
+            self.buf = ''
+
+    def write(self, buf):
+        self.buf += buf
+
+    def close(self):
+        # TODO: MPU
+        # See:  https://boto3.amazonaws.com/v1/documentation/
+        # api/latest/reference/services/s3.html#S3.Client.put_object
+        self.client.put_object(Body=self.buf,
+                               Bucket=self.bucket,
+                               Key=self.key)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> bool:
+        self.close()
 
 
 class S3(FS):
@@ -16,20 +74,28 @@ class S3(FS):
         # import botocore
         # botocore.session.Session().set_debug_logger()
 
-        # if 'AWS_ACCESS_KEY_ID' in os.getenv():
-        # aws_access_key_id='me@EXAMPLE.COM',
-        # aws_secret_access_key='XXXXXXX',
-        kwargs = {}
+        # TODO: update from real env 'AWS_ACCESS_KEY_ID' in os.getenv():
+        kwargs = {
+            'aws_access_key_id': 'me@EXAMPLE.COM',
+            'aws_secret_access_key': 'XXXXXXX',
+        }
         if endpoint is not None:
             kwargs['endpoint_url'] = endpoint
 
-        self.client = boto3.client('s3', *kwargs)
+        self.client = boto3.client('s3', **kwargs)
 
-    @open_wrapper
-    def open(self, file_path, mode='r',
-             buffering=-1, encoding=None, errors=None,
-             newline=None, closefd=True, opener=None):
-        raise NotImplementedError()
+    def open(self, path, mode='r', **kwargs):
+        if 'a' in mode:
+            io.UnsupportedOperation('Append is not supported')
+
+        if 'r' in mode:
+            return _ObjectReader(self.client, self.bucket, path, mode, kwargs)
+
+        elif 'w' in mode:
+            return _ObjectWriter(self.client, self.bucket, path, mode, kwargs)
+
+        else:
+            raise RuntimeError(f'Unknown option: {mode}')
 
     def subfs(self, rel_path):
         raise NotImplementedError()
@@ -64,8 +130,7 @@ class S3(FS):
 
     def remove(self, file_path: str, recursive=False):
         if recursive:
-            return shutil.rmtree(file_path)
-        if os.path.isdir(file_path):
-            return os.rmdir(file_path)
+            raise os.UnsupportedOperation("Recursive delete not supported")
 
-        return os.remove(file_path)
+        return self.client.delete_object(Bucket=self.bucket,
+                                         Key=file_path)

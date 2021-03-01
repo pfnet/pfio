@@ -8,25 +8,6 @@ from types import TracebackType
 from typing import Any, Callable, Iterator, Optional, Type
 
 
-def open_wrapper(func):
-    def wrapper(self, file_path: str, mode: str = 'rb',
-                buffering: int = -1, encoding: Optional[str] = None,
-                errors: Optional[str] = None, newline: Optional[str] = None,
-                closefd: bool = True,
-                opener: Optional[Callable[
-                    [str, int], Any]] = None) -> Type['IOBase']:
-        file_obj = func(self, file_path, mode, buffering, encoding,
-                        errors, newline, closefd, opener)
-
-        if not hasattr(self, '_wrap_fileobject'):
-            return file_obj
-
-        return self._wrap_fileobject(
-            file_obj, file_path, mode, buffering, encoding,
-            errors, newline, closefd, opener)
-    return wrapper
-
-
 class FileStat(abc.ABC):
     """Detailed file or directory information abstraction
 

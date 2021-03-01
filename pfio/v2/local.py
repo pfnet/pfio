@@ -2,7 +2,7 @@ import io
 import os
 import shutil
 
-from .fs import FS, FileStat, open_wrapper
+from .fs import FS, FileStat
 
 
 class LocalFileStat(FileStat):
@@ -50,12 +50,12 @@ class Local(FS):
         else:
             self.cwd = cwd
 
-    @open_wrapper
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
 
-        return io.open(file_path, mode,
+        path = os.path.join(self.cwd, file_path)
+        return io.open(path, mode,
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
@@ -101,6 +101,7 @@ class Local(FS):
         return os.rename(src, dst)
 
     def remove(self, file_path: str, recursive=False):
+        file_path = os.path.join(self.cwd, file_path)
         if recursive:
             return shutil.rmtree(file_path)
         if os.path.isdir(file_path):
