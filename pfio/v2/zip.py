@@ -55,6 +55,8 @@ class Zip(FS):
     def __init__(self, backend, file_path, mode='r'):
         super().__init__()
         self.backend = backend
+        self.file_path = file_path
+        self.mode = mode
 
         if 'w' in mode:
             self._readonly = False
@@ -101,8 +103,12 @@ class Zip(FS):
         return fp
 
     def close(self):
+        self._checkfork()
         self.zipobj.close()
         self.fileobj.close()
+
+    def subfs(self):
+        return Zip(self.backend, self.file_path, self.mode)
 
     def stat(self, path):
         self._checkfork()

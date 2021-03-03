@@ -2,9 +2,7 @@ import io
 import multiprocessing
 import os
 import pickle
-import random
 import shutil
-import string
 import subprocess
 import sys
 import tempfile
@@ -15,27 +13,8 @@ from zipfile import ZipFile
 import pytest
 from parameterized import parameterized
 
+from pfio.testing import make_random_str, make_zip
 from pfio.v2 import ZipFileStat, local
-
-
-def make_zip(zipfilename, root_dir, base_dir):
-    pwd = os.getcwd()
-    with ZipFile(zipfilename, "w") as f:
-        os.chdir(root_dir)
-        for root, dirs, filenames in os.walk(base_dir):
-            for _dir in dirs:
-                path = os.path.normpath(os.path.join(root, _dir))
-                f.write(path)
-            for _file in filenames:
-                path = os.path.normpath(os.path.join(root, _file))
-                f.write(path)
-        os.chdir(pwd)
-
-
-def make_random_str(n):
-    return ''.join([random.choice(string.ascii_letters + string.digits)
-                    for i in range(n)])
-
 
 ZIP_TEST_FILENAME_LIST = {
     "dir_name1": "testdir1",

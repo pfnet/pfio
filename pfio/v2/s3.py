@@ -98,6 +98,7 @@ class S3(FS):
             raise RuntimeError(f'Unknown option: {mode}')
 
     def list(self, prefix: str = None, recursive=False):
+        self._checkfork()
         # TODO: recursive list
         res = self.client.list_objects_v2(Bucket=self.bucket)
         print(res['Name'])
@@ -107,6 +108,7 @@ class S3(FS):
                 yield k
 
     def stat(self, path):
+        self._checkfork()
         raise NotImplementedError()
         # return FileStat(os.stat(path), path)
 
@@ -120,6 +122,7 @@ class S3(FS):
         raise os.UnsupportedOperation("S3 doesn't have directory")
 
     def exists(self, file_path: str):
+        self._checkfork()
         raise NotImplementedError()
 
     def rename(self, src, dst):
@@ -129,5 +132,6 @@ class S3(FS):
         if recursive:
             raise os.UnsupportedOperation("Recursive delete not supported")
 
+        self._checkfork()
         return self.client.delete_object(Bucket=self.bucket,
                                          Key=file_path)

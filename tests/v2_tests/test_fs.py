@@ -1,11 +1,15 @@
 # Test fs.FS compatibility
 import io
+import multiprocessing as mp
+import os
 import random
 import string
+import tempfile
 
 from moto import mock_s3
 from parameterized import parameterized
 
+from pfio.testing import ZipForTest
 from pfio.v2 import S3, Local, fs, open_url
 
 
@@ -56,3 +60,29 @@ def test_factory_open():
 
     with open_url('s3://foobar/boom/bom.txt', 'r') as fp:
         assert 'hello' == fp.read()
+
+
+def test_recreate():
+
+    with tempfile.TemporaryDirectory() as d:
+        zipfilename = os.path.join(d, "test.zip")
+        z = ZipForTest(zipfilename)
+        barrier = mp.Barrier(1)
+
+        with fs.recreate_on_fork(lambda: fs.from_url(zipfilename)) as f:
+            with f.open('file', 'rb') as fp:
+                content = fp.read()
+                assert content
+                assert z.content('file') == content
+
+            def func():
+                # accessing the shared container
+                with f.open('file', 'rb') as fp:
+                    barrier.wait()
+                    assert content == fp.read()
+
+            p = mp.Process(target=func)
+            p.start()
+
+            p.join(timeout=1)
+            assert p.exitcode == 0

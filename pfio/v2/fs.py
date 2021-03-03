@@ -57,9 +57,13 @@ class FileStat(abc.ABC):
         return str(self.__str__())
 
 
+class ForkedError(RuntimeError):
+    pass
+
+
 class FS(abc.ABC):
     cwd = None
-    _readonly = False
+    pid = os.getpid()
 
     def __init__(self):
         self.pid = os.getpid()
@@ -74,7 +78,7 @@ class FS(abc.ABC):
                  [str, int], Any]] = None) -> Type["IOBase"]:
         raise NotImplementedError()
 
-    def open_zip(self, file_path: str, mode='r') -> Type["Zip"]: # NOQA
+    def open_zip(self, file_path: str, mode='r') -> Type["Zip"]:  # NOQA
         from .zip import Zip
         return Zip(self, file_path, mode)
 
@@ -88,19 +92,9 @@ class FS(abc.ABC):
             sub.cwd = os.path.join(self.cwd, rel_path)
         return sub
 
-    # TODO(kuenishi): add readonly property check to all
-    # implementations.
-    @property
-    def readonly(self):
-        return self._readonly
-
-    @readonly.setter
-    def readonly(self, val):
-        self._readonly = val
-
     def _checkfork(self):
         if self.is_forked:
-            raise RuntimeError("Process fork detected.")
+            raise ForkedError()
 
     @property
     def is_forked(self):
@@ -251,15 +245,34 @@ class FS(abc.ABC):
 
 @contextlib.contextmanager
 def open_url(url: str, mode: str = 'r') -> 'IOBase':
+    '''Opens a file regardless of the backend FS type
+
+    ``url`` must be compliant with URL standard in
+    https://url.spec.whatwg.org/ .  As this function implements
+    context manager, the FileObject can be written as::
+
+       with open_url("s3://bucket.example.com/path/your-file.txt", 'r') as f:
+           f.read()
+
+    .. note:: Some FS resouces won't be closed when using this
+    functionality.
+
+    Returns:
+        a FileObject that must be closed.
+
+    '''
     dirname, filename = os.path.split(url)
     with from_url(dirname) as fs:
         with fs.open(filename, mode) as fp:
             yield fp
 
 
-def from_url(url: str, open_zip=False) -> 'FS':
-    '''
-    Factory pattern implementation, creates FS from URI
+def from_url(url: str) -> 'FS':
+    '''Factory pattern implementation, creates FS from URI
+
+    .. note:: Some FS resouces won't be closed when using this
+    functionality.
+
     '''
     parsed = urlparse(url)
 
@@ -268,23 +281,93 @@ def from_url(url: str, open_zip=False) -> 'FS':
     else:
         scheme = 'file'  # Default is local
 
+    if parsed.path.endswith('.zip'):
+        dirname, filename = os.path.split(parsed.path)
+    else:
+        dirname = parsed.path
+
     if scheme == 'file':
         from .local import Local
-        fs = Local(parsed.path)
+        fs = Local(dirname)
     elif scheme == 'hdfs':
         from .hdfs import Hdfs
-        fs = Hdfs(parsed.path)
+        fs = Hdfs(dirname)
     elif scheme == 's3':
         from .s3 import S3
 
         # TODO: how can we handle access keys?
         fs = S3(bucket=parsed.netloc,
                 endpoint=os.getenv('S3_ENDPOINT'))
-        fs = fs.subfs(parsed.path)
+        fs = fs.subfs(dirname)
     else:
-        raise RuntimeError("Scheme {} is not supported", parsed.scheme)
+        raise RuntimeError("Scheme {} is not supported", scheme)
 
-    if open_zip and parsed.path.endswith('.zip'):
-        return fs.open_zip()
+    if parsed.path.endswith('.zip'):
+        return fs.open_zip(filename)
 
     return fs
+
+
+def recreate_on_fork(func) -> "FS":
+    return _RecreateOnFork(func)
+
+
+class _RecreateOnFork(FS):
+    def __init__(self, func):
+        self.mixin = func()
+        self.func = func
+
+    def open(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.open(*args, **kwargs)
+
+    def subfs(self):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        self.mixin.subfs()
+
+    def close(self):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        self.mixin.close()
+
+    def list(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.list(*args, **kwargs)
+
+    def stat(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.stat(*args, **kwargs)
+
+    def isdir(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.mkdir(*args, **kwargs)
+
+    def mkdir(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.mkdir(*args, **kwargs)
+
+    def makedirs(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.makedirs(*args, **kwargs)
+
+    def exists(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.exists(*args, **kwargs)
+
+    def rename(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.rename(*args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        if self.mixin.is_forked:
+            self.mixin = self.func()
+        return self.mixin.remove(*args, **kwargs)

@@ -146,7 +146,7 @@ class Hdfs(FS):
     def open(self, file_path, mode='rb',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
-
+        self._checkfork()
         orig_mode = mode
 
         # hdfs only support open in 'b'
@@ -173,9 +173,11 @@ class Hdfs(FS):
         return Hdfs(os.path.join(self.cwd, rel_path))
 
     def close(self):
+        self._checkfork()
         self.connection.close()
 
     def list(self, path_or_prefix: str = None, recursive=False):
+        self._checkfork()
         if path_or_prefix is None:
             path_or_prefix = "/user/{}".format(self.username)
 
@@ -209,22 +211,27 @@ class Hdfs(FS):
                                                 file_name)
 
     def stat(self, path):
+        self._checkfork()
         return HdfsFileStat(self.connection.info(path))
 
     def isdir(self, file_path: str):
         return self.stat(file_path).isdir()
 
     def mkdir(self, file_path: str, *args, dir_fd=None):
+        self._checkfork()
         return self.connection.mkdir(file_path)
 
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
         return self.mkdir(file_path, mode, exist_ok)
 
     def exists(self, file_path: str):
+        self._checkfork()
         return self.connection.exists(file_path)
 
     def rename(self, src, dst):
+        self._checkfork()
         return self.connection.rename(src, dst)
 
     def remove(self, path, recursive=False):
+        self._checkfork()
         return self.connection.delete(path, recursive)

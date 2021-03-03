@@ -45,7 +45,10 @@ class LocalFileStat(FileStat):
 class Local(FS):
     def __init__(self, cwd=None):
         super().__init__()
-        self._cwd = None
+        if cwd is None:
+            self._cwd = None
+        else:
+            self._cwd = cwd
 
     @property
     def cwd(self):
