@@ -13,11 +13,11 @@ class _ObjectReader(io.BufferedReader):
         self.client = client
         self.res = self.client.get_object(Bucket=bucket,
                                           Key=key)
-        self.mode = mode
+        self._mode = mode
         self.body = self.res['Body']
 
     def read(self):
-        if 'b' in self.mode:
+        if 'b' in self._mode:
             return self.body.read()
         else:
             return self.body.read().decode('utf-8')

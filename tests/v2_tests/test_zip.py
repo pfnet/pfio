@@ -432,10 +432,13 @@ class TestZip(unittest.TestCase):
             with z.open_zip(
                     self.nested_zip_path) as nested_zip:
                 with nested_zip.open(self.nested_zipped_file_path) as f:
-                    self.assertEqual(f.read(), self.nested_test_string_b)
+                    self.assertEqual(f.read(), self.nested_test_string)
 
                 with nested_zip.open(self.nested_zipped_file_path, "r") as f:
                     self.assertEqual(f.read(), self.nested_test_string)
+
+                with nested_zip.open(self.nested_zipped_file_path, "rb") as f:
+                    self.assertEqual(f.read(), self.nested_test_string_b)
 
     @parameterized.expand([
         # path ends with slash
@@ -669,7 +672,6 @@ class TestZipListNoDirectory(unittest.TestCase):
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
-
         assert stderr == b""
 
     def tearDown(self):

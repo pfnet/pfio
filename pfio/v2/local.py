@@ -45,10 +45,14 @@ class LocalFileStat(FileStat):
 class Local(FS):
     def __init__(self, cwd=None):
         super().__init__()
-        if cwd is None:
-            self.cwd = os.getcwd()
+        self._cwd = None
+
+    @property
+    def cwd(self):
+        if self._cwd is None:
+            return os.getcwd()
         else:
-            self.cwd = cwd
+            return self._cwd
 
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
