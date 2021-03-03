@@ -1,4 +1,5 @@
 import abc
+import contextlib
 import copy
 import os
 import stat
@@ -6,6 +7,7 @@ from abc import abstractmethod
 from io import IOBase
 from types import TracebackType
 from typing import Any, Callable, Iterator, Optional, Type
+from urllib.parse import urlparse
 
 
 class FileStat(abc.ABC):
@@ -82,7 +84,8 @@ class FS(abc.ABC):
         # connection and zipfile.ZipFile object), they also must be
         # copied.
         sub = copy.copy(self)
-        sub.cwd = os.path.join(self.cwd, rel_path)
+        if self.cwd is not None:
+            sub.cwd = os.path.join(self.cwd, rel_path)
         return sub
 
     # TODO(kuenishi): add readonly property check to all
@@ -244,3 +247,44 @@ class FS(abc.ABC):
 
         """
         raise NotImplementedError()
+
+
+@contextlib.contextmanager
+def open_url(url: str, mode: str = 'r') -> 'IOBase':
+    dirname, filename = os.path.split(url)
+    with from_url(dirname) as fs:
+        with fs.open(filename, mode) as fp:
+            yield fp
+
+
+def from_url(url: str, open_zip=False) -> 'FS':
+    '''
+    Factory pattern implementation, creates FS from URI
+    '''
+    parsed = urlparse(url)
+
+    if parsed.scheme:
+        scheme = parsed.scheme
+    else:
+        scheme = 'file'  # Default is local
+
+    if scheme == 'file':
+        from .local import Local
+        fs = Local(parsed.path)
+    elif scheme == 'hdfs':
+        from .hdfs import Hdfs
+        fs = Hdfs(parsed.path)
+    elif scheme == 's3':
+        from .s3 import S3
+
+        # TODO: how can we handle access keys?
+        fs = S3(bucket=parsed.netloc,
+                endpoint=os.getenv('S3_ENDPOINT'))
+        fs = fs.subfs(parsed.path)
+    else:
+        raise RuntimeError("Scheme {} is not supported", parsed.scheme)
+
+    if open_zip and parsed.path.endswith('.zip'):
+        return fs.open_zip()
+
+    return fs

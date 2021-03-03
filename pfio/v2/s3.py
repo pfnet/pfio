@@ -97,9 +97,6 @@ class S3(FS):
         else:
             raise RuntimeError(f'Unknown option: {mode}')
 
-    def subfs(self, rel_path):
-        raise NotImplementedError()
-
     def list(self, prefix: str = None, recursive=False):
         # TODO: recursive list
         res = self.client.list_objects_v2(Bucket=self.bucket)
