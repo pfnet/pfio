@@ -95,6 +95,11 @@ class FS(abc.ABC):
         copied by overriding this method.
 
         '''
+        if rel_path.startswith("/"):
+            raise RuntimeError("Absolute path is not supported")
+        elif '..' in rel_path.split(os.path.sep):
+            raise RuntimeError("Only subtree is supported")
+
         sub = copy.copy(self)
         if self.cwd is not None:
             sub.cwd = os.path.join(self.cwd, rel_path)
@@ -303,10 +308,9 @@ def from_url(url: str) -> 'FS':
     elif scheme == 's3':
         from .s3 import S3
 
-        # TODO: how can we handle access keys?
-        fs = S3(bucket=parsed.netloc,
+        fs = S3(bucket=parsed.netloc, key=dirname,
                 endpoint=os.getenv('S3_ENDPOINT'))
-        fs = fs.subfs(dirname)
+
     else:
         raise RuntimeError("Scheme {} is not supported", scheme)
 

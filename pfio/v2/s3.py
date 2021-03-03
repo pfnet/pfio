@@ -65,9 +65,12 @@ class _ObjectWriter(io.BufferedWriter):
 
 
 class S3(FS):
-    def __init__(self, bucket=None, endpoint=None):
+    def __init__(self, bucket=None, key=None,
+                 endpoint=None,):
         self.bucket = bucket
         self.endpoint = endpoint
+        if key is not None:
+            self.cwd = key
 
         # boto3.set_stream_logger()
 
