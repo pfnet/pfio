@@ -62,6 +62,10 @@ class ForkedError(RuntimeError):
 
 
 class FS(abc.ABC):
+    '''FS access abstraction
+
+    '''
+
     cwd = None
     pid = os.getpid()
 
@@ -83,10 +87,14 @@ class FS(abc.ABC):
         return Zip(self, file_path, mode)
 
     def subfs(self, rel_path: str) -> Type["FS"]:
-        # By default it performs shallow copy. If any resource that
-        # has different lifecycles than the copy source (e.g. HDFS
-        # connection and zipfile.ZipFile object), they also must be
-        # copied.
+        '''Virtually changes the working directory 
+
+        By default it performs shallow copy. If any resource that as
+        different lifecycles than the copy source (e.g. HDFS
+        connection and zipfile.ZipFile object), they also will be
+        copied by overriding this method.
+
+        '''
         sub = copy.copy(self)
         if self.cwd is not None:
             sub.cwd = os.path.join(self.cwd, rel_path)
@@ -255,7 +263,7 @@ def open_url(url: str, mode: str = 'r') -> 'IOBase':
            f.read()
 
     .. note:: Some FS resouces won't be closed when using this
-    functionality.
+        functionality.
 
     Returns:
         a FileObject that must be closed.
@@ -271,7 +279,7 @@ def from_url(url: str) -> 'FS':
     '''Factory pattern implementation, creates FS from URI
 
     .. note:: Some FS resouces won't be closed when using this
-    functionality.
+        functionality.
 
     '''
     parsed = urlparse(url)

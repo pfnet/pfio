@@ -1,0 +1,62 @@
+.. module:: pfio.v2
+
+V2 API
+======
+
+.. note:: this is still in exprerimental phase.
+
+
+PFIO v2 API tries to solve the impedance mismatch between different
+local filesystem, NFS, and other object storage systems, with a lot
+simpler and cleaner code.
+
+It has removed several toplevel functions that seem to be less
+important. It turned out that they introduced more complexity than
+originally intended, due to the need of the global context. Thus,
+functions that depends on the global context such as ``open()``,
+``set_root()`` and etc. have been removed in v2 API.
+
+Instead, v2 API provides only two toplevel functions that enable
+direct resource access with full URL: ``open_url()`` and
+``fs.from_url()``. The former opens a file and returns FileObject. The
+latter, creates a ``fs.FS`` object that enable resource access under
+the URL. The new class ``fs.FS``, is something close to handler object
+in version 1 API. ``fs.FS`` is intended to be as much compatible as
+possible, however, it has several differences.
+
+One notable difference is that it has the virtual concept of current
+working directory, and thus provides ``subfs()`` method. ``subfs()``
+method behaves like ``os.chdir()`` without actually changing current
+working directory of the process, but actually returns a *new*
+``fs.FS`` object that has different working directory. All resouce
+access through the object automatically prepends the working
+directory.
+
+V2 API does not provide lazy resouce initialization any more. Instead,
+it provides simple wrapper ``recreate_on_fork``, which recreates the
+``fs.FS`` object every time the object experiences ``fork(2)``. ``Hdfs``
+and ``Zip`` can be wrapped with it, and will be fork-tolerant object.
+
+
+
+Reference
+---------
+
+.. autofunction:: open_url
+.. autofunction:: pfio.v2.fs.from_url
+.. autofunction:: pfio.v2.fs.recreate_on_fork
+
+.. autoclass:: pfio.v2.fs.FS
+   :members:
+.. autoclass:: Local
+   :members:
+.. autoclass:: Hdfs
+   :members:
+.. autoclass:: S3
+   :members:
+.. autoclass:: Zip
+   :members:
+
+.. note::
+          Only the username in the first entry in The
+          keytab will be used to update the Kerberos ticket.

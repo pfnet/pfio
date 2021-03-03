@@ -8,6 +8,7 @@ from typing import Any, Callable, Iterator, Type
 
 from pfio._typing import Optional
 from pfio.profiler import IOProfiler
+from pfio.v2.fs import FileStat
 
 
 def open_wrapper(func):
@@ -23,53 +24,6 @@ def open_wrapper(func):
             file_obj, file_path, mode, buffering, encoding,
             errors, newline, closefd, opener)
     return wrapper
-
-
-class FileStat(abc.ABC):
-    """Detailed file or directory information abstraction
-
-    :meth:`pfio.IO.stat` of filesystem/container handlers return an object of
-    subclass of ``FileStat``.
-    In addition to the common attributes that the ``FileStat`` abstract
-    provides, each ``FileStat`` subclass implements some additional
-    attributes depending on what information the corresponding filesystem or
-    container can handle.
-    The common attributes have the same behavior despite filesystem or
-    container type difference.
-
-    Attributes:
-        filename (str):
-            Filename in the filesystem or container.
-        last_modifled (float):
-            UNIX timestamp of mtime. Note that some
-            filesystems or containers do not have sub-second precision.
-        mode (int):
-            Permission with file type flag (regular file or directory).
-            You can make a human-readable interpretation by
-            `stat.filemode <https://docs.python.org/3/library/stat.html#stat.filemode>`_.
-        size (int):
-            Size in bytes. Note that directories may have different
-            sizes depending on the filesystem or container type.
-    """     # NOQA
-    filename = None
-    last_modified = None
-    mode = None
-    size = None
-
-    def isdir(self):
-        """Returns whether the target is a directory, based on the permission flag
-
-        Returns:
-            `True` if directory, `False` otherwise.
-        """
-        return bool(self.mode & 0o40000)
-
-    def __str__(self):
-        return '<{} filename="{}" mode="{}">'.format(
-            type(self).__name__, self.filename, stat.filemode(self.mode))
-
-    def __repr__(self):
-        return str(self.__str__())
 
 
 class IO(abc.ABC):
