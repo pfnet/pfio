@@ -10,7 +10,7 @@ from moto import mock_s3
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest
-from pfio.v2 import S3, Local, fs, open_url
+from pfio.v2 import S3, Local, from_url, lazify, open_url
 
 
 def randstring():
@@ -47,11 +47,11 @@ def test_smoke(target):
 
 @mock_s3
 def test_factory_open():
-    assert isinstance(fs.from_url('.'), Local)
+    assert isinstance(from_url('.'), Local)
     with open_url('./setup.cfg') as fp:
         assert isinstance(fp, io.IOBase)
 
-    assert isinstance(fs.from_url('s3://foobar/boom/bom'), S3)
+    assert isinstance(from_url('s3://foobar/boom/bom'), S3)
     bucket = 'foobar'
     s3 = S3(bucket)
     s3.client.create_bucket(Bucket=bucket)
@@ -69,7 +69,7 @@ def test_recreate():
         z = ZipForTest(zipfilename)
         barrier = mp.Barrier(1)
 
-        with fs.recreate_on_fork(lambda: fs.from_url(zipfilename)) as f:
+        with lazify(lambda: from_url(zipfilename)) as f:
             with f.open('file', 'rb') as fp:
                 content = fp.read()
                 assert content

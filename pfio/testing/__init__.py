@@ -23,7 +23,6 @@ class ZipForTest:
         d = self.data
 
         for node in path.split(os.path.sep):
-            print(node)
             d = d.get(node)
             if not isinstance(d, dict):
                 return d

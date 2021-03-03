@@ -316,66 +316,30 @@ def from_url(url: str) -> 'FS':
     return fs
 
 
-def recreate_on_fork(func) -> "FS":
-    return _RecreateOnFork(func)
+def lazify(init_func, lazy_init=True, recreate_on_fork=True) -> "FS":
+    '''Make FS init lazy and recreate on fork
+
+    '''
+    return _LazyFS(init_func, lazy_init, recreate_on_fork)
 
 
-class _RecreateOnFork(FS):
-    def __init__(self, func):
-        self.mixin = func()
+class _LazyFS:
+    def __init__(self, func, lazy_init, recreate_on_fork):
+        if not lazy_init:
+            self.mixin = func()
+        else:
+            self.mixin = None
         self.func = func
 
-    def open(self, *args, **kwargs):
-        if self.mixin.is_forked:
+    def __getattr__(self, attr):
+        if self.mixin is None or self.mixin.is_forked:
             self.mixin = self.func()
-        return self.mixin.open(*args, **kwargs)
+        return getattr(self.mixin, attr)
 
-    def subfs(self):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        self.mixin.subfs()
+    def __enter__(self) -> 'FS':
+        return self
 
-    def close(self):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        self.mixin.close()
-
-    def list(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.list(*args, **kwargs)
-
-    def stat(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.stat(*args, **kwargs)
-
-    def isdir(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.mkdir(*args, **kwargs)
-
-    def mkdir(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.mkdir(*args, **kwargs)
-
-    def makedirs(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.makedirs(*args, **kwargs)
-
-    def exists(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.exists(*args, **kwargs)
-
-    def rename(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.rename(*args, **kwargs)
-
-    def remove(self, *args, **kwargs):
-        if self.mixin.is_forked:
-            self.mixin = self.func()
-        return self.mixin.remove(*args, **kwargs)
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> bool:
+        self.close()
