@@ -87,7 +87,7 @@ class FS(abc.ABC):
         return Zip(self, file_path, mode)
 
     def subfs(self, rel_path: str) -> Type["FS"]:
-        '''Virtually changes the working directory 
+        '''Virtually changes the working directory
 
         By default it performs shallow copy. If any resource that as
         different lifecycles than the copy source (e.g. HDFS
