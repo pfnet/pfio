@@ -78,15 +78,17 @@ class TestLocal(unittest.TestCase):
 
                     self.assertIsInstance(fs.list(), Iterable)
                     full_list = list(fs.list(test_dir_path, recursive=True))
-                    self.assertIn(nested_dir_name1, full_list)
-                    self.assertIn(nested_dir_name2, full_list)
-                    self.assertIn(nested_dir_relative_path3, full_list)
+                    self.assertIn(nested_dir_name1+'/', full_list)
+                    self.assertIn(nested_dir_name2+'/', full_list)
+                    self.assertIn(nested_dir_relative_path3+'/', full_list)
 
                     first_level_list_of_file = list(fs.list(
                         test_dir_path))
-                    self.assertIn(nested_dir_name1, first_level_list_of_file)
-                    self.assertIn(nested_dir_name2, first_level_list_of_file)
-                    self.assertNotIn(nested_dir_relative_path3,
+                    self.assertIn(nested_dir_name1+'/',
+                                  first_level_list_of_file)
+                    self.assertIn(nested_dir_name2+'/',
+                                  first_level_list_of_file)
+                    self.assertNotIn(nested_dir_relative_path3+'/',
                                      first_level_list_of_file)
             finally:
                 tmpdir.cleanup()
