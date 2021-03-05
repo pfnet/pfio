@@ -1,6 +1,6 @@
 # Test fs.FS compatibility
-import io
 import contextlib
+import io
 import multiprocessing as mp
 import os
 import random

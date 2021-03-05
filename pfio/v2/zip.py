@@ -58,6 +58,9 @@ class Zip(FS):
         self.file_path = file_path
         self.mode = mode
 
+        if 'r' in mode and 'w' in mode:
+            raise io.UnsupportedOperation('Read-write mode is not supported')
+
         if 'w' in mode:
             self._readonly = False
 

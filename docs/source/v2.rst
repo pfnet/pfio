@@ -26,11 +26,11 @@ possible, however, it has several differences.
 
 One notable difference is that it has the virtual concept of current
 working directory, and thus provides ``subfs()`` method. ``subfs()``
-method behaves like chroot or ``os.chdir()`` without actually changing
-current working directory of the process, but actually returns a *new*
-``fs.FS`` object that has different working directory. All resouce
-access through the object automatically prepends the working
-directory.
+method behaves like ``chroot(1)`` or ``os.chdir()`` without actually
+changing current working directory of the process, but actually
+returns a *new* ``fs.FS`` object that has different working
+directory. All resouce access through the object automatically
+prepends the working directory.
 
 V2 API does not provide lazy resouce initialization any more. Instead,
 it provides simple wrapper ``lazify()``, which recreates the ``fs.FS``
@@ -46,13 +46,30 @@ Reference
 .. autofunction:: from_url
 .. autofunction:: lazify
 
+
 .. autoclass:: pfio.v2.fs.FS
    :members:
+
+Local file system
+~~~~~~~~~~~~~~~~~
+
 .. autoclass:: Local
    :members:
+
+HDFS (Hadoop File System)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. autoclass:: Hdfs
    :members:
+
+S3 (AWS S3)
+~~~~~~~~~~~
+
 .. autoclass:: S3
    :members:
+
+Zip Archive
+~~~~~~~~~~~
+
 .. autoclass:: Zip
    :members:

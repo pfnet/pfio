@@ -44,6 +44,8 @@ class FileStat(abc.ABC):
     def isdir(self):
         """Returns whether the target is a directory, based on the permission flag
 
+        Note that some systems do not support directory tree semantics.
+
         Returns:
             `True` if directory, `False` otherwise.
         """
@@ -125,9 +127,8 @@ class FS(abc.ABC):
         Args:
             path_or_prefix (str): The path to list against.
                 When we get the default value, ``list`` shows the content under
-                the root path, as the default value.
-                Refer to :func:`set_root` for details about the root path of
-                each filesystem. However, if a ``path_or_prefix`` is given,
+                the working directory as the default value.
+                However, if a ``path_or_prefix`` is given,
                 then it shows only the files and directories
                 under the ``path_or_prefix``.
 
@@ -209,19 +210,11 @@ class FS(abc.ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def exists(self, file_path: str) -> bool:
-        """Returns ``True`` when the given ``path`` exists
+    def exists(self, path: str) -> bool:
+        """Returns the existence of the path
 
         When the ``file_path`` points to a symlink, the return value
         depends on the actual file instead of the link itself.
-
-        Args:
-            path (str): the ``path`` to the target file. The ``path`` can be a
-            POSIX path or a URI.
-
-        Returns:
-            ``True`` when the file or directory exists,
-            ``False`` when it is not.
 
         """
         raise NotImplementedError()
@@ -229,6 +222,10 @@ class FS(abc.ABC):
     @abstractmethod
     def rename(self, src: str, dst: str) -> None:
         """Renames the file from ``src`` to ``dst``
+
+        On systems and situation where rename functionality is
+        proviced, it renames the file or the directory.
+
 
         Args:
             src (str): the current name of the file or directory.
@@ -241,8 +238,6 @@ class FS(abc.ABC):
     @abstractmethod
     def remove(self, file_path: str, recursive: bool = False) -> None:
         """Removes a file or directory
-
-           A combination of :func:`os.remove` and :func:`os.rmtree`.
 
            Args:
                path (str): the target path to remove. The ``path`` can be a

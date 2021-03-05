@@ -79,6 +79,8 @@ class _ObjectWriter(io.BufferedWriter):
 
 
 class S3(FS):
+    '''
+    '''
     def __init__(self, bucket, prefix=None,
                  endpoint=None, create_bucket=False):
         self.bucket = bucket
@@ -113,8 +115,15 @@ class S3(FS):
                 raise e
 
     def open(self, path, mode='r', **kwargs):
+        '''Opens an object accessor for read or write
+
+        .. note:: Multi-part upload is not yet available.
+
+        '''
         if 'a' in mode:
-            io.UnsupportedOperation('Append is not supported')
+            raise io.UnsupportedOperation('Append is not supported')
+        if 'r' in mode and 'w' in mode:
+            raise io.UnsupportedOperation('Read-write mode is not supported')
 
         if 'r' in mode:
             return _ObjectReader(self.client, self.bucket, path, mode, kwargs)
@@ -126,8 +135,13 @@ class S3(FS):
             raise RuntimeError(f'Unknown option: {mode}')
 
     def list(self, prefix: str = "", recursive=False):
+        '''List all objects (and prefixes)
+
+        Although there is not concept of directory in AWS S3 API,
+        common prefixes shows up like directories.
+
+        '''
         self._checkfork()
-        # TODO: recursive list
         key = os.path.join(self.cwd, prefix)
 
         page_size = 1000
@@ -148,6 +162,9 @@ class S3(FS):
                 yield content['Key'][len(key):]
 
     def stat(self, path):
+        '''Imitate FileStat with S3 Object metadata
+
+        '''
         self._checkfork()
         key = os.path.join(self.cwd, path)
         res = self.client.head_object(Bucket=self.bucket,
@@ -158,17 +175,41 @@ class S3(FS):
         return S3ObjectStat(key, res)
 
     def isdir(self, file_path: str):
-        return False
+        '''Does nothing
+
+        .. note:: AWS S3 does not have concept of directory tree; what
+           this function (and ``mkdir()`` and ``makedirs()`` should do
+           and return? To be strict, it would be straightforward to
+           raise ``io.UnsupportedOperation`` exception. But it just
+           breaks users' applications that except quasi-compatible
+           behaviour. Thus, imitating other file systems, like
+           returning boolean or ``None`` would be nicer.
+
+        '''
+        # raise io.UnsupportedOperation("S3 doesn't have directory")
+        pass
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
+        '''Does nothing
+
+        .. note:: see discussion in ``isdir()``.
+        '''
         # raise io.UnsupportedOperation("S3 doesn't have directory")
         pass
 
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
+        '''Does nothing
+
+        .. note:: see discussion in ``isdir()``.
+        '''
         # raise io.UnsupportedOperation("S3 doesn't have directory")
         pass
 
     def exists(self, file_path: str):
+        '''Returns the existence of objects
+
+        For common prefixes, it does nothing. See discussion in ``isdir()``.
+        '''
         self._checkfork()
         try:
             key = os.path.join(self.cwd, file_path)
@@ -180,12 +221,29 @@ class S3(FS):
                 return False
             else:
                 raise e
-        #    return False
 
     def rename(self, src, dst):
-        raise io.UnsupportedOperation("S3 doesn't support rename")
+        '''Copies & removes the object
+
+        Source and destination must be in the same bucket for
+        ``pfio``, although AWS S3 supports inter-bucket copying.
+
+        '''
+        self._checkfork()
+        source = {'Bucket': self.bucket, 'Key': os.path.join(self.cwd, src)}
+        dst = os.path.join(self.cwd, dst)
+        res = self.client.copy_object(Bucket=self.bucket,
+                                      CopySource=source,
+                                      Key=dst)
+        if not res.get('CopyObjectResult'):
+            # copy failed
+            return
+        return self.remove(source.get('Key'))
 
     def remove(self, file_path: str, recursive=False):
+        '''Removes an object
+
+        '''
         if recursive:
             raise io.UnsupportedOperation("Recursive delete not supported")
 
