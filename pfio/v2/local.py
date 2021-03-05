@@ -85,11 +85,12 @@ class Local(FS):
     def _recursive_list(self, prefix_end_index: int, path: str):
         for file in os.scandir(path):
             # ls -F
-            yield file.path[prefix_end_index:] + '/'
-
             if file.is_dir():
+                yield file.path[prefix_end_index:] + '/'
                 yield from self._recursive_list(prefix_end_index,
                                                 file.path)
+            else:
+                yield file.path[prefix_end_index:]
 
     def stat(self, path):
         return LocalFileStat(os.stat(path), path)
