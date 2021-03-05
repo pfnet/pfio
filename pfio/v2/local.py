@@ -93,10 +93,12 @@ class Local(FS):
                 yield file.path[prefix_end_index:]
 
     def stat(self, path):
+        path = os.path.join(self.cwd, path)
         return LocalFileStat(os.stat(path), path)
 
-    def isdir(self, file_path: str):
-        return os.path.isdir(file_path)
+    def isdir(self, path: str):
+        path = os.path.join(self.cwd, path)
+        return os.path.isdir(path)
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         path = os.path.join(self.cwd, file_path)
@@ -107,10 +109,13 @@ class Local(FS):
         return os.makedirs(path, mode, exist_ok)
 
     def exists(self, file_path: str):
-        return os.path.exists(file_path)
+        path = os.path.join(self.cwd, file_path)
+        return os.path.exists(path)
 
     def rename(self, src, dst):
-        return os.rename(src, dst)
+        s = os.path.join(self.cwd, src)
+        d = os.path.join(self.cwd, dst)
+        return os.rename(s, d)
 
     def remove(self, file_path: str, recursive=False):
         file_path = os.path.join(self.cwd, file_path)

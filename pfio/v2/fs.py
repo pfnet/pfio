@@ -68,7 +68,7 @@ class FS(abc.ABC):
 
     '''
 
-    cwd = None
+    cwd = ''
     pid = os.getpid()
 
     def __init__(self):

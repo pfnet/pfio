@@ -81,6 +81,7 @@ class _ObjectWriter(io.BufferedWriter):
 class S3(FS):
     '''
     '''
+
     def __init__(self, bucket, prefix=None,
                  endpoint=None, create_bucket=False):
         self.bucket = bucket
@@ -125,6 +126,7 @@ class S3(FS):
         if 'r' in mode and 'w' in mode:
             raise io.UnsupportedOperation('Read-write mode is not supported')
 
+        path = os.path.join(self.cwd, path)
         if 'r' in mode:
             return _ObjectReader(self.client, self.bucket, path, mode, kwargs)
 
