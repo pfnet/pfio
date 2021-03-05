@@ -46,7 +46,7 @@ class Local(FS):
     def __init__(self, cwd=None):
         super().__init__()
         if cwd is None:
-            self._cwd = None
+            self._cwd = ''
         else:
             self._cwd = cwd
 
@@ -66,24 +66,26 @@ class Local(FS):
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
-    def subfs(self, rel_path):
-        raise NotImplementedError()
+    def list(self, path_or_prefix: str = '', recursive=False):
+        path_or_prefix = os.path.join(self.cwd, path_or_prefix)
 
-    def list(self, path_or_prefix: str = None, recursive=False):
-        if path_or_prefix is None:
-            path_or_prefix = self.cwd
         if recursive:
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
             prefix_end_index = len(path_or_prefix) + 1
             yield from self._recursive_list(prefix_end_index, path_or_prefix)
         else:
-            for file in os.scandir(path_or_prefix):
-                yield file.name
+            for e in os.scandir(path_or_prefix):
+                # ls -F
+                if e.is_dir():
+                    yield e.name + '/'
+                else:
+                    yield e.name
 
     def _recursive_list(self, prefix_end_index: int, path: str):
         for file in os.scandir(path):
-            yield file.path[prefix_end_index:]
+            # ls -F
+            yield file.path[prefix_end_index:] + '/'
 
             if file.is_dir():
                 yield from self._recursive_list(prefix_end_index,
@@ -96,10 +98,12 @@ class Local(FS):
         return os.path.isdir(file_path)
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
-        return os.mkdir(file_path, mode, *args, dir_fd=None)
+        path = os.path.join(self.cwd, file_path)
+        return os.mkdir(path, mode, *args, dir_fd=None)
 
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
-        return os.makedirs(file_path, mode, exist_ok)
+        path = os.path.join(self.cwd, file_path)
+        return os.makedirs(path, mode, exist_ok)
 
     def exists(self, file_path: str):
         return os.path.exists(file_path)

@@ -4,8 +4,22 @@ from types import TracebackType
 from typing import Optional, Type
 
 import boto3
+from botocore.exceptions import ClientError
 
-from .fs import FS
+from .fs import FS, FileStat
+
+
+class S3ObjectStat(FileStat):
+    def __init__(self, key, head):
+        self.filename = key
+        self.last_modifled = head['LastModified']
+        self.size = head['ContentLength']
+        self.metadata = head['Metadata']
+
+        self._head = head
+
+    def isdir(self):
+        return False
 
 
 class _ObjectReader(io.BufferedReader):
@@ -65,12 +79,14 @@ class _ObjectWriter(io.BufferedWriter):
 
 
 class S3(FS):
-    def __init__(self, bucket=None, key=None,
-                 endpoint=None,):
+    def __init__(self, bucket, prefix=None,
+                 endpoint=None, create_bucket=False):
         self.bucket = bucket
         self.endpoint = endpoint
-        if key is not None:
-            self.cwd = key
+        if prefix is not None:
+            self.cwd = prefix
+        else:
+            self.cwd = ''
 
         # boto3.set_stream_logger()
 
@@ -87,6 +103,15 @@ class S3(FS):
 
         self.client = boto3.client('s3', **kwargs)
 
+        try:
+            self.client.head_bucket(Bucket=bucket)
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404' and create_bucket:
+                res = self.client.create_bucket(Bucket=bucket)
+                print("Bucket", bucket, "created:", res)
+            else:
+                raise e
+
     def open(self, path, mode='r', **kwargs):
         if 'a' in mode:
             io.UnsupportedOperation('Append is not supported')
@@ -100,41 +125,71 @@ class S3(FS):
         else:
             raise RuntimeError(f'Unknown option: {mode}')
 
-    def list(self, prefix: str = None, recursive=False):
+    def list(self, prefix: str = "", recursive=False):
         self._checkfork()
         # TODO: recursive list
-        res = self.client.list_objects_v2(Bucket=self.bucket)
-        print(res['Name'])
-        # kc = res['KeyCount']
-        if 'Contents' in res:
-            for k in res['Contents']:
-                yield k
+        key = os.path.join(self.cwd, prefix)
+
+        page_size = 1000
+        paginator = self.client.get_paginator('list_objects_v2')
+        paging_args = {
+            'Bucket': self.bucket, 'Prefix': key,
+            'PaginationConfig': {'PageSize': page_size}
+        }
+        if not recursive:
+            paging_args['Delimiter'] = '/'
+
+        iterator = paginator.paginate(**paging_args)
+        for res in iterator:
+            # print(res)
+            for common_prefix in res.get('CommonPrefixes', []):
+                yield common_prefix['Prefix']
+            for content in res.get('Contents', []):
+                yield content['Key'][len(key):]
 
     def stat(self, path):
         self._checkfork()
-        raise NotImplementedError()
-        # return FileStat(os.stat(path), path)
+        key = os.path.join(self.cwd, path)
+        res = self.client.head_object(Bucket=self.bucket,
+                                      Key=key)
+        if res.get('DeleteMarker'):
+            raise FileNotFoundError()
+
+        return S3ObjectStat(key, res)
 
     def isdir(self, file_path: str):
-        raise os.UnsupportedOperation("S3 doesn't have directory")
+        return False
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
-        raise os.UnsupportedOperation("S3 doesn't have directory")
+        # raise io.UnsupportedOperation("S3 doesn't have directory")
+        pass
 
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
-        raise os.UnsupportedOperation("S3 doesn't have directory")
+        # raise io.UnsupportedOperation("S3 doesn't have directory")
+        pass
 
     def exists(self, file_path: str):
         self._checkfork()
-        raise NotImplementedError()
+        try:
+            key = os.path.join(self.cwd, file_path)
+            res = self.client.head_object(Bucket=self.bucket,
+                                          Key=key)
+            return not res.get('DeleteMarker')
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                return False
+            else:
+                raise e
+        #    return False
 
     def rename(self, src, dst):
-        raise os.UnsupportedOperation("S3 doesn't support rename")
+        raise io.UnsupportedOperation("S3 doesn't support rename")
 
     def remove(self, file_path: str, recursive=False):
         if recursive:
-            raise os.UnsupportedOperation("Recursive delete not supported")
+            raise io.UnsupportedOperation("Recursive delete not supported")
 
         self._checkfork()
+        key = os.path.join(self.cwd, file_path)
         return self.client.delete_object(Bucket=self.bucket,
-                                         Key=file_path)
+                                         Key=key)

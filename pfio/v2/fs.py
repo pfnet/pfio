@@ -13,12 +13,11 @@ from urllib.parse import urlparse
 class FileStat(abc.ABC):
     """Detailed file or directory information abstraction
 
-    :meth:`pfio.IO.stat` of filesystem/container handlers return an object of
-    subclass of ``FileStat``.
-    In addition to the common attributes that the ``FileStat`` abstract
-    provides, each ``FileStat`` subclass implements some additional
-    attributes depending on what information the corresponding filesystem or
-    container can handle.
+    :meth:`pfio.v2.FS.stat` returns an object that implements of
+    ``FileStat``.  In addition to the common attributes that the
+    ``FileStat`` abstract provides, each ``FileStat`` subclass
+    implements some additional attributes depending on what
+    information the corresponding filesystem or container can handle.
     The common attributes have the same behavior despite filesystem or
     container type difference.
 
@@ -35,6 +34,7 @@ class FileStat(abc.ABC):
         size (int):
             Size in bytes. Note that directories may have different
             sizes depending on the filesystem or container type.
+
     """     # NOQA
     filename = None
     last_modified = None
@@ -308,7 +308,7 @@ def from_url(url: str) -> 'FS':
     elif scheme == 's3':
         from .s3 import S3
 
-        fs = S3(bucket=parsed.netloc, key=dirname,
+        fs = S3(bucket=parsed.netloc, prefix=dirname,
                 endpoint=os.getenv('S3_ENDPOINT'))
 
     else:

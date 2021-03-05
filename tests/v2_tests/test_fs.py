@@ -1,5 +1,6 @@
 # Test fs.FS compatibility
 import io
+import contextlib
 import multiprocessing as mp
 import os
 import random
@@ -18,14 +19,18 @@ def randstring():
     return (''.join(random.choice(letters) for _ in range(16)))
 
 
+@contextlib.contextmanager
 def gen_fs(target):
     if target == "s3":
         bucket = "test-dummy-bucket"
-        s3 = S3(bucket)
-        s3.client.create_bucket(Bucket=bucket)
-        return s3
+        with S3(bucket, create_bucket=True) as s3:
+            yield s3
+            # s3.client.delete_bucket(bucket)
+
     elif target == "local":
-        return Local("/tmp")
+        with tempfile.TemporaryDirectory() as d:
+            yield Local(d)
+
     else:
         raise RuntimeError()
 
@@ -42,6 +47,25 @@ def test_smoke(target):
         with fs.open(filename, 'r') as fp:
             assert content == fp.read()
 
+        assert filename in list(fs.list())
+
+        fs.mkdir('d')
+
+        with fs.open('d/foo', 'w') as fp:
+            fp.write(content + content)
+
+        with fs.open('d/foo', 'r') as fp:
+            assert (content + content) == fp.read()
+
+        print('recursive:', list(fs.list(recursive=True)))
+        print('non-rec:', list(fs.list(recursive=False)))
+        assert filename in list(fs.list())
+        assert 2 == len(list(fs.list(recursive=False)))
+
+        assert 'd/' in list(fs.list(recursive=False))
+
+        assert 'foo' in list(fs.list('d/'))
+
         fs.remove(filename)
 
 
@@ -51,10 +75,16 @@ def test_factory_open():
     with open_url('./setup.cfg') as fp:
         assert isinstance(fp, io.IOBase)
 
-    assert isinstance(from_url('s3://foobar/boom/bom'), S3)
     bucket = 'foobar'
-    s3 = S3(bucket)
-    s3.client.create_bucket(Bucket=bucket)
+    with S3(bucket, create_bucket=True) as s3:
+        with s3.open('baz.txt', 'w') as fp:
+            fp.write('bom')
+
+        with s3.open('baz.txt', 'r') as fp:
+            assert 'bom' == fp.read()
+
+    assert isinstance(from_url('s3://foobar/boom/bom'), S3)
+
     with open_url('s3://foobar/boom/bom.txt', 'w') as fp:
         fp.write('hello')
 
