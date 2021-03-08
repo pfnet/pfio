@@ -52,7 +52,7 @@ class ZipFileStat(FileStat):
 class Zip(FS):
     _readonly = True
 
-    def __init__(self, backend, file_path, mode='r'):
+    def __init__(self, backend, file_path, mode='r', cwd=None):
         super().__init__()
         self.backend = backend
         self.file_path = file_path
@@ -64,7 +64,6 @@ class Zip(FS):
         if 'w' in mode:
             self._readonly = False
 
-        file_path = os.path.normpath(file_path)
         self.fileobj = self.backend.open(file_path, mode + 'b')
 
         if isinstance(self.backend, Zip) \
@@ -97,7 +96,7 @@ class Zip(FS):
              newline=None, closefd=True, opener=None):
         self._checkfork()
 
-        file_path = os.path.normpath(file_path)
+        file_path = os.path.join(self.cwd, os.path.normpath(file_path))
         fp = self.zipobj.open(file_path, mode.replace('b', ''))
 
         if 'b' not in mode:
@@ -105,17 +104,18 @@ class Zip(FS):
 
         return fp
 
+    def subfs(self, path):
+        # TODO
+        raise NotImplementedError()
+
     def close(self):
         self._checkfork()
         self.zipobj.close()
         self.fileobj.close()
 
-    def subfs(self):
-        return Zip(self.backend, self.file_path, self.mode)
-
     def stat(self, path):
         self._checkfork()
-        path = os.path.normpath(path)
+        path = os.path.join(self.cwd, os.path.normpath(path))
         if path in self.zipobj.namelist():
             actual_path = path
         elif (not path.endswith('/')
@@ -131,8 +131,10 @@ class Zip(FS):
 
     def list(self, path_or_prefix: str = "", recursive=False):
         self._checkfork()
+
         if path_or_prefix:
-            path_or_prefix = os.path.normpath(path_or_prefix)
+            path_or_prefix = os.path.join(self.cwd,
+                                          os.path.normpath(path_or_prefix))
             # cannot move beyond root
             given_dir_list = path_or_prefix.split('/')
             if ("." in given_dir_list or ".." in given_dir_list
@@ -182,6 +184,7 @@ class Zip(FS):
 
     def isdir(self, file_path: str):
         self._checkfork()
+        file_path = os.path.join(self.cwd, file_path)
         if self.exists(file_path):
             return self.stat(file_path).isdir()
         else:
@@ -201,7 +204,7 @@ class Zip(FS):
 
     def exists(self, file_path: str):
         self._checkfork()
-        file_path = os.path.normpath(file_path)
+        file_path = os.path.join(self.cwd, os.path.normpath(file_path))
         namelist = self.zipobj.namelist()
         return (file_path in namelist
                 or file_path + "/" in namelist)

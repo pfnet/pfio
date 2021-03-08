@@ -118,8 +118,11 @@ class Hdfs(FS):
         super().__init__()
         self.connection = hdfs.connect()
         assert self.connection is not None
-        self.cwd = cwd
         self.username = self._get_principal_name()
+        if cwd:
+            self.cwd = cwd
+        else:
+            self.cwd = os.path.join('/user', self.username)
 
         # set nameservice
         _file_in_root = self.connection.ls("/")[0]
@@ -147,13 +150,14 @@ class Hdfs(FS):
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
         self._checkfork()
+        path = os.path.join(self.cwd, file_path)
         orig_mode = mode
 
         # hdfs only support open in 'b'
         if 'b' not in mode:
             mode += 'b'
         try:
-            file_obj = self.connection.open(file_path, mode)
+            file_obj = self.connection.open(path, mode)
 
         except pyarrow.lib.ArrowIOError as e:
             raise IOError("open file error :{}".format(str(e)))
@@ -176,10 +180,9 @@ class Hdfs(FS):
         self._checkfork()
         self.connection.close()
 
-    def list(self, path_or_prefix: str = None, recursive=False):
+    def list(self, path_or_prefix: str = "", recursive=False):
         self._checkfork()
-        if path_or_prefix is None:
-            path_or_prefix = "/user/{}".format(self.username)
+        path_or_prefix = os.path.join(self.cwd, path_or_prefix)
 
         target_dir = self.connection.info(path_or_prefix)
         if target_dir['kind'] != "directory":
@@ -212,26 +215,34 @@ class Hdfs(FS):
 
     def stat(self, path):
         self._checkfork()
+        path = os.path.join(self.cwd, path)
         return HdfsFileStat(self.connection.info(path))
 
-    def isdir(self, file_path: str):
-        return self.stat(file_path).isdir()
+    def isdir(self, path: str):
+        path = os.path.join(self.cwd, path)
+        return self.stat(path).isdir()
 
-    def mkdir(self, file_path: str, *args, dir_fd=None):
+    def mkdir(self, path: str, *args, dir_fd=None):
         self._checkfork()
-        return self.connection.mkdir(file_path)
+        path = os.path.join(self.cwd, path)
+        return self.connection.mkdir(path)
 
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
+        file_path = os.path.join(self.cwd, file_path)
         return self.mkdir(file_path, mode, exist_ok)
 
     def exists(self, file_path: str):
         self._checkfork()
+        file_path = os.path.join(self.cwd, file_path)
         return self.connection.exists(file_path)
 
     def rename(self, src, dst):
         self._checkfork()
-        return self.connection.rename(src, dst)
+        s = os.path.join(self.cwd, src)
+        d = os.path.join(self.cwd, dst)
+        return os.rename(s, d)
 
     def remove(self, path, recursive=False):
         self._checkfork()
+        path = os.path.join(self.cwd, path)
         return self.connection.delete(path, recursive)
