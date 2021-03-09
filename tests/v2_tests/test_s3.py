@@ -8,7 +8,7 @@ def test_s3():
     bucket = "test-dummy-bucket"
     key = "it's me!deadbeef"
     secret = "asedf;lkjdf;a'lksjd"
-    with S3(bucket, create_bucket=True) as _s3:
+    with S3(bucket, create_bucket=True):
         with from_url('s3://test-dummy-bucket/base',
                       aws_access_key_id=key,
                       aws_secret_access_key=secret) as s3:

@@ -78,7 +78,16 @@ class _ObjectWriter(io.BufferedWriter):
 
 
 class S3(FS):
-    '''
+    '''S3 FileSystem wrapper
+
+    Takes three arguments as well as enviroment variables for
+    constructor. The priority is (1) see arguments, (2) see enviroment
+    variables, (3) take boto3's default. Available arguments are:
+
+    - ``aws_access_key_id``, ``AWS_ACCESS_KEY_ID``
+    - ``aws_secret_access_key``, ``AWS_SECRET_ACCESS_KEY``
+    - ``endpoint``, ``S3_ENDPOINT``
+
     '''
 
     def __init__(self, bucket, prefix=None,
@@ -107,10 +116,22 @@ class S3(FS):
         self.aws_secret_access_key = aws_secret_access_key
         if aws_secret_access_key is not None:
             kwargs['aws_secret_access_key'] = aws_secret_access_key
-        self.endpoint = endpoint
-        if endpoint is not None:
-            kwargs['endpoint_url'] = endpoint
 
+        # We won't expect any enviroment variable for S3 endpoints
+        # supported by boto3. Instead, we take S3_ENDPOINT in case
+        # argument ``endpoint`` is not given. Otherwise, it goes to
+        # boto3's default by giving ``None``.
+        #
+        # See also:
+        # https://github.com/boto/boto3/issues/1375
+        # https://github.com/boto/boto3/pull/2746
+        self.endpoint = endpoint
+        if self.endpoint is None:
+            self.endpoint = os.getenv('S3_ENDPOINT')
+        if self.endpoint is not None:
+            kwargs['endpoint_url'] = self.endpoint
+
+        # print('boto3.client options:', kwargs)
         self.client = boto3.client('s3', **kwargs)
 
         try:

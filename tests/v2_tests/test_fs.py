@@ -3,21 +3,13 @@ import contextlib
 import io
 import multiprocessing as mp
 import os
-import random
-import string
 import tempfile
-from datetime import datetime
 
 from moto import mock_s3
 from parameterized import parameterized
 
-from pfio.testing import ZipForTest
+from pfio.testing import ZipForTest, randstring
 from pfio.v2 import S3, Local, from_url, lazify, open_url
-
-
-def randstring():
-    letters = string.ascii_letters + string.digits
-    return (''.join(random.choice(letters) for _ in range(16)))
 
 
 @contextlib.contextmanager

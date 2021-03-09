@@ -315,9 +315,7 @@ def from_url(url: str, **kwargs) -> 'FS':
     elif scheme == 's3':
         from .s3 import S3
 
-        fs = S3(bucket=parsed.netloc, prefix=dirname,
-                endpoint=os.getenv('S3_ENDPOINT'),
-                **kwargs)
+        fs = S3(bucket=parsed.netloc, prefix=dirname, **kwargs)
 
     else:
         raise RuntimeError("Scheme {} is not supported", scheme)
