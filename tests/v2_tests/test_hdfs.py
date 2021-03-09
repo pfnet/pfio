@@ -9,6 +9,7 @@ from collections.abc import Iterable
 
 from pyarrow import hdfs
 
+from pfio.testing import randstring
 from pfio.v2.hdfs import (Hdfs, HdfsFileStat, _get_principal_name_from_keytab,
                           _get_principal_name_from_klist,
                           _parse_principal_name_from_keytab,
@@ -32,7 +33,13 @@ def create_dummy_keytab(tmpd, dummy_username):
 class TestHdfs(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.dirname = randstring()
+        self.hdfs = Hdfs()
+        self.hdfs.mkdir(self.dirname)
+
+    def tearDown(self):
+        self.hdfs.remove(self.dirname, recursive=True)
+        self.hdfs.close()
 
     def test_read_non_exist(self):
         non_exist_file = "non_exist_file.txt"
@@ -87,7 +94,7 @@ class TestHdfs(unittest.TestCase):
 
     def test_mkdir(self):
         test_dir_name = "testmkdir"
-        with Hdfs() as fs:
+        with Hdfs(self.dirname) as fs:
             fs.mkdir(test_dir_name)
             self.assertTrue(fs.isdir(test_dir_name))
 
@@ -97,18 +104,18 @@ class TestHdfs(unittest.TestCase):
         test_dir_name = "testmkdir/"
         nested_dir_name = test_dir_name + "nested_dir"
 
-        with Hdfs() as fs:
+        with Hdfs(self.dirname) as fs:
             fs.makedirs(nested_dir_name)
             self.assertTrue(fs.isdir(nested_dir_name))
 
             fs.remove(test_dir_name, True)
 
-    def test_picle(self):
+    def test_pickle(self):
         pickle_file_name = "test_pickle.pickle"
         test_data = {'test_elem1': b'balabala',
                      'test_elem2': 'balabala'}
 
-        with Hdfs() as fs:
+        with Hdfs(self.dirname) as fs:
             with fs.open(pickle_file_name, 'wb') as f:
                 pickle.dump(test_data, f)
             with fs.open(pickle_file_name, 'rb') as f:
@@ -118,7 +125,7 @@ class TestHdfs(unittest.TestCase):
             fs.remove(pickle_file_name, True)
 
     def test_rename(self):
-        with Hdfs() as fs:
+        with Hdfs(self.dirname) as fs:
             with fs.open('src', 'w') as fp:
                 fp.write('foobar')
 
@@ -141,7 +148,7 @@ class TestHdfs(unittest.TestCase):
         nested_dir = os.path.join(test_dir, "nested_file/")
         nested_file = os.path.join(nested_dir, test_file)
 
-        with Hdfs() as fs:
+        with Hdfs(self.dirname) as fs:
             with fs.open(test_file, 'w') as fp:
                 fp.write('foobar')
 
@@ -168,12 +175,12 @@ class TestHdfs(unittest.TestCase):
     def test_stat_file(self):
         test_file_name = "testfile"
 
-        with Hdfs() as fs:
+        with Hdfs(self.dirname) as fs:
             with fs.open(test_file_name, 'w') as fp:
                 fp.write('foobar')
 
             conn = hdfs.connect()
-            expected = conn.info(test_file_name)
+            expected = conn.info(os.path.join(fs.cwd, test_file_name))
 
             stat = fs.stat(test_file_name)
             self.assertIsInstance(stat, HdfsFileStat)
@@ -191,11 +198,11 @@ class TestHdfs(unittest.TestCase):
 
     def test_stat_directory(self):
         test_dir_name = "testmkdir"
-        with Hdfs() as fs:
+        with Hdfs(self.dirname) as fs:
             fs.mkdir(test_dir_name)
 
             conn = hdfs.connect()
-            expected = conn.info(test_dir_name)
+            expected = conn.info(os.path.join(fs.cwd, test_dir_name))
 
             stat = fs.stat(test_dir_name)
             self.assertIsInstance(stat, HdfsFileStat)
@@ -217,7 +224,7 @@ class TestHdfsFsWithFile(unittest.TestCase):
 
     def setUp(self):
         self.test_string = "this is a test string\n"
-        self.tmpfile_name = "tmpfile.txt"
+        self.tmpfile_name = randstring()
 
         with Hdfs() as fs:
             with fs.open(self.tmpfile_name, "w") as tmpfile:

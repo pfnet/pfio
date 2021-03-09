@@ -13,6 +13,11 @@ class TestLocal(unittest.TestCase):
         self.test_string_str = "this is a test string\n"
         self.test_string_bytes = self.test_string_str.encode("utf-8")
 
+        self.testdir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.testdir.cleanup()
+
     def test_read_string(self):
 
         with Local() as fs:
@@ -99,8 +104,8 @@ class TestLocal(unittest.TestCase):
             self.assertFalse(fs.isdir("test_posix_handler.py"))
 
     def test_mkdir(self):
-        test_dir_name = "testmkdir"
-        with Local() as fs:
+        test_dir_name = "testmkdir/"
+        with Local(self.testdir.name) as fs:
             fs.mkdir(test_dir_name)
             self.assertTrue(fs.isdir(test_dir_name))
 
@@ -110,7 +115,7 @@ class TestLocal(unittest.TestCase):
         test_dir_name = "testmkdir/"
         nested_dir_name = test_dir_name + "nested_dir"
 
-        with Local() as fs:
+        with Local(self.testdir.name) as fs:
             fs.makedirs(nested_dir_name)
             self.assertTrue(fs.isdir(nested_dir_name))
 
@@ -122,7 +127,7 @@ class TestLocal(unittest.TestCase):
         test_data = {'test_elem1': b'balabala',
                      'test_elem2': 'balabala'}
 
-        with Local() as fs:
+        with Local(self.testdir.name) as fs:
             with fs.open(pickle_file_name, 'wb') as f:
                 pickle.dump(test_data, f)
             with fs.open(pickle_file_name, 'rb') as f:
@@ -140,7 +145,7 @@ class TestLocal(unittest.TestCase):
             self.assertFalse(fs.exists(non_exist_file))
 
     def test_rename(self):
-        with Local() as fs:
+        with Local(self.testdir.name) as fs:
             with fs.open('src', 'w') as fp:
                 fp.write('foobar')
 
@@ -163,7 +168,7 @@ class TestLocal(unittest.TestCase):
         nested_dir = os.path.join(test_dir, "nested_file/")
         nested_file = os.path.join(nested_dir, test_file)
 
-        with Local() as fs:
+        with Local(self.testdir.name) as fs:
             with fs.open(test_file, 'w') as fp:
                 fp.write('foobar')
 
@@ -189,11 +194,11 @@ class TestLocal(unittest.TestCase):
 
     def test_stat_file(self):
         test_file_name = "testfile"
-        with Local() as fs:
+        with Local(self.testdir.name) as fs:
             with fs.open(test_file_name, 'w') as fp:
                 fp.write('foobar')
 
-            expected = os.stat(test_file_name)
+            expected = os.stat(os.path.join(fs.cwd, test_file_name))
 
             stat = fs.stat(test_file_name)
             self.assertIsInstance(stat, LocalFileStat)
@@ -217,10 +222,10 @@ class TestLocal(unittest.TestCase):
 
     def test_stat_directory(self):
         test_dir_name = "testmkdir"
-        with Local() as fs:
+        with Local(self.testdir.name) as fs:
             fs.mkdir(test_dir_name)
 
-            expected = os.stat(test_dir_name)
+            expected = os.stat(os.path.join(self.testdir.name, test_dir_name))
 
             stat = fs.stat(test_dir_name)
             self.assertIsInstance(stat, LocalFileStat)
