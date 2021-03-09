@@ -119,10 +119,10 @@ class Hdfs(FS):
         self.connection = hdfs.connect()
         assert self.connection is not None
         self.username = self._get_principal_name()
+        self.cwd = os.path.join('/user', self.username)
+
         if cwd:
-            self.cwd = cwd
-        else:
-            self.cwd = os.path.join('/user', self.username)
+            self.cwd = os.path.join(self.cwd, cwd)
 
         # set nameservice
         _file_in_root = self.connection.ls("/")[0]
@@ -240,9 +240,9 @@ class Hdfs(FS):
         self._checkfork()
         s = os.path.join(self.cwd, src)
         d = os.path.join(self.cwd, dst)
-        return os.rename(s, d)
+        return self.connection.rename(s, d)
 
     def remove(self, path, recursive=False):
         self._checkfork()
-        path = os.path.join(self.cwd, path)
-        return self.connection.delete(path, recursive)
+        delpath = os.path.join(self.cwd, path)
+        return self.connection.delete(delpath, recursive)

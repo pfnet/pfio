@@ -34,12 +34,12 @@ class TestHdfs(unittest.TestCase):
 
     def setUp(self):
         self.dirname = randstring()
-        with Hdfs() fs:
-            fs.mkdir(self.dirname)
+        self.hdfs = Hdfs()
+        self.hdfs.mkdir(self.dirname)
 
     def tearDown(self):
-        with Hdfs() fs:
-            fs.remove(self.dirname) 
+        self.hdfs.remove(self.dirname, recursive=True)
+        self.hdfs.close()
 
     def test_read_non_exist(self):
         non_exist_file = "non_exist_file.txt"
@@ -110,7 +110,7 @@ class TestHdfs(unittest.TestCase):
 
             fs.remove(test_dir_name, True)
 
-    def test_picle(self):
+    def test_pickle(self):
         pickle_file_name = "test_pickle.pickle"
         test_data = {'test_elem1': b'balabala',
                      'test_elem2': 'balabala'}
@@ -180,7 +180,7 @@ class TestHdfs(unittest.TestCase):
                 fp.write('foobar')
 
             conn = hdfs.connect()
-            expected = conn.info(test_file_name)
+            expected = conn.info(os.path.join(fs.cwd, test_file_name))
 
             stat = fs.stat(test_file_name)
             self.assertIsInstance(stat, HdfsFileStat)
@@ -202,7 +202,7 @@ class TestHdfs(unittest.TestCase):
             fs.mkdir(test_dir_name)
 
             conn = hdfs.connect()
-            expected = conn.info(test_dir_name)
+            expected = conn.info(os.path.join(fs.cwd, test_dir_name))
 
             stat = fs.stat(test_dir_name)
             self.assertIsInstance(stat, HdfsFileStat)
