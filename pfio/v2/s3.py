@@ -12,10 +12,9 @@ from .fs import FS, FileStat
 class S3ObjectStat(FileStat):
     def __init__(self, key, head):
         self.filename = key
-        self.last_modifled = head['LastModified']
+        self.last_modified = head['LastModified']
         self.size = head['ContentLength']
         self.metadata = head['Metadata']
-
         self._head = head
 
     def isdir(self):
@@ -83,7 +82,9 @@ class S3(FS):
     '''
 
     def __init__(self, bucket, prefix=None,
-                 endpoint=None, create_bucket=False):
+                 endpoint=None, create_bucket=False,
+                 aws_access_key_id=None,
+                 aws_secret_access_key=None):
         self.bucket = bucket
         self.endpoint = endpoint
         if prefix is not None:
@@ -96,11 +97,15 @@ class S3(FS):
         # import botocore
         # botocore.session.Session().set_debug_logger()
 
-        # TODO: update from real env 'AWS_ACCESS_KEY_ID' in os.getenv():
-        kwargs = {
-            'aws_access_key_id': 'me@EXAMPLE.COM',
-            'aws_secret_access_key': 'XXXXXXX',
-        }
+        kwargs = {}
+
+        # IF these arguments are not defined, the library
+        # automatically retrieves from AWS_ACCESS_KEY_ID and
+        # AWS_SECRET_ACCESS_KEY.
+        if aws_access_key_id is not None:
+            kwargs['aws_access_key_id'] = aws_access_key_id
+        if aws_secret_access_key is not None:
+            kwargs['aws_secret_access_key'] = aws_secret_access_key
         if endpoint is not None:
             kwargs['endpoint_url'] = endpoint
 

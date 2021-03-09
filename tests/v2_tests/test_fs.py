@@ -1,5 +1,6 @@
 # Test fs.FS compatibility
 import contextlib
+from datetime import datetime
 import io
 import multiprocessing as mp
 import os
@@ -66,7 +67,18 @@ def test_smoke(target):
 
         assert 'foo' in list(fs.list('d/'))
 
+        st = fs.stat(filename)
+        assert len(content) == st.size
+        assert st.filename is not None
+        assert st.last_modified is not None
+
         fs.remove(filename)
+
+        assert not fs.exists(filename)
+        assert not fs.is_forked
+
+        subfs = fs.subfs('d')
+        assert subfs.exists('foo')
 
 
 @mock_s3

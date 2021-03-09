@@ -52,8 +52,12 @@ class FileStat(abc.ABC):
         return bool(self.mode & 0o40000)
 
     def __str__(self):
+        if isinstance(self.mode, int):
+            mode = stat.filemode(self.mode)
+        else:
+            mode = self.mode
         return '<{} filename="{}" mode="{}">'.format(
-            type(self).__name__, self.filename, stat.filemode(self.mode))
+            type(self).__name__, self.filename, mode)
 
     def __repr__(self):
         return str(self.__str__())
@@ -68,11 +72,20 @@ class FS(abc.ABC):
 
     '''
 
-    cwd = ''
+    _cwd = ''
     pid = os.getpid()
 
     def __init__(self):
         self.pid = os.getpid()
+
+
+    @property
+    def cwd(self):
+        return self._cwd
+
+    @cwd.setter
+    def cwd(self, value):
+        self._cwd = value
 
     @abstractmethod
     def open(self, file_path: str, mode: str = 'rb',
@@ -103,8 +116,8 @@ class FS(abc.ABC):
             raise RuntimeError("Only subtree is supported")
 
         sub = copy.copy(self)
-        if self.cwd is not None:
-            sub.cwd = os.path.join(self.cwd, rel_path)
+
+        sub._cwd = os.path.join(self.cwd, rel_path)
         return sub
 
     def _checkfork(self):
