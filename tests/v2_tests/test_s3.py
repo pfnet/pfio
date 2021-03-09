@@ -1,6 +1,6 @@
 from moto import mock_s3
 
-from pfio.v2 import from_url
+from pfio.v2 import S3, from_url
 
 
 @mock_s3
@@ -13,7 +13,7 @@ def test_s3():
                       aws_access_key_id=key,
                       aws_secret_access_key=secret) as s3:
             assert bucket == s3.bucket
-            assert 'base' == s3.cwd
+            assert '/base' == s3.cwd
             assert key == s3.aws_access_key_id
             assert secret == s3.aws_secret_access_key
-            assert self.endpoint is None
+            assert s3.endpoint is None

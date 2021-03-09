@@ -41,8 +41,6 @@ class LocalFileStat(FileStat):
         for k, ksrc in keys:
             setattr(self, k, getattr(_stat, ksrc))
         self.filename = filename
-        sec = getattr(self, 'last_modified_ns') // 1000000000
-        self.last_modified = datetime.utcfromtimestamp(sec)
 
 
 class Local(FS):

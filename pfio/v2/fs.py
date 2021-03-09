@@ -287,7 +287,7 @@ def open_url(url: str, mode: str = 'r') -> 'IOBase':
             yield fp
 
 
-def from_url(url: str) -> 'FS':
+def from_url(url: str, **kwargs) -> 'FS':
     '''Factory pattern implementation, creates FS from URI
 
     .. note:: Some FS resouces won't be closed when using this
@@ -308,15 +308,16 @@ def from_url(url: str) -> 'FS':
 
     if scheme == 'file':
         from .local import Local
-        fs = Local(dirname)
+        fs = Local(dirname, **kwargs)
     elif scheme == 'hdfs':
         from .hdfs import Hdfs
-        fs = Hdfs(dirname)
+        fs = Hdfs(dirname, **kwargs)
     elif scheme == 's3':
         from .s3 import S3
 
         fs = S3(bucket=parsed.netloc, prefix=dirname,
-                endpoint=os.getenv('S3_ENDPOINT'))
+                endpoint=os.getenv('S3_ENDPOINT'),
+                **kwargs)
 
     else:
         raise RuntimeError("Scheme {} is not supported", scheme)
