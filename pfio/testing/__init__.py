@@ -61,3 +61,8 @@ def make_zip(zipfilename, root_dir, base_dir):
 def make_random_str(n):
     return ''.join([random.choice(string.ascii_letters + string.digits)
                     for i in range(n)])
+
+
+def randstring():
+    letters = string.ascii_letters + string.digits
+    return (''.join(random.choice(letters) for _ in range(16)))

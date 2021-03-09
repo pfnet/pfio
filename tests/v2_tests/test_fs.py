@@ -3,20 +3,13 @@ import contextlib
 import io
 import multiprocessing as mp
 import os
-import random
-import string
 import tempfile
 
 from moto import mock_s3
 from parameterized import parameterized
 
-from pfio.testing import ZipForTest
+from pfio.testing import ZipForTest, randstring
 from pfio.v2 import S3, Local, from_url, lazify, open_url
-
-
-def randstring():
-    letters = string.ascii_letters + string.digits
-    return (''.join(random.choice(letters) for _ in range(16)))
 
 
 @contextlib.contextmanager
@@ -66,7 +59,18 @@ def test_smoke(target):
 
         assert 'foo' in list(fs.list('d/'))
 
+        st = fs.stat(filename)
+        assert len(content) == st.size
+        assert st.filename is not None
+        assert st.last_modified is not None
+
         fs.remove(filename)
+
+        assert not fs.exists(filename)
+        assert not fs.is_forked
+
+        subfs = fs.subfs('d')
+        assert subfs.exists('foo')
 
 
 @mock_s3
