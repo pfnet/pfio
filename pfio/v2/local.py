@@ -1,7 +1,7 @@
-from datetime import datetime
 import io
 import os
 import shutil
+from datetime import datetime
 
 from .fs import FS, FileStat
 

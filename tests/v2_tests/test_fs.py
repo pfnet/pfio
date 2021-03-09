@@ -1,12 +1,12 @@
 # Test fs.FS compatibility
 import contextlib
-from datetime import datetime
 import io
 import multiprocessing as mp
 import os
 import random
 import string
 import tempfile
+from datetime import datetime
 
 from moto import mock_s3
 from parameterized import parameterized

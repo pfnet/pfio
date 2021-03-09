@@ -86,7 +86,6 @@ class S3(FS):
                  aws_access_key_id=None,
                  aws_secret_access_key=None):
         self.bucket = bucket
-        self.endpoint = endpoint
         if prefix is not None:
             self.cwd = prefix
         else:
@@ -102,10 +101,13 @@ class S3(FS):
         # IF these arguments are not defined, the library
         # automatically retrieves from AWS_ACCESS_KEY_ID and
         # AWS_SECRET_ACCESS_KEY.
+        self.aws_access_key_id = aws_access_key_id
         if aws_access_key_id is not None:
             kwargs['aws_access_key_id'] = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
         if aws_secret_access_key is not None:
             kwargs['aws_secret_access_key'] = aws_secret_access_key
+        self.endpoint = endpoint
         if endpoint is not None:
             kwargs['endpoint_url'] = endpoint
 

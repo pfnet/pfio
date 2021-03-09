@@ -78,7 +78,6 @@ class FS(abc.ABC):
     def __init__(self):
         self.pid = os.getpid()
 
-
     @property
     def cwd(self):
         return self._cwd
