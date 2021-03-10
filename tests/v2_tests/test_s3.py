@@ -20,6 +20,11 @@ def test_s3():
 
             with s3.open('foo.txt', 'w') as fp:
                 fp.write('bar')
+                assert not fp.closed
+
+            with s3.open('foo.txt', 'r') as fp:
+                assert 'bar' == fp.read()
+                assert not fp.closed
 
             assert ['foo.txt'] == list(s3.list())
             assert [] == list(s3.list('base'))

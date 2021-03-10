@@ -36,7 +36,8 @@ class _ObjectReader(io.BufferedReader):
             return self.body.read().decode('utf-8')
 
     def close(self):
-        return self.body.close()
+        self.body.close()
+        self.body = None
 
     def __enter__(self):
         return self
@@ -48,7 +49,7 @@ class _ObjectReader(io.BufferedReader):
 
     @property
     def closed(self):
-        return self.buf is None
+        return self.body is None
 
     def isatty(self):
         return False
