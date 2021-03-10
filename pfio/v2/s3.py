@@ -177,7 +177,13 @@ class S3(FS):
 
         '''
         self._checkfork()
-        key = os.path.join(self.cwd, prefix)
+        key = os.path.normpath(os.path.join(self.cwd, prefix))
+        if key == '.':
+            key = ''
+        if key:
+            key += '/'
+        if '.' in key:
+            raise ValueError('Invalid path: {}'.format(key))
 
         page_size = 1000
         paginator = self.client.get_paginator('list_objects_v2')

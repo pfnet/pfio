@@ -17,3 +17,12 @@ def test_s3():
             assert key == s3.aws_access_key_id
             assert secret == s3.aws_secret_access_key
             assert s3.endpoint is None
+
+            with s3.open('foo.txt', 'w') as fp:
+                fp.write('bar')
+
+            assert ['foo.txt'] == list(s3.list())
+            assert [] == list(s3.list('base'))
+            assert [] == list(s3.list('base/'))
+            assert ['foo.txt'] == list(s3.list('/base'))
+            assert ['foo.txt'] == list(s3.list('/base/'))
