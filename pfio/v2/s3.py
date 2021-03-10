@@ -47,18 +47,18 @@ class _ObjectReader(io.BufferedReader):
         self.close()
 
 
-class _ObjectWriter(io.BufferedWriter):
+class _ObjectWriter:
     def __init__(self, client, bucket, key, mode, kwargs):
         self.client = client
         self.bucket = bucket
         self.key = key
         if 'b' in mode:
-            self.buf = b''
+            self.buf = io.BytesIO()
         else:
-            self.buf = ''
+            self.buf = io.StringIO()
 
     def write(self, buf):
-        self.buf += buf
+        return self.buf.write(buf)
 
     def flush(self):
         '''Does nothing
@@ -69,7 +69,7 @@ class _ObjectWriter(io.BufferedWriter):
         # TODO: MPU
         # See:  https://boto3.amazonaws.com/v1/documentation/
         # api/latest/reference/services/s3.html#S3.Client.put_object
-        self.client.put_object(Body=self.buf,
+        self.client.put_object(Body=self.buf.getvalue(),
                                Bucket=self.bucket,
                                Key=self.key)
 
