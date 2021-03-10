@@ -60,6 +60,13 @@ class _ObjectWriter(io.BufferedWriter):
     def write(self, buf):
         self.buf += buf
 
+    def flush(self):
+        '''Does nothing
+
+        .. note:: see discussion in ``S3.isdir()``.
+        '''
+        pass
+
     def close(self):
         # TODO: MPU
         # See:  https://boto3.amazonaws.com/v1/documentation/
