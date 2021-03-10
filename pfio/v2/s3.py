@@ -62,8 +62,6 @@ class _ObjectWriter(io.BufferedWriter):
 
     def flush(self):
         '''Does nothing
-
-        .. note:: see discussion in ``S3.isdir()``.
         '''
         pass
 
