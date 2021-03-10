@@ -182,8 +182,8 @@ class S3(FS):
             key = ''
         if key:
             key += '/'
-        if '.' in key:
-            raise ValueError('Invalid path: {}'.format(key))
+        if '/../' in key:
+            raise ValueError('Invalid S3 key: {} as {}'.format(prefix, key))
 
         page_size = 1000
         paginator = self.client.get_paginator('list_objects_v2')
