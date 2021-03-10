@@ -46,6 +46,22 @@ class _ObjectReader(io.BufferedReader):
                  traceback: Optional[TracebackType]) -> bool:
         self.close()
 
+    @property
+    def closed(self):
+        return self.buf is None
+
+    def isatty(self):
+        return False
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return False
+
+    def writable(self):
+        return False
+
 
 class _ObjectWriter:
     def __init__(self, client, bucket, key, mode, kwargs):
@@ -60,11 +76,6 @@ class _ObjectWriter:
     def write(self, buf):
         return self.buf.write(buf)
 
-    def flush(self):
-        '''Does nothing
-        '''
-        pass
-
     def close(self):
         # TODO: MPU
         # See:  https://boto3.amazonaws.com/v1/documentation/
@@ -72,6 +83,7 @@ class _ObjectWriter:
         self.client.put_object(Body=self.buf.getvalue(),
                                Bucket=self.bucket,
                                Key=self.key)
+        self.buf = None
 
     def __enter__(self):
         return self
@@ -80,6 +92,27 @@ class _ObjectWriter:
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]) -> bool:
         self.close()
+
+    def flush(self):
+        '''Does nothing
+        '''
+        pass
+
+    @property
+    def closed(self):
+        return self.buf is None
+
+    def isatty(self):
+        return False
+
+    def readable(self):
+        return False
+
+    def seekable(self):
+        return False
+
+    def writable(self):
+        return True
 
 
 class S3(FS):
@@ -161,13 +194,19 @@ class S3(FS):
 
         path = os.path.join(self.cwd, path)
         if 'r' in mode:
-            return _ObjectReader(self.client, self.bucket, path, mode, kwargs)
+            obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
+            if 'b' in mode:
+                obj = io.BufferedReader(obj)
 
         elif 'w' in mode:
-            return _ObjectWriter(self.client, self.bucket, path, mode, kwargs)
+            obj = _ObjectWriter(self.client, self.bucket, path, mode, kwargs)
+            if 'b' in mode:
+                obj = io.BufferedWriter(obj)
 
         else:
             raise RuntimeError(f'Unknown option: {mode}')
+
+        return obj
 
     def list(self, prefix: str = "", recursive=False):
         '''List all objects (and prefixes)
@@ -177,7 +216,13 @@ class S3(FS):
 
         '''
         self._checkfork()
-        key = os.path.join(self.cwd, prefix)
+        key = os.path.normpath(os.path.join(self.cwd, prefix))
+        if key == '.':
+            key = ''
+        if key:
+            key += '/'
+        if '/../' in key or key.startswith('..'):
+            raise ValueError('Invalid S3 key: {} as {}'.format(prefix, key))
 
         page_size = 1000
         paginator = self.client.get_paginator('list_objects_v2')
