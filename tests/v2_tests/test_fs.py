@@ -64,6 +64,7 @@ def test_smoke(target):
         assert len(content) == st.size
         assert st.filename is not None
         assert st.last_modified is not None
+        assert type(st.last_modified) == float
 
         with fs.open(filename2, 'wb') as fp:
             fp.write(content.encode())

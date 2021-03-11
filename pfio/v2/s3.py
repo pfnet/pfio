@@ -12,7 +12,7 @@ from .fs import FS, FileStat
 class S3ObjectStat(FileStat):
     def __init__(self, key, head):
         self.filename = key
-        self.last_modified = head['LastModified']
+        self.last_modified = head['LastModified'].timestamp()
         self.size = head['ContentLength']
         self.metadata = head['Metadata']
         self._head = head
