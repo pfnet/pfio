@@ -31,20 +31,3 @@ def test_s3():
             assert [] == list(s3.list('base/'))
             assert ['foo.txt'] == list(s3.list('/base'))
             assert ['foo.txt'] == list(s3.list('/base/'))
-
-
-@mock_s3
-def test_s3_stat():
-    bucket = "test-dummy-bucket"
-    key = "it's me!deadbeef"
-    secret = "asedf;lkjdf;a'lksjd"
-    with S3(bucket, create_bucket=True):
-        with from_url('s3://test-dummy-bucket/base',
-                      aws_access_key_id=key,
-                      aws_secret_access_key=secret) as s3:
-            with s3.open('foo.txt', 'w') as fp:
-                fp.write('bar')
-                assert not fp.closed
-            stat = s3.stat("foo.txt")
-
-            assert type(stat.last_modified) == float
