@@ -21,22 +21,32 @@ class S3ObjectStat(FileStat):
         return False
 
 
-class _ObjectReader(io.BufferedReader):
+class _ObjectReader:
     def __init__(self, client, bucket, key, mode, kwargs):
         self.client = client
         self.res = self.client.get_object(Bucket=bucket,
                                           Key=key)
         self._mode = mode
         self.body = self.res['Body']
+        self.pos = 0
+        self.content_length = self.res['ContentLength']
 
-    def read(self):
+    def read(self, size=-1):
+        if size <= 0:
+            size = None
+
+        if self.content_length <= self.pos:
+            return
+
         if 'b' in self._mode:
-            return self.body.read()
+            data = self.body.read(size)
         else:
-            return self.body.read().decode('utf-8')
+            data = self.body.read(size).decode('utf-8')
+
+        self.pos += len(data)
+        return data
 
     def close(self):
-        self.body.close()
         self.body = None
 
     def __enter__(self):
@@ -46,6 +56,9 @@ class _ObjectReader(io.BufferedReader):
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]) -> bool:
         self.close()
+
+    def flush(self):
+        pass
 
     @property
     def closed(self):

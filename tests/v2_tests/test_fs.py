@@ -32,6 +32,7 @@ def gen_fs(target):
 @mock_s3
 def test_smoke(target):
     filename = randstring()
+    filename2 = randstring()
     content = randstring()
     with gen_fs(target) as fs:
         with fs.open(filename, 'w') as fp:
@@ -64,7 +65,16 @@ def test_smoke(target):
         assert st.filename is not None
         assert st.last_modified is not None
 
+        with fs.open(filename2, 'wb') as fp:
+            fp.write(content.encode())
+
+        with fs.open(filename2, 'rb') as fp:
+            buf2 = fp.read()
+
+        assert content == buf2.decode()
+
         fs.remove(filename)
+        fs.remove(filename2)
 
         assert not fs.exists(filename)
         assert not fs.is_forked
