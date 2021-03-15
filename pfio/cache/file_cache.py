@@ -108,6 +108,9 @@ class FileCache(cache.Cache):
     object is not correctly closed, (e.g., the process killed by
     SIGTERM), the cache remains after the death of process.
 
+    .. note:: This feature requires ``stat(1)`` command from GNU
+       coreutils.
+
     Arguments:
         length (int): Length of the cache array.
 
@@ -122,6 +125,7 @@ class FileCache(cache.Cache):
 
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
+            Must not be an NFS.
 
         cache_size_limit (None or int): Limitation of the cache size in bytes.
             If the total amount of cached data reaches the limit, the cache
@@ -131,6 +135,7 @@ class FileCache(cache.Cache):
 
         verbose (bool):
             Print detailed logs of the cache.
+
     '''
 
     def __init__(self, length, multithread_safe=False, do_pickle=False,
