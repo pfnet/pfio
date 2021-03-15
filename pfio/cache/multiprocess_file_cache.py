@@ -125,6 +125,7 @@ class MultiprocessFileCache(cache.Cache):
 
         dir (str): The path to the directory to place cache data in
             case home directory is not backed by fast storage device.
+            Must not be an NFS.
 
         cache_size_limit (None or int): Limitation of the cache size in bytes.
             If the total amount of cached data reaches the limit,
