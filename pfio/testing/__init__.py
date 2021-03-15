@@ -1,7 +1,10 @@
 import os
 import random
 import string
+import subprocess
 from zipfile import ZipFile
+
+import mock
 
 
 class ZipForTest:
@@ -66,3 +69,21 @@ def make_random_str(n):
 def randstring():
     letters = string.ascii_letters + string.digits
     return (''.join(random.choice(letters) for _ in range(16)))
+
+
+def patch_subprocess(stdout, stderr=b''):
+    def decorator(f):
+        def wrapper(*args, **kwargs):
+            orig_method = subprocess.run
+            try:
+                cp = subprocess.CompletedProcess(args='hoge', returncode=0)
+                cp.stdout = stdout
+                cp.stderr = stderr
+                subprocess.run = mock.create_autospec(subprocess.run,
+                                                      return_value=cp)
+                return f(*args, **kwargs)
+            finally:
+                subprocess.run = orig_method
+
+        return wrapper
+    return decorator

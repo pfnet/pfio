@@ -8,7 +8,7 @@ import warnings
 from struct import calcsize, pack, unpack
 
 from pfio import cache
-from pfio.cache.file_cache import _DEFAULT_CACHE_PATH
+from pfio.cache.file_cache import _DEFAULT_CACHE_PATH, _check_local
 
 
 class _NoOpenNamedTemporaryFile(object):
@@ -159,6 +159,7 @@ class MultiprocessFileCache(cache.Cache):
         else:
             self.dir = dir
         os.makedirs(self.dir, exist_ok=True)
+        _check_local(self.dir)
 
         self.closed = False
         self._frozen = False

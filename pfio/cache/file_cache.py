@@ -2,6 +2,7 @@ import errno
 import numbers
 import os
 import pickle
+import subprocess
 import tempfile
 import threading
 import warnings
@@ -11,6 +12,8 @@ from pfio import cache
 
 _DEFAULT_CACHE_PATH = os.path.join(
     os.getenv('HOME'), ".pfio", "cache")
+
+_FORCE_LOCAL = True
 
 
 class LockContext:
@@ -78,6 +81,24 @@ class DummyLock:
         pass
 
 
+def _check_local(path: str):
+    '''Verifies the path is not NFS
+
+    Raises an error if the ``stat(1)`` answers it as NFS.
+
+    '''
+    global _FORCE_LOCAL
+    if not _FORCE_LOCAL:
+        return
+
+    # From https://unix.stackexchange.com/a/402236
+    cp = subprocess.run(['stat', '-f', '-c', '%T', path], check=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT)
+    if 'nfs' in cp.stdout.decode():
+        raise ValueError("NFS can't be used for cache: {}".format(path))
+
+
 class FileCache(cache.Cache):
     '''Cache system with local filesystem
 
@@ -139,6 +160,7 @@ class FileCache(cache.Cache):
         else:
             self.dir = dir
         os.makedirs(self.dir, exist_ok=True)
+        _check_local(self.dir)
 
         self.closed = False
         self.cachefp = tempfile.NamedTemporaryFile(delete=True, dir=self.dir)
