@@ -1,0 +1,3 @@
+[tool.pysen.lint]
+enable_flake8 = true
+enable_isort = true
