@@ -201,6 +201,7 @@ class S3(FS):
         .. note:: Multi-part upload is not yet available.
 
         '''
+        self._checkfork()
         if 'a' in mode:
             raise io.UnsupportedOperation('Append is not supported')
         if 'r' in mode and 'w' in mode:
