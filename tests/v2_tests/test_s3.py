@@ -1,9 +1,10 @@
-import pytest
 import multiprocessing as mp
+
+import pytest
 from moto import mock_s3
 
-from pfio.v2.fs import ForkedError
 from pfio.v2 import S3, from_url
+from pfio.v2.fs import ForkedError
 
 
 @mock_s3
