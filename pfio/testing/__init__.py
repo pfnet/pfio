@@ -4,7 +4,7 @@ import string
 import subprocess
 from zipfile import ZipFile
 
-import mock
+from unittest import mock
 
 
 class ZipForTest:
