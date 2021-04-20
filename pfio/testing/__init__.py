@@ -2,9 +2,8 @@ import os
 import random
 import string
 import subprocess
+from unittest import mock
 from zipfile import ZipFile
-
-import mock
 
 
 class ZipForTest:
