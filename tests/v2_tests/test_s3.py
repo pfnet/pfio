@@ -1,6 +1,10 @@
+import multiprocessing as mp
+
+import pytest
 from moto import mock_s3
 
 from pfio.v2 import S3, from_url
+from pfio.v2.fs import ForkedError
 
 
 @mock_s3
@@ -31,3 +35,16 @@ def test_s3():
             assert [] == list(s3.list('base/'))
             assert ['foo.txt'] == list(s3.list('/base'))
             assert ['foo.txt'] == list(s3.list('/base/'))
+
+            def f(s3):
+                try:
+                    s3.open('foo.txt', 'r')
+                except ForkedError:
+                    pass
+                else:
+                    pytest.fail('No Error on Forking')
+
+            p = mp.Process(target=f, args=(s3,))
+            p.start()
+            p.join()
+            assert p.exitcode == 0
