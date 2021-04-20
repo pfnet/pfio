@@ -1,4 +1,4 @@
-import os
+import pytest
 import multiprocessing as mp
 from moto import mock_s3
 
@@ -39,8 +39,9 @@ def test_s3():
                 try:
                     s3.open('foo.txt', 'r')
                 except ForkedError:
-                    os._exit(0)
-                os._exit(1)
+                    pass
+                else:
+                    pytest.fail('No Error on Forking')
 
             p = mp.Process(target=f, args=(s3,))
             p.start()
