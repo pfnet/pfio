@@ -99,7 +99,9 @@ class _ObjectWriter:
         # A part must be more than 8 MiB in S3
         if len(self.buf.getvalue()) < 8 * 1024 * 1024:
             return
+        self._flush()
 
+    def _flush(self):
         # Send buffer as a part
         c = self.client
         b = self.bucket
@@ -122,6 +124,7 @@ class _ObjectWriter:
                             ContentLength=len(data),
                             ContentMD5=md5)
         self.parts.append({'ETag': res['ETag'], 'PartNumber': num})
+        # print("Sent", len(data), "bytes", num)
         self._init_buf()
 
     def write(self, buf):
@@ -147,6 +150,7 @@ class _ObjectWriter:
                                    Bucket=self.bucket,
                                    Key=self.key)
         else:
+            self._flush()
             # DO: MPU
             c = self.client
             max_parts = len(self.parts)
