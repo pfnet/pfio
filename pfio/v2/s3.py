@@ -1,3 +1,4 @@
+import hashlib
 import io
 import os
 from types import TracebackType
@@ -78,25 +79,94 @@ class _ObjectReader:
 
 
 class _ObjectWriter:
-    def __init__(self, client, bucket, key, mode, kwargs):
+    def __init__(self, client, bucket, key, mode, mpu_chunksize, kwargs):
         self.client = client
         self.bucket = bucket
         self.key = key
-        if 'b' in mode:
+        self.mode = mode
+        self._init_buf()
+        self.mpu_chunksize = mpu_chunksize
+        self.mpu_id = None
+        self.parts = []
+
+    def _init_buf(self):
+        if 'b' in self.mode:
             self.buf = io.BytesIO()
         else:
             self.buf = io.StringIO()
 
+    def flush(self):
+        # A part must be more than 8 MiB in S3
+        if len(self.buf.getvalue()) < 8 * 1024 * 1024:
+            return
+
+        # Send buffer as a part
+        c = self.client
+        b = self.bucket
+        k = self.key
+
+        if self.mpu_id is None:
+            res = c.create_multipart_upload(Bucket=b, Key=k)
+            self.mpu_id = res['UploadId']
+            boto3.set_stream_logger()
+
+        assert self.mpu_id is not None
+
+        data = self.buf.getvalue()
+        md5 = hashlib.md5(data).hexdigest()
+        num = len(self.parts) + 1
+
+        res = c.upload_part(Body=data, Bucket=b, Key=k,
+                            PartNumber=num,
+                            UploadId=self.mpu_id,
+                            ContentLength=len(data),
+                            ContentMD5=md5)
+        self.parts.append({'ETag': res['ETag'], 'PartNumber': num})
+        self._init_buf()
+
     def write(self, buf):
-        return self.buf.write(buf)
+        written = 0
+        overflow = len(self.buf.getvalue()) + len(buf) - self.mpu_chunksize
+        if overflow > 0:
+            l = len(buf) - overflow
+            written += self.buf.write(buf[:l])
+            self.flush()
+            buf = buf[l:]
+
+        written += self.buf.write(buf)
+        if len(self.buf.getvalue()) >= self.mpu_chunksize:
+            self.flush()
+
+        return written
 
     def close(self):
-        # TODO: MPU
         # See:  https://boto3.amazonaws.com/v1/documentation/
         # api/latest/reference/services/s3.html#S3.Client.put_object
-        self.client.put_object(Body=self.buf.getvalue(),
-                               Bucket=self.bucket,
-                               Key=self.key)
+        if len(self.parts) == 0:
+            self.client.put_object(Body=self.buf.getvalue(),
+                                   Bucket=self.bucket,
+                                   Key=self.key)
+        else:
+            # DO: MPU
+            c = self.client
+            max_parts = len(self.parts)
+            res = c.list_parts(Bucket=self.bucket,
+                               Key=self.key,
+                               UploadId=self.mpu_id, MaxParts=max_parts)
+
+            if res['IsTruncated']:
+                raise RuntimeError('truncated.')
+
+            parts = [{'ETag': part['ETag'], 'PartNumber': part['PartNumber']}
+                     for part in res.get('Parts', [])]
+            parts = sorted(parts, key=lambda x: int(x['PartNumber']))
+            assert self.parts == parts
+
+            res = c.complete_multipart_upload(Bucket=self.bucket,
+                                              Key=self.key, UploadId=self.mpu_id,
+                                              MultipartUpload={'Parts': parts})
+            # logger.info("Upload done.", res['Location'])
+
         self.buf = None
 
     def __enter__(self):
@@ -106,11 +176,6 @@ class _ObjectWriter:
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]) -> bool:
         self.close()
-
-    def flush(self):
-        '''Does nothing
-        '''
-        pass
 
     @property
     def closed(self):
@@ -145,12 +210,15 @@ class S3(FS):
     def __init__(self, bucket, prefix=None,
                  endpoint=None, create_bucket=False,
                  aws_access_key_id=None,
-                 aws_secret_access_key=None):
+                 aws_secret_access_key=None,
+                 mpu_chunksize=32*1024*1024):
         self.bucket = bucket
         if prefix is not None:
             self.cwd = prefix
         else:
             self.cwd = ''
+
+        self.mpu_chunksize = mpu_chunksize
 
         # boto3.set_stream_logger()
 
@@ -214,7 +282,8 @@ class S3(FS):
                 obj = io.BufferedReader(obj)
 
         elif 'w' in mode:
-            obj = _ObjectWriter(self.client, self.bucket, path, mode, kwargs)
+            obj = _ObjectWriter(self.client, self.bucket, path, mode,
+                                self.mpu_chunksize, kwargs)
             if 'b' in mode:
                 obj = io.BufferedWriter(obj)
 
