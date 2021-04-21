@@ -115,7 +115,10 @@ class _ObjectWriter:
         assert self.mpu_id is not None
 
         data = self.buf.getvalue()
-        md5 = hashlib.md5(data).hexdigest()
+        if 'b' in self.mode:
+            md5 = hashlib.md5(data).hexdigest()
+        else:
+            md5 = hashlib.md5(data.encode()).hexdigest()
         num = len(self.parts) + 1
 
         res = c.upload_part(Body=data, Bucket=b, Key=k,

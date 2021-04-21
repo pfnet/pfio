@@ -73,3 +73,13 @@ def test_s3():
 
         assert 7 * 1024 * 1024 * 4 == len(data)
         assert b"0123456" == data[7:14]
+
+        with s3.open('testfile2', 'w') as fp:
+            for _ in range(4):
+                fp.write("0123456" * (1024*1024))
+
+        with s3.open('testfile2', 'r') as fp:
+            data = fp.read()
+
+        assert 7 * 1024 * 1024 * 4 == len(data)
+        assert "0123456" == data[7:14]
