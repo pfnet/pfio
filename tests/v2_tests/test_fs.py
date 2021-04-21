@@ -107,19 +107,22 @@ def test_factory_open():
         assert 'hello' == fp.read()
 
 
-@parameterized.expand(["local"])
+@parameterized.expand(["s3", "local"])
+@mock_s3
 def test_seekeable_read(target):
     filename = randstring()
-    content = '0123456789'
+    content = b'0123456789'
     with gen_fs(target) as fs:
-        with fs.open(filename, 'w') as fp:
+        with fs.open(filename, 'wb') as fp:
             fp.write(content)
 
-        for c in content:
-            with fs.open(filename, 'r') as fp:
-                s = fp.read(1)
+        print(content)
+        for i, c in enumerate(content):
+            with fs.open(filename, 'rb') as fp:
+                fp.seek(i)
+                s = fp.read()
                 print(c, s)
-                assert c == s
+                assert c == s[0]
 
 
 def test_recreate():

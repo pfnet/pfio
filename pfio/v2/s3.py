@@ -40,7 +40,9 @@ class _ObjectReader:
     def read(self, size=-1):
         s = self.pos
 
-        if size <= 0:
+        if self.pos >= self.content_length:
+            return (b'' if 'b' in self._mode else '')
+        elif size <= 0:
             e = ''
         elif self.pos + size < self.content_length:
             e = self.pos + size
@@ -58,7 +60,7 @@ class _ObjectReader:
             data = body.read(size).decode('utf-8')
 
         self.pos += len(data)
-        # print('pos=', self.pos)
+        # print('pos=', self.pos, data, size)
         return data
 
     def close(self):
