@@ -107,8 +107,7 @@ def test_factory_open():
         assert 'hello' == fp.read()
 
 
-@parameterized.expand(["s3", "local"])
-@mock_s3
+@parameterized.expand(["local"])
 def test_seekeable_read(target):
     filename = randstring()
     content = '0123456789'

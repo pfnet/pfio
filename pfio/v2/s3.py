@@ -46,7 +46,7 @@ class _ObjectReader:
             e = self.pos + size
 
         r = 'bytes={}-{}'.format(s, e)
-        print('range=', r)
+        # print('range=', r)
         res = self.client.get_object(Bucket=self.bucket,
                                      Key=self.key,
                                      Range=r)
@@ -58,7 +58,7 @@ class _ObjectReader:
             data = body.read(size).decode('utf-8')
 
         self.pos += len(data)
-        print('pos=', self.pos)
+        # print('pos=', self.pos)
         return data
 
     def close(self):
