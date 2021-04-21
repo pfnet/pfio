@@ -48,3 +48,38 @@ def test_s3():
             p.start()
             p.join()
             assert p.exitcode == 0
+
+    # Test multipart upload
+    bucket = 'test-mpu'
+    with S3(bucket, create_bucket=True, mpu_chunksize=8*1024*1024,
+            aws_access_key_id=key,
+            aws_secret_access_key=secret) as s3:
+        with s3.open('testfile', 'wb') as fp:
+            for _ in range(4):
+                fp.write(b"01234567" * (1024*1024))
+
+        with s3.open('testfile', 'rb') as fp:
+            data = fp.read()
+
+        assert 8 * 1024 * 1024 * 4 == len(data)
+        assert b"01234567" == data[:8]
+
+        with s3.open('testfile2', 'wb') as fp:
+            for _ in range(4):
+                fp.write(b"0123456" * (1024*1024))
+
+        with s3.open('testfile2', 'rb') as fp:
+            data = fp.read()
+
+        assert 7 * 1024 * 1024 * 4 == len(data)
+        assert b"0123456" == data[7:14]
+
+        with s3.open('testfile2', 'w') as fp:
+            for _ in range(4):
+                fp.write("0123456" * (1024*1024))
+
+        with s3.open('testfile2', 'r') as fp:
+            data = fp.read()
+
+        assert 7 * 1024 * 1024 * 4 == len(data)
+        assert "0123456" == data[7:14]
