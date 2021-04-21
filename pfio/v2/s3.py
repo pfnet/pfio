@@ -167,7 +167,8 @@ class _ObjectWriter:
             assert self.parts == parts
 
             res = c.complete_multipart_upload(Bucket=self.bucket,
-                                              Key=self.key, UploadId=self.mpu_id,
+                                              Key=self.key,
+                                              UploadId=self.mpu_id,
                                               MultipartUpload={'Parts': parts})
             # logger.info("Upload done.", res['Location'])
 
