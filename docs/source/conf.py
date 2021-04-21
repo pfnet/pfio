@@ -21,13 +21,13 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = 'PFIO'
-copyright = '2019, Preferred Networks, Inc.'
+copyright = '2019-2021, Preferred Networks, Inc.'
 author = 'Preferred Networks, Inc.'
 
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '1.3.0'
+release = '1.4.0'
 
 
 # -- General configuration ---------------------------------------------------
