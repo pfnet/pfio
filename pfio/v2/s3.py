@@ -25,30 +25,46 @@ class S3ObjectStat(FileStat):
 class _ObjectReader:
     def __init__(self, client, bucket, key, mode, kwargs):
         self.client = client
-        self.res = self.client.get_object(Bucket=bucket,
-                                          Key=key)
+        self.bucket = bucket
+        self.key = key
+
+        res = self.client.head_object(Bucket=bucket, Key=key)
+        if res.get('DeleteMarker'):
+            raise FileNotFoundError()
+
         self._mode = mode
-        self.body = self.res['Body']
         self.pos = 0
-        self.content_length = self.res['ContentLength']
+        self.content_length = res['ContentLength']
+        self._closed = False
 
     def read(self, size=-1):
-        if size <= 0:
-            size = None
+        s = self.pos
 
-        if self.content_length <= self.pos:
-            return
+        if self.pos >= self.content_length:
+            return (b'' if 'b' in self._mode else '')
+        elif size <= 0:
+            e = ''
+        elif self.pos + size < self.content_length:
+            e = self.pos + size
+
+        r = 'bytes={}-{}'.format(s, e)
+        # print('range=', r)
+        res = self.client.get_object(Bucket=self.bucket,
+                                     Key=self.key,
+                                     Range=r)
+        body = res['Body']
 
         if 'b' in self._mode:
-            data = self.body.read(size)
+            data = body.read(size)
         else:
-            data = self.body.read(size).decode('utf-8')
+            data = body.read(size).decode('utf-8')
 
         self.pos += len(data)
+        # print('pos=', self.pos, data, size)
         return data
 
     def close(self):
-        self.body = None
+        self._closed = True
 
     def __enter__(self):
         return self
@@ -63,7 +79,7 @@ class _ObjectReader:
 
     @property
     def closed(self):
-        return self.body is None
+        return self._closed
 
     def isatty(self):
         return False
@@ -72,7 +88,21 @@ class _ObjectReader:
         return True
 
     def seekable(self):
-        return False
+        return True
+
+    def seek(self, pos, whence=io.SEEK_SET):
+        if whence in [0, io.SEEK_SET]:
+            self.pos = pos
+        elif whence in [1, io.SEEK_CUR]:
+            self.pos += pos
+        elif whence in [2, io.SEEK_END]:
+            self.pos += pos
+
+        if self.content_length < self.pos:
+            self.pos = self.content_length
+        if self.pos < 0:
+            raise OSError()
+        return self.pos
 
     def writable(self):
         return False
