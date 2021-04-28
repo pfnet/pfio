@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import subprocess
+from xml.etree import ElementTree
 
 import pyarrow
 from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
@@ -108,16 +109,90 @@ class HdfsFileStat(FileStat):
         self.size = info.size
 
 
+def _ensure_arrow_envs(hadoop_home):
+    if os.getenv("ARROW_LIBHDFS_DIR") is None:
+        arrow_dir = os.path.join(hadoop_home, "lib")
+        libhdfs = os.path.join(arrow_dir, "libhdfs.so")
+
+        if os.path.exists(libhdfs):
+            os.environ["ARROW_LIBHDFS_DIR"] = arrow_dir
+        else:
+            arrow_dir = os.path.join(hadoop_home, "lib/native")
+            libhdfs = os.path.join(arrow_dir, "libhdfs.so")
+            if os.path.exists(libhdfs):
+                os.environ["ARROW_LIBHDFS_DIR"] = arrow_dir
+            else:
+                msg = "No libhdfs.so found from $HADOOP_HOME: {}".format(
+                    hadoop_home)
+                raise RuntimeError(msg)
+
+
+def _create_fs():
+    confdir = os.getenv('HADOOP_CONF_DIR', '/etc/hadoop/conf')
+    conffile = os.path.join(confdir, 'hdfs-site.xml')
+    root = ElementTree.parse(conffile)
+
+    # Valid envs required. Typically, /opt/cloudera/parcels/CDH/lib
+    if os.getenv("HADOOP_HOME"):
+        hadoop_home = os.getenv("HADOOP_HOME")
+        _ensure_arrow_envs(hadoop_home)
+
+    if os.getenv("CLASSPATH") is None:
+        # TODO(kuenishi): CLASSPATH=`$HADOOP_HOME/bin/hdfs classpath --glob`
+        cmd = ["hdfs", "classpath", "--glob"]
+        cp = subprocess.run(cmd, stdout=subprocess.PIPE)
+        cp.check_returncode()
+        os.environ["CLASSPATH"] = cp.stdout.decode()
+
+    assert os.getenv("ARROW_LIBHDFS_DIR"), "LIBHDFS not found"
+    assert os.getenv("CLASSPATH"), "CLASSPATH not defined"
+
+    configs = {}
+    for e in root.findall('./property'):
+        name = None
+        for c in e.getchildren():
+            if c.tag == 'name':
+                name = c.text
+            elif c.tag == 'value':
+                value = c.text
+        if name:
+            configs[name] = value
+
+    for nameservice in configs.get('dfs.nameservices', '').split(','):
+
+        # TODO(kuenishi): We don't have such use case where we switch
+        # amont multiple name services from single HADOOP_CONF_DIR
+        # conf. Thus we ignore fs.defaultFS and just take the very
+        # first name service that appeared in hdfs-site.xml.
+        return HadoopFileSystem(nameservice)
+
+    else:
+        RuntimeError("No nameservice found.")
+
+
 class Hdfs(FS):
+    '''Hadoop FileSystem wrapper
+
+    To use HDFS, PFIO requires ``$HADOOP_HOME`` predefined before
+    initialization. If it is not defined, ``ARROW_LIBHDFS_DIR`` must
+    be defined instead. If ``$CLASSPATH`` will be needed in case
+    ``hdfs`` command is not available from ``$PATH``.
+
+    '''
+
     def __init__(self, cwd=None):
         super().__init__()
-        self._fs = HadoopFileSystem(host='jm00z0cm06.s.mnj.pfn.io')
+        self._fs = _create_fs()
         assert self._fs is not None
         self.username = self._get_principal_name()
+
         self.cwd = os.path.join('/user', self.username)
 
-        if cwd:
-            self.cwd = os.path.join(self.cwd, cwd)
+        if cwd is not None:
+            if cwd.startswith('/'):
+                self.cwd = cwd
+            else:
+                self.cwd = os.path.join(self.cwd, cwd)
 
     def _get_principal_name(self):
         # get the default principal name from `klist` cache
