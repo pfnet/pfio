@@ -6,7 +6,7 @@ import re
 import subprocess
 
 import pyarrow
-from pyarrow import hdfs
+from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
 
 from .fs import FS, FileStat
 
@@ -89,44 +89,35 @@ class HdfsFileStat(FileStat):
             No sub-second precision.
         mode (int): Derived from `~FileStat`.
         size (int): Derived from `~FileStat`.
-        owner (str): Owner of the file. Unlike `~PosixFileStat.owner`,
-            this is a user name string instead of an integer.
-        group (str): Group of the file in string.
-        replication (int): Number of replications of the file in HDFS.
-        block_size (int): Block size in bytes.
-        kind (str): Group of the file in string.
     """
 
     def __init__(self, info):
-        mode = info['permissions']
-        if info['kind'] == 'file':
+        self._info = info
+
+        mode = 0
+        if info.type == FileType.File:
             mode |= 0o100000
-        elif info['kind'] == 'directory':
+        elif info.type == FileType.Directory:
             mode |= 0o40000
 
-        self.filename = info['path']
+        self.filename = info.base_name
         self.mode = mode
-        self.last_modified = float(info['last_modified'])
-        self.last_accessed = float(info['last_accessed'])
-        for k in ('size', 'owner', 'group', 'replication',
-                  'block_size', 'kind'):
-            setattr(self, k, info[k])
+        self.last_modified = info.mtime.timestamp()
+        # no atime supported by PyArrow new API
+        self.last_accessed = info.mtime.timestamp()
+        self.size = info.size
 
 
 class Hdfs(FS):
     def __init__(self, cwd=None):
         super().__init__()
-        self.connection = hdfs.connect()
-        assert self.connection is not None
+        self._fs = HadoopFileSystem(host='jm00z0cm06.s.mnj.pfn.io')
+        assert self._fs is not None
         self.username = self._get_principal_name()
         self.cwd = os.path.join('/user', self.username)
 
         if cwd:
             self.cwd = os.path.join(self.cwd, cwd)
-
-        # set nameservice
-        _file_in_root = self.connection.ls("/")[0]
-        self.nameservice = _file_in_root[:_file_in_root.rfind("/")]
 
     def _get_principal_name(self):
         # get the default principal name from `klist` cache
@@ -151,98 +142,94 @@ class Hdfs(FS):
              newline=None, closefd=True, opener=None):
         self._checkfork()
         path = os.path.join(self.cwd, file_path)
-        orig_mode = mode
 
-        # hdfs only support open in 'b'
-        if 'b' not in mode:
-            mode += 'b'
         try:
-            file_obj = self.connection.open(path, mode)
-
+            if 'r' in mode:
+                file_obj = self._fs.open_input_file(path)
+            else:
+                file_obj = self._fs.open_output_stream(path)
         except pyarrow.lib.ArrowIOError as e:
             raise IOError("open file error :{}".format(str(e)))
 
-        if 'b' not in orig_mode:
-            file_obj = io.TextIOWrapper(file_obj, encoding, errors, newline)
-        elif 'r' in orig_mode:
+        return self._wrap_file_obj(file_obj, mode, encoding, errors, newline)
+
+    def _wrap_file_obj(self, file_obj, mode, encoding, errors, newline):
+        if 'b' not in mode:
+            return io.TextIOWrapper(file_obj, encoding, errors, newline)
+        elif 'r' in mode:
             # Wrap file_obj with io.BufferedReader for ``peek()``, to
             # significiantly improve unpickle performance.
-            file_obj = io.BufferedReader(file_obj)
+            return io.BufferedReader(file_obj)
+        elif 'w' in mode:
+            return io.BufferedWriter(file_obj)
         else:
-            file_obj = io.BufferedWriter(file_obj)
-
-        return file_obj
+            raise ValueError("invalid option")
 
     def subfs(self, rel_path):
         return Hdfs(os.path.join(self.cwd, rel_path))
 
     def close(self):
+        pass
+
+    def list(self, path: str = "", recursive=False):
         self._checkfork()
-        self.connection.close()
 
-    def list(self, path_or_prefix: str = "", recursive=False):
-        self._checkfork()
-        path_or_prefix = os.path.join(self.cwd, path_or_prefix)
+        if not self.isdir(path):
+            raise NotADirectoryError(path)
 
-        target_dir = self.connection.info(path_or_prefix)
-        if target_dir['kind'] != "directory":
-            raise NotADirectoryError(path_or_prefix)
+        path = os.path.join(self.cwd, path)
+        norm_path = self._fs.normalize_path(path).rstrip('/')
 
-        target_dir_path = target_dir['path']
-        # +1 to include the "/"
-        full_uri_prefix_offset = len(target_dir_path) + 1
-
-        if recursive:
-            yield from self._recursive_list(full_uri_prefix_offset,
-                                            path_or_prefix)
-        else:
-            dir_list = self.connection.ls(path_or_prefix)
-            for _dir in dir_list:
-                yield os.path.basename(_dir)
-
-    def _recursive_list(self, full_uri_prefix_offset, path):
-        for _file in self.connection.ls(path, detail=True):
-            file_name = _file['name']
-            # convert the full URI to relative path from path_or_prefix
-            # to align with posix
-            # e.g. "hdfs://nameservice/prefix_dir/testfile"
-            # => "testfile"
-            yield file_name[full_uri_prefix_offset:]
-
-            if 'directory' == _file['kind']:
-                yield from self._recursive_list(full_uri_prefix_offset,
-                                                file_name)
+        infos = self._fs.get_file_info(FileSelector(path, recursive=recursive))
+        for file_info in infos:
+            yield file_info.path[len(norm_path)+1:]
 
     def stat(self, path):
         self._checkfork()
         path = os.path.join(self.cwd, path)
-        return HdfsFileStat(self.connection.info(path))
+        info = self._fs.get_file_info(path)
+        if info.type == FileType.NotFound:
+            raise FileNotFoundError()
+        else:
+            return HdfsFileStat(info)
 
     def isdir(self, path: str):
+        self._checkfork()
         path = os.path.join(self.cwd, path)
-        return self.stat(path).isdir()
+        info = self._fs.get_file_info(path)
+        return not info.is_file
 
     def mkdir(self, path: str, *args, dir_fd=None):
         self._checkfork()
         path = os.path.join(self.cwd, path)
-        return self.connection.mkdir(path)
+        return self._fs.create_dir(path)
 
-    def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
-        file_path = os.path.join(self.cwd, file_path)
-        return self.mkdir(file_path, mode, exist_ok)
-
-    def exists(self, file_path: str):
+    def makedirs(self, path: str, mode=0o777, exist_ok=False):
         self._checkfork()
-        file_path = os.path.join(self.cwd, file_path)
-        return self.connection.exists(file_path)
+        if self.exists(path) and self.isdir(path) and not exist_ok:
+            raise NotADirectoryError()
+        path = os.path.join(self.cwd, path)
+        return self._fs.create_dir(path, recursive=True)
+
+    def exists(self, path: str):
+        path = os.path.join(self.cwd, path)
+        info = self._fs.get_file_info(path)
+        return info.type != FileType.NotFound
 
     def rename(self, src, dst):
         self._checkfork()
         s = os.path.join(self.cwd, src)
         d = os.path.join(self.cwd, dst)
-        return self.connection.rename(s, d)
+        return self._fs.move(s, d)
 
     def remove(self, path, recursive=False):
-        self._checkfork()
         delpath = os.path.join(self.cwd, path)
-        return self.connection.delete(delpath, recursive)
+        if self.isdir(path):
+            if recursive:
+                self._fs.delete_dir(delpath)
+            elif list(self.list(path)):
+                raise RuntimeError("Directory not empty: {}".format(delpath))
+            else:
+                self._fs.delete_dir(delpath)
+        else:
+            self._fs.delete_file(delpath)
