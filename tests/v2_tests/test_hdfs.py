@@ -186,12 +186,12 @@ class TestHdfs(unittest.TestCase):
             self.assertIsInstance(stat, HdfsFileStat)
             self.assertTrue(stat.filename.endswith(test_file_name))
             self.assertFalse(stat.isdir())
-            self.assertEqual(stat.mode & 0o777, expected['permissions'])
+            # New PyArrow API doesn't support permission
+            # self.assertEqual(stat.mode & 0o777, expected['permissions'])
             self.assertTrue(stat.mode & 0o100000)
             self.assertIsInstance(stat.last_accessed, float)
             self.assertIsInstance(stat.last_modified, float)
-            for k in ('size', 'owner', 'group', 'replication',
-                      'block_size', 'kind', 'last_accessed', 'last_modified'):
+            for k in ('size', 'last_accessed', 'last_modified'):
                 self.assertEqual(getattr(stat, k), expected[k])
 
             fs.remove(test_file_name)
@@ -201,20 +201,12 @@ class TestHdfs(unittest.TestCase):
         with Hdfs(self.dirname) as fs:
             fs.mkdir(test_dir_name)
 
-            conn = hdfs.connect()
-            expected = conn.info(os.path.join(fs.cwd, test_dir_name))
-
             stat = fs.stat(test_dir_name)
             self.assertIsInstance(stat, HdfsFileStat)
             self.assertTrue(stat.filename.endswith(test_dir_name))
             self.assertTrue(stat.isdir())
-            self.assertEqual(stat.mode & 0o777, expected['permissions'])
+
             self.assertTrue(stat.mode & 0o40000)
-            self.assertIsInstance(stat.last_accessed, float)
-            self.assertIsInstance(stat.last_modified, float)
-            for k in ('size', 'owner', 'group', 'replication',
-                      'block_size', 'kind', 'last_accessed', 'last_modified'):
-                self.assertEqual(getattr(stat, k), expected[k])
 
             fs.remove(test_dir_name)
 
