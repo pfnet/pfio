@@ -33,7 +33,7 @@ def gen_fs(target):
 def test_smoke(target):
     filename = randstring()
     filename2 = randstring()
-    content = randstring()
+    content = randstring(1024)
     with gen_fs(target) as fs:
         with fs.open(filename, 'w') as fp:
             fp.write(content)
@@ -73,6 +73,11 @@ def test_smoke(target):
             buf2 = fp.read()
 
         assert content == buf2.decode()
+
+        with fs.open(filename2, 'r') as fp:
+            buf3 = fp.read()
+
+        assert content == buf3
 
         fs.remove(filename)
         fs.remove(filename2)
