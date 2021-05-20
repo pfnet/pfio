@@ -54,10 +54,10 @@ class _ObjectReader:
                                      Range=r)
         body = res['Body']
 
-        if 'b' in self._mode:
-            data = body.read(size)
+        if size < 0:
+            data = body.read()
         else:
-            data = body.read(size).decode('utf-8')
+            data = body.read(size)
 
         self.pos += len(data)
         # print('pos=', self.pos, data, size)
@@ -318,6 +318,8 @@ class S3(FS):
             obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
             if 'b' in mode:
                 obj = io.BufferedReader(obj)
+            else:
+                obj = io.TextIOWrapper(obj)
 
         elif 'w' in mode:
             obj = _ObjectWriter(self.client, self.bucket, path, mode,
