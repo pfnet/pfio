@@ -46,7 +46,7 @@ Please refer to the [official document](https://pfio.readthedocs.io) for more in
 
 Check [the official document](https://packaging.python.org/tutorials/packaging-projects/) for latest release procedure.
 
-Run tests:
+Run tests locally:
 
 ```sh
 $ pip install --user -e .[test]
@@ -54,6 +54,14 @@ $ pytest
 ```
 
 Bump version numbers in `pfio/version.py` and in `docs/source/conf.py` .
+
+Push and open a pull request to invoke CI. Once CI passed and the pull request merged,
+tag a release:
+
+```sh
+$ git tag -s X.Y.Z
+$ git push --tags
+```
 
 Build:
 
