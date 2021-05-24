@@ -41,3 +41,39 @@ $ pytest tests/
 ## How to use
 
 Please refer to the [official document](https://pfio.readthedocs.io) for more information about the usage.
+
+## Release
+
+Check [the official document](https://packaging.python.org/tutorials/packaging-projects/) for latest release procedure.
+
+Run tests locally:
+
+```sh
+$ pip install --user -e .[test]
+$ pytest
+```
+
+Bump version numbers in `pfio/version.py` and in `docs/source/conf.py` .
+
+Push and open a pull request to invoke CI. Once CI passed and the pull request merged,
+tag a release:
+
+```sh
+$ git tag -s X.Y.Z
+$ git push --tags
+```
+
+Build:
+
+```sh
+$ rm -rf dist
+$ pip3 install --user build
+$ python3 -m build
+```
+
+Release to PyPI:
+
+```sh
+$ python3 -m pip install --user --upgrade twine
+$ python3 -m twine upload --repository testpypi dist/*
+```

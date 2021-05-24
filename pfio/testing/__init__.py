@@ -65,9 +65,9 @@ def make_random_str(n):
                     for i in range(n)])
 
 
-def randstring():
+def randstring(length=16):
     letters = string.ascii_letters + string.digits
-    return (''.join(random.choice(letters) for _ in range(16)))
+    return (''.join(random.choice(letters) for _ in range(length)))
 
 
 def patch_subprocess(stdout, stderr=b''):
