@@ -4,8 +4,12 @@ import os
 from types import TracebackType
 from typing import Optional, Type
 
-import boto3
-from botocore.exceptions import ClientError
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+except Exception:
+    # boto3 is not available
+    pass
 
 from .fs import FS, FileStat
 

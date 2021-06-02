@@ -6,8 +6,13 @@ import re
 import subprocess
 from xml.etree import ElementTree
 
-import pyarrow
-from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
+
+try:
+    import pyarrow
+    from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
+except Exception:
+    # pyarrow is not available
+    pass
 
 from .fs import FS, FileStat
 
