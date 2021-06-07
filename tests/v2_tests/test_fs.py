@@ -33,13 +33,20 @@ def gen_fs(target):
 def test_smoke(target):
     filename = randstring()
     filename2 = randstring()
-    content = randstring(1024)
+    content = randstring(1024) + '\n' + randstring(234)
     with gen_fs(target) as fs:
         with fs.open(filename, 'w') as fp:
             fp.write(content)
 
         with fs.open(filename, 'r') as fp:
             assert content == fp.read()
+
+        with fs.open(filename, 'r') as fp:
+            lines = fp.readlines()
+            print(type(fp))
+            assert 2 == len(lines)
+            assert 1025 == len(lines[0])
+            assert 234 == len(lines[1])
 
         assert filename in list(fs.list())
 
