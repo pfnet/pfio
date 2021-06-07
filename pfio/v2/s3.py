@@ -37,18 +37,20 @@ class _ObjectReader:
         self.content_length = res['ContentLength']
         self._closed = False
 
-    def read(self, size=-1):
+    def read(self, size=-1) -> bytes:
+        # Always returns binary; as this object is wrapped with
+        # TextIOWrapper in case of text mode open.
+
         s = self.pos
 
         if self.pos >= self.content_length:
-            return (b'' if 'b' in self._mode else '')
+            return b''
         elif size <= 0:
             e = ''
-        elif self.pos + size < self.content_length:
-            e = self.pos + size
+        else:
+            e = min(self.pos + size, self.content_length)
 
         r = 'bytes={}-{}'.format(s, e)
-        # print('range=', r)
         res = self.client.get_object(Bucket=self.bucket,
                                      Key=self.key,
                                      Range=r)
@@ -60,7 +62,7 @@ class _ObjectReader:
             data = body.read(size)
 
         self.pos += len(data)
-        # print('pos=', self.pos, data, size)
+
         return data
 
     def close(self):
@@ -157,7 +159,7 @@ class _ObjectWriter:
                             ContentLength=len(data),
                             ContentMD5=md5)
         self.parts.append({'ETag': res['ETag'], 'PartNumber': num})
-        # print("Sent", len(data), "bytes", num)
+
         self._init_buf()
 
     def write(self, buf):
