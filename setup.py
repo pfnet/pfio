@@ -54,7 +54,7 @@ setup(
     extras_require={'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort', 'moto'],
                     'doc': ['sphinx', 'sphinx_rtd_theme']},
     python_requires=">=3.6",
-    install_requires=['pyarrow==4.0.0', 'boto3'],
+    install_requires=['pyarrow==4.0.1', 'boto3'],
     include_package_data=True,
     zip_safe=False,
 
