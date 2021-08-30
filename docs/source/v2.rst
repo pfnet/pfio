@@ -38,6 +38,27 @@ object every time the object experiences ``fork(2)``. ``Hdfs`` and
 ``Zip`` can be wrapped with it, and will be fork-tolerant object.
 
 
+Pathlib-like API
+----------------
+
+PFIO v2 API has utility tool that behaves like `pathlib
+<https://docs.python.org/ja/3/library/pathlib.html>`_ in Python's
+standard library. Paths can be manipulated like this::
+
+  from pfio.v2 import from_url
+  from pfio.v2.pathlib import Path
+
+  with from_url('s3://your-bucket') as s3:
+    p = Path('foo', fs=s3)
+    p2 = p / 'bar'
+    with p2.open() as fp:
+      # yields s3://your-bucket/foo/bar
+      fp.read()
+
+
+It tries to be compatible with ``pathlib.Path`` as much as possible,
+but several methods are not yet implemented.
+
 
 Reference
 ---------
@@ -72,4 +93,11 @@ Zip Archive
 ~~~~~~~~~~~
 
 .. autoclass:: Zip
+   :members:
+
+
+Pathlib
+~~~~~~~
+
+.. autoclass:: pfio.v2.pathlib.Path
    :members:
