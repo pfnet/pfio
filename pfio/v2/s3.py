@@ -322,7 +322,9 @@ class S3(FS):
         if 'r' in mode:
             obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
             if 'b' in mode:
-                obj = io.BufferedReader(obj)
+                # TODO: BufferedIOBase requires readinto() implemeted
+                # obj = io.BufferedReader(obj)
+                pass
             else:
                 obj = io.TextIOWrapper(obj)
 
