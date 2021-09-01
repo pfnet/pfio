@@ -188,13 +188,16 @@ class _ObjectWriter:
             self._flush()
             # DO: MPU
             c = self.client
-            max_parts = len(self.parts)
+            max_parts = len(self.parts) + 1
             res = c.list_parts(Bucket=self.bucket,
                                Key=self.key,
                                UploadId=self.mpu_id, MaxParts=max_parts)
 
             if res['IsTruncated']:
-                raise RuntimeError('truncated.')
+                next_part = res['NextPartNumberMarker']
+                raise RuntimeError('Unexpectedly truncated: ' +
+                                   'next={}/maxparts={}'.format(next_part,
+                                                                max_parts))
 
             parts = [{'ETag': part['ETag'], 'PartNumber': part['PartNumber']}
                      for part in res.get('Parts', [])]
