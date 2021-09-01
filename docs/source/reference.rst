@@ -6,6 +6,9 @@ API Reference
 Toplevel Functions
 ------------------
 
+.. note:: Toplevel functions will be deprecated in 2.0 and removed in
+          2.1. Please use V2 API instead.
+
 .. autofunction:: open
 .. autofunction:: open_as_container
 .. autofunction:: list
@@ -133,15 +136,3 @@ Currently deletion of a data from cache is not supported.
 
 .. autoclass:: MultiprocessFileCache
    :members: preserve, preload
-
-Chainer Extensions API
-----------------------
-
-.. currentmodule:: pfio.chainer_extensions
-
-.. autofunction:: load_snapshot
-
-.. currentmodule:: pfio.chainer_extensions.snapshot_writers
-
-.. autoclass:: SimpleWriter
-   :members:

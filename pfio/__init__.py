@@ -1,6 +1,8 @@
 from io import IOBase
 from typing import Any, Callable, Iterator, Type
 
+from deprecation import deprecated
+
 import pfio.cache  # NOQA
 from pfio._context import DefaultContext
 from pfio._typing import Optional, Union
@@ -10,6 +12,8 @@ from pfio.version import __version__  # NOQA
 _DEFAULT_CONTEXT = DefaultContext()
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def open_as_container(path: str) -> IO:
     """Opens a container and returns the handler
 
@@ -25,6 +29,8 @@ def open_as_container(path: str) -> IO:
     return default_context.open_as_container(path)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def list(path_or_prefix: Optional[str] = None,
          recursive: bool = False) -> Iterator[str]:
     """Lists all the files and directories under the given ``path_or_prefix``
@@ -45,6 +51,8 @@ def list(path_or_prefix: Optional[str] = None,
     return handler.list(actual_path, recursive)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def info() -> str:
     """Shows the detail of the current default handler
 
@@ -61,6 +69,8 @@ def info() -> str:
     return handler.info()
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def open(file_path: str, mode: str = 'rb',
          buffering: int = -1, encoding: Optional[str] = None,
          errors: Optional[str] = None, newline: Optional[str] = None,
@@ -87,6 +97,8 @@ def open(file_path: str, mode: str = 'rb',
         errors, newline, closefd, opener)
 
 
+@deprecated(deprecated_in='1.5.1', removed_in='2.1.0',
+            current_version=__version__)
 def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
     """Sets the current context to ``uri_or_handler``
 
@@ -173,6 +185,8 @@ def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
     default_context.set_root(uri_or_handler)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def create_handler(scheme: str) -> IO:
     """Returns a handler according to the given ``scheme``
 
@@ -204,6 +218,8 @@ def create_handler(scheme: str) -> IO:
     return handler
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def isdir(path: str) -> bool:
     """Returns ``True`` if the path is an existing directory
 
@@ -219,6 +235,8 @@ def isdir(path: str) -> bool:
     return handler.isdir(actual_path)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def mkdir(path: str, mode: int = 0o777, *,
           dir_fd: Optional[int] = None) -> None:
     """Makes a directory with mode
@@ -236,6 +254,8 @@ def mkdir(path: str, mode: int = 0o777, *,
     return handler.mkdir(actual_path, mode, dir_fd=dir_fd)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def makedirs(path: str, mode: int = 0o777,
              exist_ok: bool = False) -> None:
     """Makes directories recursively with mode
@@ -253,6 +273,8 @@ def makedirs(path: str, mode: int = 0o777,
     return handler.makedirs(actual_path, mode, exist_ok)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def exists(path: str) -> bool:
     """Returns ``True`` when the given ``path`` exists
 
@@ -269,6 +291,8 @@ def exists(path: str) -> bool:
     return handler.exists(actual_path)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def rename(src: str, dst: str) -> None:
     """Renames the file from ``src`` to ``dst``
 
@@ -292,6 +316,8 @@ def rename(src: str, dst: str) -> None:
     handler_src.rename(actual_src, actual_dst)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def remove(path: str, recursive: bool = False) -> None:
     """Removes a file or directory
 
@@ -315,6 +341,8 @@ def remove(path: str, recursive: bool = False) -> None:
     return handler.remove(actual_path, recursive)
 
 
+@deprecated(deprecated_in='2.0.0', removed_in='2.1.0',
+            current_version=__version__)
 def get_root_dir() -> str:
     """get the current root path
 
