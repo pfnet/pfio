@@ -97,7 +97,7 @@ def open(file_path: str, mode: str = 'rb',
         errors, newline, closefd, opener)
 
 
-@deprecated(deprecated_in='1.5.1', removed_in='1.6.0',
+@deprecated(deprecated_in='1.5.1', removed_in='2.1.0',
             current_version=__version__)
 def set_root(uri_or_handler: Union[str, Type['IO']]) -> None:
     """Sets the current context to ``uri_or_handler``
