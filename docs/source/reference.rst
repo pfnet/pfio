@@ -136,15 +136,3 @@ Currently deletion of a data from cache is not supported.
 
 .. autoclass:: MultiprocessFileCache
    :members: preserve, preload
-
-Chainer Extensions API
-----------------------
-
-.. currentmodule:: pfio.chainer_extensions
-
-.. autofunction:: load_snapshot
-
-.. currentmodule:: pfio.chainer_extensions.snapshot_writers
-
-.. autoclass:: SimpleWriter
-   :members:
