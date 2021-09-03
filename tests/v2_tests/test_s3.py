@@ -102,12 +102,12 @@ def test_s3_mpu():
         assert "0123456" == data[7:14]
 
 
-
 def touch(s3, path, content):
     with s3.open(path, 'w') as fp:
         fp.write(content)
 
     assert s3.exists(path)
+
 
 @mock_s3
 def test_s3_recursive():
