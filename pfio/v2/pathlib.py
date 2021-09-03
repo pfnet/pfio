@@ -16,12 +16,12 @@ class Path:
         self._root = root
 
         # args starts with '/'
-        if len(self._parts) > 0 and self._parts[0] == self.sep and self._root is None:
+        if self._parts and self._parts[0] == self.sep and self._root is None:
             self._parts = self._parts[1:]
             self._root = self.sep
 
     def __rtruediv__(self, a):
-        lhs = Path(a, fs=None, root=None)
+        lhs = Path(a, fs=self._fs, root=None)
         return lhs / self
 
     def __truediv__(self, a):
@@ -82,6 +82,18 @@ class Path:
         # buffering=-1, encoding=None, errors=None, newline=None):
         return self._fs.open(self.resolve(), mode)
 
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        if parents:
+            return self._fs.makedirs(self.resolve(), mode, exist_ok)
+
+        try:
+            self._fs.mkdir(self.resolve(), mode)
+        except FileExistsError as e:
+            if not exist_ok:
+                raise e
+            else:
+                pass
+
     def is_dir(self):
         return self._fs.isdir(self.resolve())
 
@@ -126,4 +138,4 @@ class Path:
     def write_bytes(self, data):
         view = memoryview(data)
         with self.open(mode='wb') as fp:
-            return fp.write(data)
+            return fp.write(view)

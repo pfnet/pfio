@@ -44,7 +44,8 @@ def test_s3():
             p7 = p2 / 'bar' / 'fab'
 
             assert '/base/foo/bar/baz/foo' == str(p5.resolve())
-            assert 'foo2/foo/bar/baz' == str(p6.resolve())
+            assert '/base/foo2/foo/bar/baz' == str(p6.resolve())
+            assert '/base/foo/bar/baz/bar/fab' == str(p7.resolve())
 
             # Paths in S3 cannot be any directory
             assert not p5.is_dir()
