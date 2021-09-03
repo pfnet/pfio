@@ -378,12 +378,18 @@ class S3(FS):
         '''
         self._checkfork()
         key = os.path.join(self.cwd, path)
-        res = self.client.head_object(Bucket=self.bucket,
-                                      Key=key)
-        if res.get('DeleteMarker'):
-            raise FileNotFoundError()
+        try:
+            res = self.client.head_object(Bucket=self.bucket,
+                                          Key=key)
+            if res.get('DeleteMarker'):
+                raise FileNotFoundError()
 
-        return S3ObjectStat(key, res)
+            return S3ObjectStat(key, res)
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                raise FileNotFoundError()
+            else:
+                raise e
 
     def isdir(self, file_path: str):
         '''Does nothing
