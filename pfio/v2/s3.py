@@ -350,7 +350,7 @@ class S3(FS):
         key = os.path.normpath(os.path.join(self.cwd, prefix))
         if key == '.':
             key = ''
-        if not key.endswith('/'):
+        elif not key.endswith('/'):
             key += '/'
         if '/../' in key or key.startswith('..'):
             raise ValueError('Invalid S3 key: {} as {}'.format(prefix, key))
