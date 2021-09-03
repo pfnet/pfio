@@ -1,7 +1,6 @@
 from moto import mock_s3
 
-from pfio.v2 import pathlib
-from pfio.v2 import S3, from_url
+from pfio.v2 import S3, from_url, pathlib
 
 
 @mock_s3
