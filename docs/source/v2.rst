@@ -42,9 +42,9 @@ object every time the object experiences ``fork(2)``. ``Hdfs`` and
 Reference
 ---------
 
-.. autofunction:: open_url
-.. autofunction:: from_url
-.. autofunction:: lazify
+.. autofunction:: pfio.v2.open_url
+.. autofunction:: pfio.v2.from_url
+.. autofunction:: pfio.v2.lazify
 
 
 .. autoclass:: pfio.v2.fs.FS
@@ -53,23 +53,23 @@ Reference
 Local file system
 ~~~~~~~~~~~~~~~~~
 
-.. autoclass:: Local
+.. autoclass:: pfio.v2.Local
    :members:
 
 HDFS (Hadoop File System)
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: Hdfs
+.. autoclass:: pfio.v2.Hdfs
    :members:
 
 S3 (AWS S3)
 ~~~~~~~~~~~
 
-.. autoclass:: S3
+.. autoclass:: pfio.v2.S3
    :members:
 
 Zip Archive
 ~~~~~~~~~~~
 
-.. autoclass:: Zip
+.. autoclass:: pfio.v2.Zip
    :members:
