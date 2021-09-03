@@ -100,3 +100,31 @@ def test_s3_mpu():
 
         assert 7 * 1024 * 1024 * 4 == len(data)
         assert "0123456" == data[7:14]
+
+
+def touch(s3, path, content):
+    with s3.open(path, 'w') as fp:
+        fp.write(content)
+
+    assert s3.exists(path)
+
+
+@mock_s3
+def test_s3_recursive():
+    bucket = "test-dummy-bucket"
+    key = "it's me!deadbeef"
+    secret = "asedf;lkjdf;a'lksjd"
+    with S3(bucket, create_bucket=True):
+        with from_url('s3://test-dummy-bucket/base',
+                      aws_access_key_id=key,
+                      aws_secret_access_key=secret) as s3:
+
+            touch(s3, 'foo.txt', 'bar')
+            touch(s3, 'bar.txt', 'baz')
+            touch(s3, 'baz/foo.txt', 'foo')
+
+            assert 3 == len(list(s3.list(recursive=True)))
+            abspaths = list(s3.list('/', recursive=True))
+            assert 3 == len(abspaths)
+            for p in abspaths:
+                assert p.startswith('base/')
