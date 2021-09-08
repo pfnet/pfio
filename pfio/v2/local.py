@@ -52,10 +52,10 @@ class Local(FS):
 
     @property
     def cwd(self):
-        if self._cwd is None:
-            return os.getcwd()
-        else:
+        if self._cwd :
             return self._cwd
+
+        return os.getcwd()
 
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
