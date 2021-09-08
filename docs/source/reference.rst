@@ -3,46 +3,75 @@
 API Reference
 =============
 
-Toplevel Functions
-------------------
+File System Accessors
+---------------------
 
-.. note:: Toplevel functions will be deprecated in 2.0 and removed in
-          2.1. Please use V2 API instead.
+.. autofunction:: pfio.v2.open_url
+.. autofunction:: pfio.v2.from_url
+.. autofunction:: pfio.v2.lazify
 
-.. autofunction:: open
-.. autofunction:: open_as_container
-.. autofunction:: list
-.. autofunction:: create_handler
-.. autofunction:: info
-.. autofunction:: isdir
-.. autofunction:: mkdir
-.. autofunction:: makedirs
-.. autofunction:: exists
-.. autofunction:: rename
-.. autofunction:: remove
 
-.. autofunction:: set_root
-.. autofunction:: get_root_dir
 
-.. autoclass:: pfio.io.FileStat
+.. autoclass:: pfio.v2.fs.FS
    :members:
 
-.. autoclass:: IO
-   :members:
-.. autoclass:: pfio.filesystem.FileSystem
-   :members:
-.. autoclass:: pfio.container.Container
+Local file system
+~~~~~~~~~~~~~~~~~
+
+.. autoclass:: pfio.v2.Local
    :members:
 
-.. note:: With environment variable
-          ``KRB5_KTNAME=path/to/your.keytab`` set, ``hdfs``
-          handler automatically starts automatic and periodical
-          updating Kerberos ticket using `krbticket
-          <https://pypi.org/project/krbticket/>`_ . The update
-          frequency is every 10 minutes by default.
-.. note::
-          Only the username in the first entry in The
-          keytab will be used to update the Kerberos ticket.
+HDFS (Hadoop File System)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: pfio.v2.Hdfs
+   :members:
+
+S3 (AWS S3)
+~~~~~~~~~~~
+
+.. autoclass:: pfio.v2.S3
+   :members:
+
+Zip Archive
+~~~~~~~~~~~
+
+.. autoclass:: pfio.v2.Zip
+   :members:
+
+Error
+~~~~~
+
+.. autoclass:: pfio.v2.fs.ForkedError
+   :members:
+
+
+Pathlib-like API
+~~~~~~~~~~~~~~~~
+
+
+PFIO v2 API has utility tool that behaves like `pathlib
+<https://docs.python.org/ja/3/library/pathlib.html>`_ in Python's
+standard library. Paths can be manipulated like this::
+
+  from pfio.v2 import from_url
+  from pfio.v2.pathlib import Path
+
+  with from_url('s3://your-bucket') as s3:
+    p = Path('foo', fs=s3)
+    p2 = p / 'bar'
+    with p2.open() as fp:
+      # yields s3://your-bucket/foo/bar
+      fp.read()
+
+
+It tries to be compatible with ``pathlib.Path`` as much as possible,
+but several methods are not yet implemented.
+
+
+.. autoclass:: pfio.v2.pathlib.Path
+   :members:
+
 
 
 Cache API
@@ -136,3 +165,48 @@ Currently deletion of a data from cache is not supported.
 
 .. autoclass:: MultiprocessFileCache
    :members: preserve, preload
+
+
+
+Toplevel Functions in v1(deprecated)
+------------------------------------
+
+.. currentmodule:: pfio
+
+.. note:: Toplevel functions will be deprecated in 2.0 and removed in
+          2.1. Please use V2 API instead.
+
+.. autofunction:: open
+.. autofunction:: open_as_container
+.. autofunction:: list
+.. autofunction:: create_handler
+.. autofunction:: info
+.. autofunction:: isdir
+.. autofunction:: mkdir
+.. autofunction:: makedirs
+.. autofunction:: exists
+.. autofunction:: rename
+.. autofunction:: remove
+
+.. autofunction:: set_root
+.. autofunction:: get_root_dir
+
+.. autoclass:: pfio.io.FileStat
+   :members:
+
+.. autoclass:: IO
+   :members:
+.. autoclass:: pfio.filesystem.FileSystem
+   :members:
+.. autoclass:: pfio.container.Container
+   :members:
+
+.. note:: With environment variable
+          ``KRB5_KTNAME=path/to/your.keytab`` set, ``hdfs``
+          handler automatically starts automatic and periodical
+          updating Kerberos ticket using `krbticket
+          <https://pypi.org/project/krbticket/>`_ . The update
+          frequency is every 10 minutes by default.
+.. note::
+          Only the username in the first entry in The
+          keytab will be used to update the Kerberos ticket.
