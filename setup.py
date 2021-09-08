@@ -57,6 +57,7 @@ setup(
         'doc': ['sphinx', 'sphinx_rtd_theme']
     },
     python_requires=">=3.6",
+    # When updating install requires, docs/requirements.txt should be updated too
     install_requires=['pyarrow==4.0.1', 'boto3', 'deprecation'],
     include_package_data=True,
     zip_safe=False,
