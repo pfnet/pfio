@@ -51,8 +51,11 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={'pfio': package_data},
-    extras_require={'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort', 'moto'],
-                    'doc': ['sphinx', 'sphinx_rtd_theme']},
+    extras_require={
+        'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort', 'moto'],
+        # When updating doc deps, docs/requirements.txt should be updated too
+        'doc': ['sphinx', 'sphinx_rtd_theme']
+    },
     python_requires=">=3.6",
     install_requires=['pyarrow==4.0.1', 'boto3', 'deprecation'],
     include_package_data=True,
