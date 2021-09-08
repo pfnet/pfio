@@ -10,18 +10,64 @@ class Path:
     sep = '/'
 
     def __init__(self, *args, fs=None, root=None):
+        '''
+
+        Empty argument indicates current directory in fs, fs.cwd
+
+        '''
         self._fs = fs if fs else Local()
         assert isinstance(self._fs, FS)
-        self._parts = list(args)
+
         self._root = root
 
-        # args starts with '/'
+        parts = []
+        for argv in args:
+            if argv.startswith(self.sep):
+                parts = []
+            parts.append(argv)
+        if len(parts) == 0 and root is None:
+            parts = [self._fs.cwd]
+
+        self._parts = parts
+
         if self._parts and self._parts[0] == self.sep and self._root is None:
             self._parts = self._parts[1:]
             self._root = self.sep
 
+    @property
+    def name(self):
+        filename = self._root if not self._parts else self._parts[-1]
+        return os.path.normpath(filename)
+
+    @property
+    def suffix(self):
+        return os.path.splitext(self.resolve())[1]
+
+    def with_suffix(self, ext):
+        assert ext.startswith('.')
+        parts = self._parts[:]
+        if parts:
+            base = os.path.splitext(parts[-1])[0]
+            parts[-1] = '{}{}'.format(base, ext)
+            p = Path(*parts, fs=self._fs, root=self._root)
+            return p
+
+        base = os.path.splitext(self._root)[0]
+        root = '{}{}'.format(base, ext)
+        p = Path(*parts, fs=self._fs, root=root)
+        return p
+
+    @property
+    def parent(self):
+        path = str(self)
+        parent = os.path.split(path)[0]
+        return Path(parent, fs=self._fs, root=self._root)
+
     def __rtruediv__(self, a):
-        lhs = Path(a, fs=self._fs, root=None)
+        if isinstance(a, str):
+            lhs = Path(a, fs=self._fs, root=self._root)
+        else:
+            lhs = a
         return lhs / self
 
     def __truediv__(self, a):
@@ -57,18 +103,24 @@ class Path:
                                      self._fs)
 
     def __str__(self):
-        return os.path.join(self._root, *self._parts)
+
+        if self._root:
+            return os.path.join(self._root, *self._parts)
+
+        return os.path.join(*self._parts)
 
     def __fspath__(self):
         return str(self)
+
+    def __lt__(self, other):
+        return str(self) < str(other)
 
     def resolve(self, strict=True):
         base = self._root if self._root else self._fs.cwd
         if '..' in self._parts or '.' in self._parts:
             raise RuntimeError("TODO")
         parts = self._parts[:]
-        p = Path(*parts, fs=self._fs, root=base)
-        return p
+        return Path(*parts, fs=self._fs, root=base)
 
     def samefile(self, other):
         return str(self.resolve()) == str(other.resolve())
@@ -110,6 +162,7 @@ class Path:
         '''
         base = self.resolve()
         pattern1 = os.path.join(base, pattern)
+
         for p in self._fs.list(base, recursive=True):
             if fnmatch.fnmatch(os.path.join(base, p), pattern1):
                 yield p

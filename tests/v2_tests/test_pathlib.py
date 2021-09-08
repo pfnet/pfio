@@ -3,6 +3,40 @@ from moto import mock_s3
 from pfio.v2 import S3, from_url, pathlib
 
 
+def test_name():
+    p = pathlib.Path('foo.txt')
+    assert 'foo.txt' == p.name
+
+    p = pathlib.Path('foo/')
+    assert 'foo' == p.name
+
+
+def test_suffix():
+    p = pathlib.Path('foo.txt')
+    assert '.txt' == p.suffix
+
+    assert 'foo.asc' == str(p.with_suffix('.asc'))
+    assert '.txt' == p.suffix
+
+
+def test_parent():
+    p = pathlib.Path('foo/foo.txt')
+    assert 'foo' == str(p.parent)
+
+    p = pathlib.Path('/')
+    assert '/' == str(p.parent)
+
+    # Not sure why Python's official pathlib works as Path().parent
+    # refers to Path('.') {fliptable}
+    # p = pathlib.Path()
+    # assert '.' == str(p.parent)
+
+
+def test_resolve():
+    p = pathlib.Path('/')
+    assert '/' == str(p.resolve())
+
+
 @mock_s3
 def test_s3():
     bucket = "test-dummy-bucket"
@@ -70,7 +104,8 @@ def test_s3_glob():
             d = pathlib.Path(fs=s3)
             files = list(d.glob("*"))
             assert 10 == len(files)
-            assert list(str(i) for i in range(10)) == sorted(files)
+
+            assert [str(i) for i in range(10)] == sorted(str(f) for f in files)
 
             d2 = pathlib.Path('/', fs=s3)
             files = list(d2.glob("*"))
