@@ -104,7 +104,6 @@ def test_s3_glob():
             d = pathlib.Path(fs=s3)
             files = list(d.glob("*"))
             assert 10 == len(files)
-
             assert [str(i) for i in range(10)] == sorted(str(f) for f in files)
 
             d2 = pathlib.Path('/', fs=s3)

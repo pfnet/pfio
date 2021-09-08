@@ -75,73 +75,20 @@ instance. It supports
 
 - Getting basic information of the filesystem (info)
 - Container creation, deletion
-- Accessing containers (open_as_container)
-- Accessing raw files (open)
+- Accessing containers
+- Accessing raw files
 - Listing all files under specific directory
-- Primarily HDFS and POSIX
-
-.. code-block:: python
-
-    import pfio
-    # Create Filesystem Accessor Object
-    with pfio.create_handler('hdfs://name-service1/') as handler:
-        print(handler.info())
-        # TODO(open mode) actually 'r' is not support by hdfs
-        # neither is readlines
-        # but we can use wrapper
-        with handler.open('some/file.txt', 'r') as fp:
-            print(fp.readlines())
-
-        with handler.open_as_container('some/container-name.zip') as container:
-            print(container.info())
-
-        # Files in a directory can be listed with ``list`` method
-        for name in handler.list('path/to/dir'):
-            ...
-
-Filesystem Context
-~~~~~~~~~~~~~~~~~~
-
-PFIO also provides a set of simpler API set using process-wide
-filesystem context. The context includes target filesystem type and
-service instance, and opened container.
-
-In spite of its simplicity, developers should be aware as the results
-rely on the state of the context, e.g. the current filesystem or
-service instance. The default setting is local filesystem.
-
-.. code-block:: python
-
-    import pfio
-
-    # Same as Python's built-in ``open()`` effectively
-    with pfio.open('local-file.txt') as fp:
-        ...
-
-    # Set default context globally in this process
-    pfio.set_root('hdfs://name-service-cluster1/')
-
-    # Opens ``some/file.txt`` in HDFS name-service-cluster1,
-    # relative path from home directory in HDFS
-    with pfio.open('some/file.txt', 'r') as fp:
-        for line in fp.readlines():
-            print(line)
-
-    # Opening container also refers to the default root
-    with pfio.open_as_container('some/container.zip') as container:
-        for name in container.list():
-            print(name)
+- Primarily HDFS and POSIX, and AWS S3 API
 
 
+FS
+~~~~~
 
-
-Containers
-~~~~~~~~~~
-
-Abstraction of file containers such as ZIP. It contains a set of (key,
-binary object) pairs. Keys are typically path-like string and binary
-is typically a file content. In PFIO keys in a container are
-UTF-8 strings. Containers can be nested, e.g. ZIP in ZIP. It supports:
+Abstraction of a directory subtree, or file containers such as ZIP. It
+contains a set of (key, binary object) pairs. Keys are typically
+path-like string and binary is typically a file content. In PFIO keys
+in a container are UTF-8 strings. Containers can be nested, e.g. ZIP
+in ZIP. It supports:
 
 - Showing basic information of the container (info)
 - Accessing raw files included (open)
@@ -156,41 +103,20 @@ UTF-8 strings. Containers can be nested, e.g. ZIP in ZIP. It supports:
     from PIL import Image
     import io
 
-    pfio.set_root('hdfs://name-service-cluster1/')
-
-    with pfio.open_as_container('some/many-files-dataset.zip') as container:
+    with pfio.v2.from_url('hdfs://name-service-cluster1/some/many-files-dataset.zip') as fs:
         print(container.info())
         # List all keys in the container
-        for name in container.list(recursive=True):
+        for name in fs.list(recursive=True):
             print(name)
 
         # Obtains a file object to access binary content that
         # corresponds to the key ``some/file.jpg``
-        with container.open('some/file.jpg', 'rb') as fp:
+        with fs.open('some/file.jpg', 'rb') as fp:
             binary = fp.read()
             image = Image(io.BytesIO(binary))
             ...
 
 
-Containers can also be registered as default context and can behave
-virtually as a filesystem.
-
-Containers can be also a root context with ``set_root`` method:
-
-.. code-block:: python
-
-    import pfio
-    root_container = pfio.open_as_container('some/important/container.zip')
-    # Same as fs.set_root('some/important/container.zip')
-    pfio.set_root(root_container)
-
-    # Opens a file contained in ``some/important/container.zip``
-    with pfio.open('some/file.jpg', 'rb') as fp:
-        ...
-
-    # Iterates over names that matches the prefix
-    for name pfio.list('some/'):
-        ...
 
 File-like Objects
 ~~~~~~~~~~~~~~~~~
@@ -312,3 +238,38 @@ categorized into two different classes.
    patch of major libraries frequently used along with Chainer.
 
 For details see API.
+
+
+V2 API history
+++++++++++++++
+
+PFIO v2 API tries to solve the impedance mismatch between different
+local filesystem, NFS, and other object storage systems, with a lot
+simpler and cleaner code.
+
+It has removed several toplevel functions that seem to be less
+important. It turned out that they introduced more complexity than
+originally intended, due to the need of the global context. Thus,
+functions that depends on the global context such as ``open()``,
+``set_root()`` and etc. have been removed in v2 API.
+
+Instead, v2 API provides only two toplevel functions that enable
+direct resource access with full URL: ``open_url()`` and
+``from_url()``. The former opens a file and returns FileObject. The
+latter, creates a ``fs.FS`` object that enable resource access under
+the URL. The new class ``fs.FS``, is something close to handler object
+in version 1 API. ``fs.FS`` is intended to be as much compatible as
+possible, however, it has several differences.
+
+One notable difference is that it has the virtual concept of current
+working directory, and thus provides ``subfs()`` method. ``subfs()``
+method behaves like ``chroot(1)`` or ``os.chdir()`` without actually
+changing current working directory of the process, but actually
+returns a *new* ``fs.FS`` object that has different working
+directory. All resouce access through the object automatically
+prepends the working directory.
+
+V2 API does not provide lazy resouce initialization any more. Instead,
+it provides simple wrapper ``lazify()``, which recreates the ``fs.FS``
+object every time the object experiences ``fork(2)``. ``Hdfs`` and
+``Zip`` can be wrapped with it, and will be fork-tolerant object.

@@ -12,7 +12,6 @@ Welcome to PFIO's documentation!
 
    design
    reference
-   v2
 
 
 Indices and tables
