@@ -52,7 +52,7 @@ class Local(FS):
 
     @property
     def cwd(self):
-        if self._cwd :
+        if self._cwd:
             return self._cwd
 
         return os.getcwd()

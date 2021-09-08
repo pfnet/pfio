@@ -1,6 +1,6 @@
 from moto import mock_s3
 
-from pfio.v2 import S3, from_url, pathlib, Local
+from pfio.v2 import S3, from_url, pathlib
 
 
 def test_name():
@@ -9,8 +9,8 @@ def test_name():
 
     p = pathlib.Path('foo/')
     assert 'foo' == p.name
-    
-    
+
+
 def test_suffix():
     p = pathlib.Path('foo.txt')
     assert '.txt' == p.suffix
@@ -35,7 +35,7 @@ def test_parent():
 def test_resolve():
     p = pathlib.Path('/')
     assert '/' == str(p.resolve())
-    
+
 
 @mock_s3
 def test_s3():
@@ -105,7 +105,7 @@ def test_s3_glob():
             files = list(d.glob("*"))
             assert 10 == len(files)
 
-            assert list(str(i) for i in range(10)) == sorted(str(f) for f in files)
+            assert [str(i) for i in range(10)] == sorted(str(f) for f in files)
 
             d2 = pathlib.Path('/', fs=s3)
             files = list(d2.glob("*"))
