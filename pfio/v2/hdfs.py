@@ -175,8 +175,8 @@ class Hdfs(FS):
 
     To use HDFS, PFIO requires ``$HADOOP_HOME`` predefined before
     initialization. If it is not defined, ``ARROW_LIBHDFS_DIR`` must
-    be defined instead. If ``$CLASSPATH`` will be needed in case
-    ``hdfs`` command is not available from ``$PATH``.
+    be defined instead. ``$CLASSPATH`` will be needed in case ``hdfs``
+    command is not available from ``$PATH``.
 
     '''
 
