@@ -15,7 +15,7 @@ Rationale
 
 There are a lot of non-POSIX-compliant filesystems in the industry and
 all of them have Pros and Cons, from cloud storages like Google Cloud
-Stroage and Amazon S3, to on-premise distributed filesystems like
+Storage and Amazon S3, to on-premise distributed filesystems like
 HDFS. Supporting different filesystems by developers themselves
 creates unnecessary burden on the developers and might reduce the
 portability on the code. That is the motivation of PFIO
