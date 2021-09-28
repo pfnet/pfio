@@ -10,6 +10,14 @@ from botocore.exceptions import ClientError
 from .fs import FS, FileStat
 
 
+def _normalize_key(key: str) -> str:
+    key = os.path.normpath(key)
+    if key.startswith("/"):
+        return key[1:]
+    else:
+        return key
+
+
 class S3ObjectStat(FileStat):
     def __init__(self, key, head):
         self.filename = key
@@ -319,6 +327,7 @@ class S3(FS):
             raise io.UnsupportedOperation('Read-write mode is not supported')
 
         path = os.path.join(self.cwd, path)
+        path = _normalize_key(path)
         if 'r' in mode:
             obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
             if 'b' in mode:
@@ -347,10 +356,11 @@ class S3(FS):
 
         '''
         self._checkfork()
-        key = os.path.normpath(os.path.join(self.cwd, prefix))
+        key = os.path.join(self.cwd, prefix)
+        key = _normalize_key(key)
         if key == '.':
             key = ''
-        elif not key.endswith('/'):
+        elif key != '' and not key.endswith('/'):
             key += '/'
         if '/../' in key or key.startswith('..'):
             raise ValueError('Invalid S3 key: {} as {}'.format(prefix, key))
@@ -378,6 +388,7 @@ class S3(FS):
         '''
         self._checkfork()
         key = os.path.join(self.cwd, path)
+        key = _normalize_key(key)
         try:
             res = self.client.head_object(Bucket=self.bucket,
                                           Key=key)
@@ -430,6 +441,7 @@ class S3(FS):
         self._checkfork()
         try:
             key = os.path.join(self.cwd, file_path)
+            key = _normalize_key(key)
             res = self.client.head_object(Bucket=self.bucket,
                                           Key=key)
             return not res.get('DeleteMarker')
@@ -447,8 +459,9 @@ class S3(FS):
 
         '''
         self._checkfork()
-        source = {'Bucket': self.bucket, 'Key': os.path.join(self.cwd, src)}
+        source = {'Bucket': self.bucket, 'Key': _normalize_key(os.path.join(self.cwd, src))}
         dst = os.path.join(self.cwd, dst)
+        dst = _normalize_key(dst)
         res = self.client.copy_object(Bucket=self.bucket,
                                       CopySource=source,
                                       Key=dst)
@@ -466,5 +479,6 @@ class S3(FS):
 
         self._checkfork()
         key = os.path.join(self.cwd, file_path)
+        key = _normalize_key(key)
         return self.client.delete_object(Bucket=self.bucket,
                                          Key=key)
