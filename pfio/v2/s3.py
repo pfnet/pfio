@@ -368,7 +368,7 @@ class S3(FS):
         for res in iterator:
             # print(res)
             for common_prefix in res.get('CommonPrefixes', []):
-                yield common_prefix['Prefix']
+                yield common_prefix['Prefix'][len(key):]
             for content in res.get('Contents', []):
                 yield content['Key'][len(key):]
 

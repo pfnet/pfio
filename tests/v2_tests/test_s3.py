@@ -51,6 +51,12 @@ def test_s3():
             assert ['foo.txt'] == list(s3.list(recursive=True))
             assert ['base/foo.txt'] == list(s3.list('/', recursive=True))
 
+            with s3.open('dir/foo.txt', 'w') as fp:
+                fp.write('bar')
+                assert not fp.closed
+
+            assert ['dir/', 'foo.txt'] == list(s3.list())
+
             def f(s3):
                 try:
                     s3.open('foo.txt', 'r')
