@@ -459,7 +459,10 @@ class S3(FS):
 
         '''
         self._checkfork()
-        source = {'Bucket': self.bucket, 'Key': _normalize_key(os.path.join(self.cwd, src))}
+        source = {
+            'Bucket': self.bucket,
+            'Key': _normalize_key(os.path.join(self.cwd, src)),
+        }
         dst = os.path.join(self.cwd, dst)
         dst = _normalize_key(dst)
         res = self.client.copy_object(Bucket=self.bucket,
