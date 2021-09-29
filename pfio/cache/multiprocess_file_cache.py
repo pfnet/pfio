@@ -139,6 +139,13 @@ class MultiprocessFileCache(cache.Cache):
         verbose (bool):
             Print detailed logs of the cache.
 
+        o_direct (bool):
+            Set O_DIRECT flag to the cache file. Setting this option
+            ``True`` may fail depending on the filesystem e.g. tmpfs.
+            It may or may not fail on setting the option, but also
+            Throws ``OSError`` indicating ``EINVAL`` on writing or
+            reading data.
+
     '''  # NOQA
 
     def __init__(self, length, do_pickle=False, dir=None,

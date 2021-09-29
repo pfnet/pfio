@@ -1,18 +1,15 @@
 import tempfile
 
 import pytest
-from parameterized import parameterized
 
 import pfio
 from pfio.cache import FileCache, MultiprocessFileCache
 from pfio.testing import patch_subprocess
 
 
-@parameterized.expand([(True,), (False,)])
-def test_preservation_interoperability(o_direct):
-    with tempfile.TemporaryDirectory(dir='.') as d:
-        cache = FileCache(10, dir=d, do_pickle=True,
-                          o_direct=o_direct)
+def test_preservation_interoperability():
+    with tempfile.TemporaryDirectory() as d:
+        cache = FileCache(10, dir=d, do_pickle=True)
 
         for i in range(10):
             cache.put(i, str(i))
@@ -24,8 +21,7 @@ def test_preservation_interoperability(o_direct):
 
         cache.close()
 
-        cache2 = MultiprocessFileCache(10, dir=d, do_pickle=True,
-                                       o_direct=o_direct)
+        cache2 = MultiprocessFileCache(10, dir=d, do_pickle=True)
 
         assert cache2.preload('preserved') is True
         for i in range(10):
