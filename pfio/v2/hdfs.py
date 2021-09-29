@@ -194,6 +194,8 @@ class Hdfs(FS):
             else:
                 self.cwd = os.path.join(self.cwd, cwd)
 
+        assert self.isdir('')
+
     def _get_principal_name(self):
         # get the default principal name from `klist` cache
         principal_name = _get_principal_name_from_klist()

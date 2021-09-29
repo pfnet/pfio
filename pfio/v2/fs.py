@@ -283,7 +283,7 @@ def open_url(url: str, mode: str = 'r', **kwargs) -> 'IOBase':
            f.read()
 
     .. note:: Some FS resouces won't be closed when using this
-        functionality.
+        functionality. See ``from_url`` for keyword arguments.
 
     Returns:
         a FileObject that must be closed.
@@ -298,22 +298,58 @@ def open_url(url: str, mode: str = 'r', **kwargs) -> 'IOBase':
 def from_url(url: str, **kwargs) -> 'FS':
     '''Factory pattern implementation, creates FS from URI
 
+    If ``force_type`` is set with archive type, not scheme,
+    it ignores the suffix and tries the specified archive
+    format by opening the blob file.
+
+    If ``force_type`` is set with scheme type, the FS will
+    built from it accordingly. The URL path is supposed to
+    be a directory for file systems or a path prefix for S3.
+
+    Arguments:
+        url (str): A URL string compliant with RFC 1738.
+
+        force_type (str): Force type of FS to be returned.
+            One of "zip", "hdfs", "s3", or "file", returned
+            respectively. Default is ``"file"``.
+
     .. note:: Some FS resouces won't be closed when using this
         functionality.
 
     '''
     parsed = urlparse(url)
+    force_type = kwargs.get('force_type')
 
     if parsed.scheme:
         scheme = parsed.scheme
     else:
         scheme = 'file'  # Default is local
 
-    if parsed.path.endswith('.zip'):
+    # When ``force_type`` is defined, it must be equal with given one.
+    if force_type is not None and force_type != "zip":
+        if force_type != scheme:
+            raise ValueError("URL scheme mismatch with forced type")
+
+    if parsed.path.endswith('.zip') or force_type == 'zip':
         dirname, filename = os.path.split(parsed.path)
     else:
         dirname = parsed.path
 
+    fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
+
+    # force_type \ suffix | .zip    | other
+    # --------------------+---------+------
+    #                 zip | ok      | try zip
+    #             (other) | try dir | try dir
+    #                None | try zip | try dir
+    if (force_type is None and parsed.path.endswith('.zip')) \
+       or force_type == 'zip':
+        fs = fs.open_zip(filename)
+
+    return fs
+
+
+def _from_scheme(scheme, dirname, kwargs, bucket=None):
     if scheme == 'file':
         from .local import Local
         fs = Local(dirname, **kwargs)
@@ -322,14 +358,9 @@ def from_url(url: str, **kwargs) -> 'FS':
         fs = Hdfs(dirname, **kwargs)
     elif scheme == 's3':
         from .s3 import S3
-
-        fs = S3(bucket=parsed.netloc, prefix=dirname, **kwargs)
-
+        fs = S3(bucket=bucket, prefix=dirname, **kwargs)
     else:
         raise RuntimeError("Scheme {} is not supported", scheme)
-
-    if parsed.path.endswith('.zip'):
-        return fs.open_zip(filename)
 
     return fs
 

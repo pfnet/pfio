@@ -50,6 +50,8 @@ class Local(FS):
         else:
             self._cwd = cwd
 
+        assert self.isdir('')
+
     @property
     def cwd(self):
         if self._cwd:
