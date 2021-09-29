@@ -272,7 +272,7 @@ class FS(abc.ABC):
 
 
 @contextlib.contextmanager
-def open_url(url: str, mode: str = 'r') -> 'IOBase':
+def open_url(url: str, mode: str = 'r', **kwargs) -> 'IOBase':
     '''Opens a file regardless of the backend FS type
 
     ``url`` must be compliant with URL standard in
@@ -290,7 +290,7 @@ def open_url(url: str, mode: str = 'r') -> 'IOBase':
 
     '''
     dirname, filename = os.path.split(url)
-    with from_url(dirname) as fs:
+    with from_url(dirname, **kwargs) as fs:
         with fs.open(filename, mode) as fp:
             yield fp
 
