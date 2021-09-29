@@ -10,6 +10,8 @@ from struct import calcsize, pack, unpack
 
 from pfio import cache
 
+from ._file import set_o_direct
+
 _DEFAULT_CACHE_PATH = os.path.join(
     os.getenv('HOME'), ".pfio", "cache")
 
@@ -136,10 +138,15 @@ class FileCache(cache.Cache):
         verbose (bool):
             Print detailed logs of the cache.
 
+        o_direct (bool):
+            Set O_DIRECT flag to the cache file. Setting this option
+            ``True`` may fail depending on the filesystem e.g. tmpfs.
+
     '''
 
     def __init__(self, length, multithread_safe=False, do_pickle=False,
-                 dir=None, cache_size_limit=None, verbose=False):
+                 dir=None, cache_size_limit=None, verbose=False,
+                 o_direct=False):
         self._multithread_safe = multithread_safe
         self.length = length
         self.do_pickle = do_pickle
@@ -167,6 +174,8 @@ class FileCache(cache.Cache):
         os.makedirs(self.dir, exist_ok=True)
         _check_local(self.dir)
 
+        self.o_direct = o_direct
+        self.verbose = verbose
         self.closed = False
         self.cachefp = tempfile.NamedTemporaryFile(delete=True, dir=self.dir)
 
@@ -181,7 +190,11 @@ class FileCache(cache.Cache):
             assert r == self.buflen
         self.pos = self.buflen * self.length
 
-        self.verbose = verbose
+        if self.o_direct:
+            set_o_direct(self.cachefp.fileno())
+        if self.verbose:
+            print('os.O_DIRECT:', self.o_direct)
+
         if self.verbose:
             print('created cache file:', self.cachefp.name)
 
@@ -347,6 +360,8 @@ class FileCache(cache.Cache):
         with self.lock.wrlock():
             self.cachefp.close()
             self.cachefp = open(cachefile, 'rb')
+            if self.o_direct:
+                set_o_direct(self.cachefp.fileno())
             self._frozen = True
         return True
 
@@ -398,5 +413,7 @@ class FileCache(cache.Cache):
             self.cachefp.close()
 
             self.cachefp = open(cachefile, 'rb')
+            if self.o_direct:
+                set_o_direct(self.cachefp.fileno())
             self._frozen = True
         return True

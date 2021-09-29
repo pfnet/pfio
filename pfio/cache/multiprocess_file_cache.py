@@ -10,6 +10,8 @@ from struct import calcsize, pack, unpack
 from pfio import cache
 from pfio.cache.file_cache import _DEFAULT_CACHE_PATH, _check_local
 
+from ._file import set_o_direct
+
 
 class _NoOpenNamedTemporaryFile(object):
     """Temporary file class
@@ -33,7 +35,8 @@ class _NoOpenNamedTemporaryFile(object):
 
     def close(self, unlink=os.unlink, getpid=os.getpid):
         if self.name and self.master_pid == getpid():
-            unlink(self.name)
+            if os.path.exists(self.name):
+                unlink(self.name)
             self.name = None
 
     def __del__(self):
@@ -138,8 +141,8 @@ class MultiprocessFileCache(cache.Cache):
 
     '''  # NOQA
 
-    def __init__(self, length, do_pickle=False,
-                 dir=None, cache_size_limit=None, verbose=False):
+    def __init__(self, length, do_pickle=False, dir=None,
+                 cache_size_limit=None, verbose=False, o_direct=False):
         self.length = length
         self.do_pickle = do_pickle
         self.verbose = verbose
@@ -162,6 +165,7 @@ class MultiprocessFileCache(cache.Cache):
         os.makedirs(self.dir, exist_ok=True)
         _check_local(self.dir)
 
+        self.o_direct = o_direct
         self.closed = False
         self._frozen = False
         self._master_pid = os.getpid()
@@ -219,6 +223,8 @@ class MultiprocessFileCache(cache.Cache):
         if self._fd_pid != pid:
             self._fd_pid = pid
             self.cache_fd = os.open(self.cache_file.name, os.O_RDWR)
+            if self.o_direct:
+                set_o_direct(self.cache_fd)
 
     def _get(self, i):
         if i < 0 or self.length <= i:
