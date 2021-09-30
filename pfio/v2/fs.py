@@ -318,7 +318,7 @@ def from_url(url: str, **kwargs) -> 'FS':
 
     '''
     parsed = urlparse(url)
-    force_type = kwargs.get('force_type')
+    force_type = kwargs.pop('force_type', None)
 
     if parsed.scheme:
         scheme = parsed.scheme
@@ -330,21 +330,28 @@ def from_url(url: str, **kwargs) -> 'FS':
         if force_type != scheme:
             raise ValueError("URL scheme mismatch with forced type")
 
-    if parsed.path.endswith('.zip') or force_type == 'zip':
-        dirname, filename = os.path.split(parsed.path)
-    else:
-        dirname = parsed.path
-
-    fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
-
     # force_type \ suffix | .zip    | other
     # --------------------+---------+------
     #                 zip | ok      | try zip
     #             (other) | try dir | try dir
     #                None | try zip | try dir
-    if (force_type is None and parsed.path.endswith('.zip')) \
-       or force_type == 'zip':
+    if force_type == 'zip':
+        dirname, filename = os.path.split(parsed.path)
+        fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
         fs = fs.open_zip(filename)
+
+    elif force_type is None:
+        if parsed.path.endswith('.zip'):
+            dirname, filename = os.path.split(parsed.path)
+            fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
+            fs = fs.open_zip(filename)
+        else:
+            dirname = parsed.path
+            fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
+
+    else:
+        dirname = parsed.path
+        fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
 
     return fs
 

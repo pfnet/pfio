@@ -5,11 +5,12 @@ import multiprocessing as mp
 import os
 import tempfile
 
+import pytest
 from moto import mock_s3
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
-from pfio.v2 import S3, Local, from_url, lazify, open_url
+from pfio.v2 import S3, Local, Zip, from_url, lazify, open_url
 
 
 @contextlib.contextmanager
@@ -117,6 +118,57 @@ def test_factory_open():
 
     with open_url('s3://foobar/boom/bom.txt', 'r') as fp:
         assert 'hello' == fp.read()
+
+    with from_url('s3://foobar/') as fs:
+        assert isinstance(fs, S3)
+
+    with from_url('s3://foobar/path/') as fs:
+        assert isinstance(fs, S3)
+
+
+def test_force_type():
+    with from_url(".", force_type='file') as fs:
+        assert isinstance(fs, Local)
+
+    with pytest.raises(ValueError):
+        from_url(".", force_type='hdfs')
+
+    with pytest.raises(ValueError):
+        from_url(".", force_type='s3')
+
+    with pytest.raises(ValueError):
+        from_url(".", force_type='foobar')
+
+    with tempfile.TemporaryDirectory() as d:
+        zipfilename = os.path.join(d, "test.zip")
+        ZipForTest(zipfilename)
+
+        with from_url(zipfilename, force_type='zip') as fs:
+            assert isinstance(fs, Zip)
+
+        # Without forced type, try to open according to the suffix
+        with from_url(zipfilename) as fs:
+            assert isinstance(fs, Zip)
+
+        with pytest.raises(ValueError):
+            # In type 'file' is forced, target path should be a
+            # directory regardless of the suffix
+            from_url(zipfilename, force_type='file')
+
+        testfilename = os.path.join(d, "test.txt")
+        with open_url(testfilename, 'w') as fp:
+            fp.write('hello')
+
+        with open_url(testfilename, 'r', force_type='file') as fp:
+            assert 'hello' == fp.read()
+
+        with pytest.raises(ValueError):
+            with open_url(testfilename, 'r', force_type='hdfs'):
+                pass
+
+        with pytest.raises(IsADirectoryError):
+            with open_url(testfilename, 'r', force_type='zip'):
+                pass
 
 
 @parameterized.expand(["s3", "local"])

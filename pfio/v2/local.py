@@ -50,7 +50,8 @@ class Local(FS):
         else:
             self._cwd = cwd
 
-        assert self.isdir('')
+        if not self.isdir(''):
+            raise ValueError('{} must be a directory'.format(self._cwd))
 
     @property
     def cwd(self):
