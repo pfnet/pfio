@@ -57,6 +57,12 @@ def test_s3():
 
             assert ['dir/', 'foo.txt'] == list(s3.list())
 
+            assert not s3.isdir("foo.txt")
+            assert s3.isdir(".")
+            assert s3.isdir("/base/")
+            assert s3.isdir("/base")
+            assert not s3.isdir("/bas")
+
             def f(s3):
                 try:
                     s3.open('foo.txt', 'r')
