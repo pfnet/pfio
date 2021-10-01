@@ -415,16 +415,10 @@ class S3(FS):
                 raise e
 
     def isdir(self, file_path: str):
-        '''Handle common prefix as directory
+        '''Imitate isdir by handling common prefix ending with "/" as directory
 
-        .. note:: AWS S3 does not have concept of directory tree; what
-           this function (and ``mkdir()`` and ``makedirs()`` should do
-           and return? To be strict, it would be straightforward to
-           raise ``io.UnsupportedOperation`` exception. But it just
-           breaks users' applications that except quasi-compatible
-           behaviour. Thus, imitating other file systems, like
-           returning boolean or ``None`` would be nicer.
-
+        AWS S3 does not have concept of directory tree, but this class
+        imitates other file systems to increase compatibility.
         '''
         self._checkfork()
         key = _normalize_key(os.path.join(self.cwd, file_path))
@@ -452,7 +446,13 @@ class S3(FS):
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         '''Does nothing
 
-        .. note:: see discussion in ``isdir()``.
+        .. note:: AWS S3 does not have concept of directory tree; what
+           this function (and ``makedirs()``) should do
+           and return? To be strict, it would be straightforward to
+           raise ``io.UnsupportedOperation`` exception. But it just
+           breaks users' applications that except quasi-compatible
+           behaviour. Thus, imitating other file systems, like
+           returning ``None`` would be nicer.
         '''
         # raise io.UnsupportedOperation("S3 doesn't have directory")
         pass
@@ -460,7 +460,7 @@ class S3(FS):
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
         '''Does nothing
 
-        .. note:: see discussion in ``isdir()``.
+        .. note:: see discussion in ``mkdir()``.
         '''
         # raise io.UnsupportedOperation("S3 doesn't have directory")
         pass
