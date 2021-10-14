@@ -110,22 +110,37 @@ class _ObjectReader:
     def seekable(self):
         return True
 
+    def tell(self):
+        return self.pos
+
+    def truncate(self, size=None):
+        raise io.UnsupportedOperation('truncate')
+
     def seek(self, pos, whence=io.SEEK_SET):
+        # print(self.pos, pos, whence)
         if whence in [0, io.SEEK_SET]:
             self.pos = pos
         elif whence in [1, io.SEEK_CUR]:
             self.pos += pos
         elif whence in [2, io.SEEK_END]:
             self.pos += pos
+        else:
+            raise ValueError('Wrong whence value: {}'.format(whence))
 
         if self.content_length < self.pos:
             self.pos = self.content_length
+
         if self.pos < 0:
-            raise OSError()
+            self.pos += self.content_length
+        if self.pos < 0:
+            raise IOError()
         return self.pos
 
     def writable(self):
         return False
+
+    def write(self, data):
+        raise io.UnsupportedOperation('not writable')
 
 
 class _ObjectWriter:
