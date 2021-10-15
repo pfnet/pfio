@@ -1,13 +1,8 @@
-import errno
-import numbers
+import io
+import mmap
 import os
 import pickle
-import subprocess
-import tempfile
-import threading
-import warnings
-import mmap
-from struct import calcsize, pack, unpack
+from struct import calcsize, unpack
 
 from pfio import cache
 
@@ -38,15 +33,14 @@ class ReadOnlyFileCache(cache.Cache):
             raise ValueError("length has to be between 0 and 2^64")
 
         if dir is None:
-            self.dir = _DEFAULT_CACHE_PATH
+            self.dir = cache.FileCache._DEFAULT_CACHE_PATH
         else:
             self.dir = dir
         cache.file_cache._check_local(self.dir)
 
-        buf = pack('Qq', 0, -1)
         self.buflen = calcsize('Qq')
         assert self.buflen == 16
-        
+
         self.closed = True
         self.verbose = verbose
 
@@ -126,7 +120,7 @@ class ReadOnlyFileCache(cache.Cache):
                 raise RuntimeError("Incomplete cache file")
 
             self.offset_list.append((o, l))
-        
+
         assert self.length == len(self.offset_list)
 
         # mmaped region
