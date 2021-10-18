@@ -164,7 +164,7 @@ def _create_fs():
         # amont multiple name services from single HADOOP_CONF_DIR
         # conf. Thus we ignore fs.defaultFS and just take the very
         # first name service that appeared in hdfs-site.xml.
-        return HadoopFileSystem(nameservice)
+        return HadoopFileSystem(nameservice, 0)
 
     else:
         RuntimeError("No nameservice found.")
