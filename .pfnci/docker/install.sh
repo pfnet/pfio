@@ -9,11 +9,9 @@ function install_py()
     pyenv global $PYTHON_VERSION
 }
 
-python_versions=('3.6.12' '3.7.9' '3.8.7' '3.9.1')
-PYENV_ROOT=/root/.pyenv
+# python_versions=('3.6.12' '3.7.9' '3.8.7' '3.9.1')
+python_versions=('3.9.1')
 
-rm -rf $PYENV_ROOT
-git clone git://github.com/pyenv/pyenv.git $PYENV_ROOT
 export PATH=$PYENV_ROOT/bin:$PATH
 export MAKE_OPTS=-j16
 $PYENV_ROOT/plugins/python-build/install.sh
@@ -25,6 +23,3 @@ for version in "${python_versions[@]}"
 do
     install_py $version $PYENV_ROOT
 done
-
-# install tox in the newest python
-pip install tox

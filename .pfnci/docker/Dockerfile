@@ -5,10 +5,25 @@ LABEL maintainer="tianqi@preferred.jp"
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata && \
     apt-get install -y --no-install-recommends libssl-dev zlib1g-dev libbz2-dev \
-    libreadline-dev wget python-openssl git ca-certificates zip tzdata && \
-    apt-get install -y --no-install-recommends gcc g++ cmake make libffi-dev patch && \
+    libreadline-dev python-openssl ca-certificates zip tzdata libsqlite3-dev \
+    gcc g++ cmake make libffi-dev patch wget && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-COPY install.sh /tmp/install.sh
+ADD pyenv.tar.gz /root/
+RUN ls /root
+RUN mv /root/pyenv-1.2.27 /root/.pyenv
+ENV PYENV_ROOT /root/.pyenv
 
-RUN bash -c /tmp/install.sh
+COPY install-pyenv.sh /tmp/install-pyenv.sh
+RUN bash -c /tmp/install-pyenv.sh
+
+COPY install-python.sh /tmp/install-python.sh
+
+RUN /tmp/install-python.sh "3.6.13"
+RUN /tmp/install-python.sh "3.7.10"
+RUN /tmp/install-python.sh "3.8.9"
+RUN /tmp/install-python.sh "3.9.4"
+
+# install tox in the newest python
+COPY install-tox.sh /tmp/install-tox.sh
+RUN bash -c /tmp/install-tox.sh

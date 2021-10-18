@@ -2,12 +2,12 @@
 set -eux
 
 source /root/.bash_docker
-pyenv global 3.6.12 3.7.9 3.8.7 3.9.1
+pyenv global 3.6.13 3.7.10 3.8.9 3.9.4
 tox && :
 tox_status=$?
 
 # test doc, needs python >= 3.6
-pyenv global 3.9.1
+pyenv global 3.9.4
 pip install .[doc]
 cd docs && make html && :
 sphinx_status=$?
