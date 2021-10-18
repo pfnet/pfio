@@ -12,7 +12,9 @@ $ source bench/bin/activate
 Run micro-benchmark
 
 ```sh
-$ pip install -r requirements.txt
+$ cd pfio
+$ pip install -U -e .[bench]
+$ cd loader-bench
 $ time python3 main.py --preserve-path=/tmp/dat
 # Expected output example
 Namespace(batchsize=32, dataset_len=1024, num_trials=5, num_workers=8, preload_path=None, preserve_path='/tmp/dat')
