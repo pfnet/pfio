@@ -21,15 +21,26 @@ def rgb_to_index(rgb: Any) -> int:
     return r | (g << 8) | (b << 16)
 
 
-def get_dummy_dataset(dataset_len: int, cache_path: str) -> Any:
-    return DummySemSegDataset(dataset_len, cache_path)
+def get_dummy_dataset(dataset_len: int, cache_path: str, cache_type: str) -> Any:
+    return DummySemSegDataset(dataset_len, cache_path, cache_type)
 
 
 class DummySemSegDataset(Dataset):
-    def __init__(self, dataset_len: int, cache_path: str) -> None:
+    def __init__(self, dataset_len: int, cache_path: str, cache_type: str) -> None:
         self._dataset_len = dataset_len
         cache_dir = os.path.dirname(cache_path)
-        self._cache = pfio.cache.MultiprocessFileCache(self._dataset_len, dir=cache_dir)
+        if cache_type == "naive":
+            cls = pfio.cache.NaiveCache
+        elif cache_type == "file":
+            cls = pfio.cache.FileCache
+        elif cache_type == "multiprocess":
+            cls = pfio.cache.MultiprocessFileCache
+        elif cache_type == "readonly":
+            cls = pfio.cache.ReadOnlyFileCache
+        else:
+            raise ValueError(cache_type)
+        print("Cache class:", cls)
+        self._cache = cls(self._dataset_len, dir=cache_dir)
 
     def _get_dummy_data(self, i: int) -> bytes:
         img = np.ones((1280, 720, 3), dtype=np.uint8)
@@ -45,10 +56,10 @@ class DummySemSegDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[Any, Any, float]:
         b_s = time.time()
         data = self._cache.get_and_cache(index, self._get_dummy_data)
+        e_s = time.time()
         data_stream = io.BytesIO(data)
         img = np.load(data_stream)
         label = np.load(data_stream)
-        e_s = time.time()
         return img, label, e_s - b_s
 
     def __len__(self) -> int:
@@ -74,6 +85,9 @@ def main() -> None:
     parser.add_argument(
         "--preserve-path", type=str, help="MultiprocessFileCache.preserve"
     )
+    parser.add_argument(
+        "--cache-type", "-c", type=str, choices=["naive", "file", "multiprocess", "readonly",],
+        default="multiprocess", help="Choose cache class; some are RO")
     args = parser.parse_args()
 
     if args.dataset_len >= 2 ** 24:
@@ -97,9 +111,13 @@ def main() -> None:
         if os.path.exists(args.preserve_path):
             print(f"{args.preserve_path} already exists.")
             exit()
+        if args.cache_type != "multiprocess":
+            print("To preserve cache, cache type must be MP-safe")
+            exit()
         cache_path = args.preserve_path
 
-    dummy_dataset = get_dummy_dataset(args.dataset_len, cache_path)
+    dummy_dataset = get_dummy_dataset(args.dataset_len, cache_path,
+                                      args.cache_type)
 
     if args.preload_path:
         dummy_dataset._cache.preload(args.preload_path)
