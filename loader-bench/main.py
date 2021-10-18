@@ -6,10 +6,11 @@ import time
 from typing import Any, Tuple
 
 import numpy as np
-import pfio
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
+
+import pfio
 
 
 def index_to_rgb(index: int) -> Tuple[int, int, int]:
