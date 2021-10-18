@@ -1,0 +1,4 @@
+pfio==1.5.0
+numpy>=1.19.5
+torch>=1.9.0
+Pillow<=8.2.0
