@@ -11,7 +11,7 @@ RUN apt-get update && \
 
 ADD pyenv.tar.gz /root/
 RUN ls /root
-RUN mv /root/pyenv-1.2.27 /root/.pyenv
+RUN mv /root/pyenv-2.1.0 /root/.pyenv
 ENV PYENV_ROOT /root/.pyenv
 
 COPY install-pyenv.sh /tmp/install-pyenv.sh
@@ -19,10 +19,10 @@ RUN bash -c /tmp/install-pyenv.sh
 
 COPY install-python.sh /tmp/install-python.sh
 
-RUN /tmp/install-python.sh "3.6.13"
-RUN /tmp/install-python.sh "3.7.10"
-RUN /tmp/install-python.sh "3.8.9"
-RUN /tmp/install-python.sh "3.9.4"
+RUN /tmp/install-python.sh "3.6.15"
+RUN /tmp/install-python.sh "3.7.12"
+RUN /tmp/install-python.sh "3.8.12"
+RUN /tmp/install-python.sh "3.9.7"
 
 # install tox in the newest python
 COPY install-tox.sh /tmp/install-tox.sh
