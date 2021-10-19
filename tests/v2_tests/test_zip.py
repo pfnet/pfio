@@ -14,7 +14,7 @@ from zipfile import ZipFile
 import pytest
 from parameterized import parameterized
 
-from pfio.testing import make_random_str, make_zip, ZipForTest
+from pfio.testing import ZipForTest, make_random_str, make_zip
 from pfio.v2 import ZipFileStat, local
 
 ZIP_TEST_FILENAME_LIST = {
