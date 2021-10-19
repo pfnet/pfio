@@ -54,7 +54,8 @@ setup(
     extras_require={
         'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort', 'moto'],
         # When updating doc deps, docs/requirements.txt should be updated too
-        'doc': ['sphinx', 'sphinx_rtd_theme']
+        'doc': ['sphinx', 'sphinx_rtd_theme'],
+        'bench': ['numpy>=1.19.5', 'torch>=1.9.0', 'Pillow<=8.2.0'],
     },
     python_requires=">=3.6",
     # When updating install requires, docs/requirements.txt should be updated too
