@@ -21,7 +21,7 @@ def test_s3_zip():
                       create_bucket=True) as s3:
             assert isinstance(s3, S3)
             with open(zipfilename, 'rb') as src,\
-                 s3.open('test.zip', 'wb') as dst:
+                    s3.open('test.zip', 'wb') as dst:
                 shutil.copyfileobj(src, dst)
 
             with s3.open('test.zip', 'rb') as fp:
@@ -39,7 +39,7 @@ def test_force_type2():
                       create_bucket=True) as s3:
             assert isinstance(s3, S3)
             with open(zipfilename, 'rb') as src,\
-                 s3.open('test.zip', 'wb') as dst:
+                    s3.open('test.zip', 'wb') as dst:
                 shutil.copyfileobj(src, dst)
 
             with open(zipfilename, 'rb') as f1:

@@ -7,9 +7,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from datetime import datetime
 from zipfile import ZipFile
-import zipfile
 
 import pytest
 from parameterized import parameterized
