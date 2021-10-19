@@ -9,11 +9,12 @@ import tempfile
 import unittest
 from datetime import datetime
 from zipfile import ZipFile
+import zipfile
 
 import pytest
 from parameterized import parameterized
 
-from pfio.testing import make_random_str, make_zip
+from pfio.testing import make_random_str, make_zip, ZipForTest
 from pfio.v2 import ZipFileStat, local
 
 ZIP_TEST_FILENAME_LIST = {
@@ -847,3 +848,12 @@ class TestZipListNoDirectory(unittest.TestCase):
     def test_isdir_not_exist(self, dir):
         with local.open_zip(self.zip_file_name) as z:
             self.assertFalse(z.isdir(dir))
+
+
+def test_is_zipfile():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zipfilename = os.path.join(tmpdir, 'test.zip')
+        z = ZipForTest(zipfilename)
+        with local as fs:
+            with fs.open(zipfilename, 'rb') as fp:
+                assert zipfile.is_zipfile(fp)
