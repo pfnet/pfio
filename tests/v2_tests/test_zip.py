@@ -853,7 +853,7 @@ class TestZipListNoDirectory(unittest.TestCase):
 def test_is_zipfile():
     with tempfile.TemporaryDirectory() as tmpdir:
         zipfilename = os.path.join(tmpdir, 'test.zip')
-        z = ZipForTest(zipfilename)
+        _ = ZipForTest(zipfilename)
         with local as fs:
             with fs.open(zipfilename, 'rb') as fp:
                 assert zipfile.is_zipfile(fp)

@@ -14,7 +14,7 @@ from pfio.v2 import S3, from_url
 def test_s3_zip():
     with tempfile.TemporaryDirectory() as d:
         zipfilename = os.path.join(d, "test.zip")
-        z = ZipForTest(zipfilename)
+        _ = ZipForTest(zipfilename)
         bucket = "test-dummy-bucket"
 
         with from_url('s3://{}/'.format(bucket),
