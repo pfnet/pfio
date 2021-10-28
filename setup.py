@@ -34,7 +34,6 @@ setup(
         'Development Status :: 3 - Alpha',
 
         'Intended Audience :: Developers',
-        'Topic :: Software Development :: Build Tools',
 
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX',
@@ -44,6 +43,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
 
         'Topic :: System :: Filesystems',
     ],
@@ -59,7 +59,7 @@ setup(
     },
     python_requires=">=3.6",
     # When updating install requires, docs/requirements.txt should be updated too
-    install_requires=['pyarrow==4.0.1', 'boto3', 'deprecation'],
+    install_requires=['pyarrow>=6.0.0', 'boto3', 'deprecation'],
     include_package_data=True,
     zip_safe=False,
 
