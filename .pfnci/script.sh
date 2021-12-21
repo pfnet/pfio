@@ -17,7 +17,7 @@ main() {
 
   run "${docker_args[@]}" \
       "asia.gcr.io/pfn-public-ci/pfio:latest" \
-      bash .pfnci/test.sh $1
+      bash .pfnci/test.sh
 }
 
 ################################################################################
