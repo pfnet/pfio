@@ -1,9 +1,9 @@
-configs {
+configs{ 
   # Project name.
   key: "chainerio"
   value {
     requirement {
-      cpu: 1
+      cpu: 2
       memory: 6
       disk: 10
     }
@@ -13,5 +13,22 @@ configs {
     }
     command:
         "bash .pfnci/script.sh"
+  }
+}
+
+configs{
+  key: "pfio.old-python" # Tests that test old python versions, e.g. python 3.6
+  value {
+    requirement {
+      cpu: 1
+      memory: 6
+      disk: 10
+    }
+    # https://github.pfidev.jp/ci/imosci/blob/master/proto/data.proto#L933
+    time_limit {
+      seconds: 600 # 15 minutes
+    }
+    command:
+        "bash .pfnci/script-old.sh"
   }
 }
