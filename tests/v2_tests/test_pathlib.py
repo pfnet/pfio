@@ -110,16 +110,16 @@ def test_s3_glob():
             files = list(d2.glob("*"))
             assert 10 == len(files)
             for f in files:
-                assert f.startswith('base/')
+                assert f.name.startswith('base/')
 
             files = list(d2.glob("*/0"))
-            assert ['base/0'] == files
+            assert ['base/0'] == [f.name for f in files]
             for f in files:
-                assert f.startswith('base/')
+                assert f.name.startswith('base/')
 
             paths = ['foo', 'bar', 'baz/foo', 'baz/hoge/boom/huga']
             for p in paths:
                 pathlib.Path(p, fs=s3).touch()
 
             d3 = pathlib.Path('baz', fs=s3)
-            assert ['hoge/boom/huga'] == list(d3.glob('**/huga'))
+            assert ['hoge/boom/huga'] == [f.name for f in d3.glob('**/huga')]

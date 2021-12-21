@@ -97,10 +97,9 @@ class Path:
         return self._root is not None
 
     def __repr__(self):
-        return "{}({} {} {})".format(self.__class__.__name__,
-                                     self._root,
-                                     self._parts,
-                                     self._fs)
+        return "{}[{}:{}]".format(self.__class__.__name__,
+                                  self._fs.__class__.__name__,
+                                  str(self))
 
     def __str__(self):
 
@@ -159,13 +158,15 @@ class Path:
         subdicrectories as they won't be skipped regarding the input
         pattern.
 
+        Should return ``Path`` class as well.
+
         '''
         base = self.resolve()
         pattern1 = os.path.join(base, pattern)
 
         for p in self._fs.list(base, recursive=True):
             if fnmatch.fnmatch(os.path.join(base, p), pattern1):
-                yield p
+                yield Path(p, fs=self._fs, root=self._root)
 
     def stat(self):
         return self._fs.stat(self.resolve())
