@@ -7,6 +7,10 @@ configs {
       memory: 6
       disk: 10
     }
+    # https://github.pfidev.jp/ci/imosci/blob/master/proto/data.proto#L933
+    time_limit {
+      seconds: 900 # 15 minutes
+    }
     command:
         "bash .pfnci/script.sh"
   }
