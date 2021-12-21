@@ -76,6 +76,21 @@ def test_s3():
             p.join()
             assert p.exitcode == 0
 
+            def g(s3):
+                try:
+                    with S3(bucket='test-dummy-bucket',
+                            aws_access_key_id=key,
+                            aws_secret_access_key=secret) as s4:
+                        with s4.open('base/foo.txt', 'r') as fp:
+                            fp.read()
+                except ForkedError:
+                    pytest.fail('ForkedError')
+
+            p = mp.Process(target=g, args=(s3,))
+            p.start()
+            p.join()
+            assert p.exitcode == 0
+
 
 @mock_s3
 def test_s3_mpu():
