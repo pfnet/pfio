@@ -81,7 +81,6 @@ class FS(abc.ABC):
     '''
 
     _cwd = ''
-    pid = os.getpid()
 
     def __init__(self):
         self.pid = os.getpid()
@@ -133,6 +132,7 @@ class FS(abc.ABC):
 
     @property
     def is_forked(self):
+        assert hasattr(self, 'pid')
         return self.pid != os.getpid()
 
     def close(self) -> None:

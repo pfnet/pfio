@@ -288,6 +288,7 @@ class S3(FS):
                  aws_access_key_id=None,
                  aws_secret_access_key=None,
                  mpu_chunksize=32*1024*1024):
+        super().__init__()
         self.bucket = bucket
         if prefix is not None:
             self.cwd = prefix
