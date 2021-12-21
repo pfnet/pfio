@@ -150,7 +150,7 @@ def _create_fs():
     configs = {}
     for e in root.findall('./property'):
         name = None
-        for c in e.getchildren():
+        for c in e:
             if c.tag == 'name':
                 name = c.text
             elif c.tag == 'value':
