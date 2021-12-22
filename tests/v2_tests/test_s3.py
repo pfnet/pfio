@@ -1,6 +1,6 @@
+import multiprocessing as mp
 import os
 import tempfile
-import multiprocessing as mp
 
 import pytest
 from moto import mock_s3
