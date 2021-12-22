@@ -123,7 +123,7 @@ class _ObjectReader:
         elif whence in [1, io.SEEK_CUR]:
             self.pos += pos
         elif whence in [2, io.SEEK_END]:
-            self.pos += pos
+            self.pos = self.content_length + pos
         else:
             raise ValueError('Wrong whence value: {}'.format(whence))
 
