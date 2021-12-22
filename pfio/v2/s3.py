@@ -117,23 +117,19 @@ class _ObjectReader:
         raise io.UnsupportedOperation('truncate')
 
     def seek(self, pos, whence=io.SEEK_SET):
-        # print(self.pos, pos, whence)
         if whence in [0, io.SEEK_SET]:
-            self.pos = pos
+            if pos < 0:
+                raise OSError(22, "[Errno 22] Invalid argument")
         elif whence in [1, io.SEEK_CUR]:
-            self.pos += pos
+            pos += self.pos
         elif whence in [2, io.SEEK_END]:
-            self.pos = self.content_length + pos
+            pos += self.content_length
         else:
             raise ValueError('Wrong whence value: {}'.format(whence))
 
-        if self.content_length < self.pos:
-            self.pos = self.content_length
-
-        if self.pos < 0:
-            self.pos += self.content_length
-        if self.pos < 0:
-            raise IOError()
+        if pos < 0:
+            raise OSError(22, "[Errno 22] Invalid argument")
+        self.pos = pos
         return self.pos
 
     def writable(self):

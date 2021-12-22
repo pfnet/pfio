@@ -1,4 +1,5 @@
 import os
+import tempfile
 import multiprocessing as mp
 
 import pytest
@@ -161,6 +162,44 @@ def test_s3_recursive():
                 assert p.startswith('base/')
 
 
+def _seek_check(f):
+    # Seek by absolute position
+    ###########################
+    assert f.seek(0, os.SEEK_SET) == 0 and f.read() == b'0123456789'
+    assert f.seek(5, os.SEEK_SET) == 5 and f.read() == b'56789'
+    assert f.seek(15, os.SEEK_SET) == 15 and f.read() == b''
+
+    with pytest.raises(OSError) as err:
+        f.seek(-1, os.SEEK_SET)
+    assert err.value.errno == 22
+    assert f.tell() == 15, "the position should be kept after an error"
+
+    # Relative seek
+    ###############
+    f.seek(0, os.SEEK_SET)  # back to the start
+    assert f.seek(5, os.SEEK_CUR) == 5
+    assert f.seek(3, os.SEEK_CUR) == 8
+    assert f.seek(4, os.SEEK_CUR) == 12
+    assert f.seek(-1, os.SEEK_CUR) == 11
+
+    f.seek(0, os.SEEK_SET)
+    with pytest.raises(OSError) as err:
+        f.seek(-1, os.SEEK_CUR)
+    assert err.value.errno == 22
+    assert f.tell() == 0, "the position should be kept after an error"
+
+    # Seek from the tail
+    ####################
+    assert f.seek(0, os.SEEK_END) == 10
+    assert f.seek(-2, os.SEEK_END) == 8
+    assert f.seek(2, os.SEEK_END) == 12
+
+    with pytest.raises(OSError) as err:
+        f.seek(-11, os.SEEK_END) == 0
+    assert err.value.errno == 22
+    assert f.tell() == 12, "the position should be kept after an error"
+
+
 @mock_s3
 def test_s3_seek():
     bucket = "test-dummy-bucket"
@@ -171,48 +210,20 @@ def test_s3_seek():
                       aws_access_key_id=key,
                       aws_secret_access_key=secret) as s3:
 
-            touch(s3, 'foo.data', '1234567890')
+            # Make a 10-bytes test data
+            touch(s3, 'foo.data', '0123456789')
 
-        with open_url('s3://test-dummy-bucket/base/foo.data',
+        with open_url('s3://test-dummy-bucket/base/foo.data', 'rb',
                       aws_access_key_id=key,
                       aws_secret_access_key=secret) as f:
-            # Seek absolute position (position from start)
-            f.seek(0, os.SEEK_SET)
-            assert f.tell() == 0
+            _seek_check(f)
 
-            f.seek(5, os.SEEK_SET)
-            assert f.tell() == 5
+    # Make sure the seek behavior is same as normal file-like objects.
+    with tempfile.NamedTemporaryFile() as tmpf:
+        # Make the same 10-bytes test data on local filesystem
+        with open(tmpf.name, 'wb') as f:
+            f.write(b'0123456789')
 
-            f.seek(15, os.SEEK_SET)
-            assert f.tell() == 10, "Position exceeding the stream size should be truncated"
-
-            f.seek(-4, os.SEEK_SET)
-            assert f.tell() == 6
-
-            # Relative seek
-            f.seek(0, os.SEEK_SET)  # back to start
-
-            f.seek(5, os.SEEK_CUR)
-            assert f.tell() == 5
-
-            f.seek(3, os.SEEK_CUR)
-            assert f.tell() == 8
-
-            f.seek(4, os.SEEK_CUR)
-            assert f.tell() == 10, "Position exceeding the stream size should be truncated"
-
-            f.seek(-1, os.SEEK_CUR)
-            assert f.tell() == 9
-
-            # Seek from tail
-            f.seek(0, os.SEEK_END)
-            assert f.tell() == 10
-
-            f.seek(-2, os.SEEK_END)
-            assert f.tell() == 8
-
-            f.seek(-12, os.SEEK_END)
-            assert f.tell() == 0, "Position exceeding the stream size should be truncated"
-
-            f.seek(2, os.SEEK_END)
-            assert f.tell() == 10, "Position exceeding the stream size should be truncated"
+        # Open and check its seek behavior is identical
+        with open(tmpf.name, 'rb') as f:
+            _seek_check(f)
