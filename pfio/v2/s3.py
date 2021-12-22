@@ -83,6 +83,9 @@ class _ObjectReader:
 
         return data
 
+    def readline(self):
+        raise NotImplementedError()
+
     def close(self):
         self._closed = True
 

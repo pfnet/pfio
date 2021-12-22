@@ -246,4 +246,4 @@ def test_s3_pickle():
         with open_url('s3://test-dummy-bucket/base/foo.pkl', 'rb',
                       aws_access_key_id=key,
                       aws_secret_access_key=secret) as f:
-            pickle.load(f)
+            assert pickle.load(f) == {'test': 'data'}
