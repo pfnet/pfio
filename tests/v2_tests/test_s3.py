@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import os
+import pickle
 import tempfile
 
 import pytest
@@ -227,3 +228,22 @@ def test_s3_seek():
         # Open and check its seek behavior is identical
         with open(tmpf.name, 'rb') as f:
             _seek_check(f)
+
+
+@mock_s3
+def test_s3_pickle():
+    bucket = "test-dummy-bucket"
+    key = "it's me!deadbeef"
+    secret = "asedf;lkjdf;a'lksjd"
+    with S3(bucket, create_bucket=True):
+        with from_url('s3://test-dummy-bucket/base',
+                      aws_access_key_id=key,
+                      aws_secret_access_key=secret) as s3:
+
+            with s3.open('foo.pkl', 'wb') as fp:
+                pickle.dump({'test': 'data'}, fp)
+
+        with open_url('s3://test-dummy-bucket/base/foo.pkl', 'rb',
+                      aws_access_key_id=key,
+                      aws_secret_access_key=secret) as f:
+            assert pickle.load(f) == {'test': 'data'}
