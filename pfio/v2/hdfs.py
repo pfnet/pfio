@@ -180,7 +180,7 @@ class Hdfs(FS):
 
     '''
 
-    def __init__(self, cwd=None, **_):
+    def __init__(self, cwd=None, create=False, **_):
         super().__init__()
         self._fs = _create_fs()
         assert self._fs is not None
@@ -194,7 +194,11 @@ class Hdfs(FS):
             else:
                 self.cwd = os.path.join(self.cwd, cwd)
 
-        assert self.isdir('')
+        if not self.isdir(''):
+            if create:
+                self.makedirs('')
+            else:
+                raise ValueError('{} must be a directory'.format(self.cwd))
 
     def _get_principal_name(self):
         # get the default principal name from `klist` cache

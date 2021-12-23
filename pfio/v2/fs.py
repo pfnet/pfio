@@ -313,6 +313,8 @@ def from_url(url: str, **kwargs) -> 'FS':
             One of "zip", "hdfs", "s3", or "file", returned
             respectively. Default is ``"file"``.
 
+        create (bool): Create the specified path doesn't exist.
+
     .. note:: Some FS resouces won't be closed when using this
         functionality.
 
