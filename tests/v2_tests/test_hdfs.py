@@ -284,6 +284,7 @@ class TestHdfsFsWithFile(unittest.TestCase):
         with Hdfs() as fs:
             self.assertTrue(fs.isdir("/"))
             self.assertFalse(fs.isdir(self.tmpfile_name))
+            self.assertFalse(fs.isdir("/nonexistent-entity"))
 
     def test_exists(self):
         non_exist_file = "non_exist_file.txt"
