@@ -40,8 +40,10 @@ class S3PrefixStat(FileStat):
         return True
 
 
-class _ObjectReader:
+class _ObjectReader(io.RawIOBase):
     def __init__(self, client, bucket, key, mode, kwargs):
+        super(_ObjectReader, self).__init__()
+
         self.client = client
         self.bucket = bucket
         self.key = key
@@ -140,6 +142,15 @@ class _ObjectReader:
 
     def write(self, data):
         raise io.UnsupportedOperation('not writable')
+
+    def readall(self):
+        self.seek(0)
+        return self.read(-1)
+
+    def readinto(self, b):
+        buf = self.read(len(b))
+        b[:len(buf)] = buf
+        return len(buf)
 
 
 class _ObjectWriter:
