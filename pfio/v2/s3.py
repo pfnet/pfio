@@ -10,6 +10,9 @@ from botocore.exceptions import ClientError
 from .fs import FS, FileStat
 
 
+DEFAULT_BUFFER_SIZE = 32 * 1024 * 1024
+
+
 def _normalize_key(key: str) -> str:
     key = os.path.normpath(key)
     if key.startswith("/"):
@@ -367,9 +370,7 @@ class S3(FS):
         if 'r' in mode:
             obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
             if 'b' in mode:
-                # TODO: BufferedIOBase requires readinto() implemeted
-                # obj = io.BufferedReader(obj)
-                pass
+                obj = io.BufferedReader(obj, buffer_size=DEFAULT_BUFFER_SIZE)
             else:
                 obj = io.TextIOWrapper(obj)
 
