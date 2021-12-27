@@ -274,7 +274,7 @@ class Hdfs(FS):
         self._checkfork()
         path = os.path.join(self.cwd, path)
         info = self._fs.get_file_info(path)
-        return not info.is_file
+        return info.type == FileType.Directory
 
     def mkdir(self, path: str, *args, dir_fd=None):
         self._checkfork()
