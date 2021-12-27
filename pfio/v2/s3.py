@@ -520,7 +520,7 @@ class S3(FS):
         if not res.get('CopyObjectResult'):
             # copy failed
             return
-        return self.remove(source.get('Key'))
+        return self.remove(src)
 
     def remove(self, file_path: str, recursive=False):
         '''Removes an object
