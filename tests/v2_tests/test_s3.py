@@ -1,3 +1,4 @@
+import io
 import multiprocessing as mp
 import os
 import pickle
@@ -8,6 +9,7 @@ from moto import mock_s3
 
 from pfio.v2 import S3, from_url, open_url
 from pfio.v2.fs import ForkedError
+from pfio.v2.s3 import _ObjectReader
 
 
 @pytest.fixture
@@ -282,3 +284,46 @@ def test_remove(s3_fixture):
         assert s3.exists('foo.data')
         s3.remove('foo.data')
         assert not s3.exists('foo.data')
+
+
+def test_buffering(s3_fixture):
+    with from_url('s3://test-bucket/', **s3_fixture.aws_kwargs) as s3:
+
+        touch(s3, 'foo.data', '0123456789')
+
+    # default size buffer
+    # TODO: Find out a way to check the buffer size from BufferSize
+    with open_url('s3://test-bucket/foo.data', 'rb',
+                  **s3_fixture.aws_kwargs) as f:
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+    with from_url('s3://test-bucket') as fs:
+        f = fs.open('foo.data', 'rb')
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+    # custom size buffer
+    # TODO: Find out a way to check the buffer size from BufferSize
+    with open_url('s3://test-bucket/foo.data', 'rb',
+                  **s3_fixture.aws_kwargs,
+                  buffering=5) as f:
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+    with from_url('s3://test-bucket', buffering=5) as fs:
+        f = fs.open('foo.data', 'rb')
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+    # no buffer
+    with open_url('s3://test-bucket/foo.data', 'rb',
+                  **s3_fixture.aws_kwargs,
+                  buffering=0) as f:
+        assert isinstance(f, _ObjectReader)
+        assert f.read() == b'0123456789'
+
+    with from_url('s3://test-bucket', buffering=0) as fs:
+        f = fs.open('foo.data', 'rb')
+        assert isinstance(f, _ObjectReader)
+        assert f.read() == b'0123456789'
