@@ -147,7 +147,6 @@ class _ObjectReader(io.RawIOBase):
         raise io.UnsupportedOperation('not writable')
 
     def readall(self):
-        self.seek(0)
         return self.read(-1)
 
     def readinto(self, b):
