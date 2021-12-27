@@ -247,3 +247,28 @@ def test_s3_pickle():
                       aws_access_key_id=key,
                       aws_secret_access_key=secret) as f:
             assert pickle.load(f) == {'test': 'data'}
+
+
+@mock_s3
+def test_rename():
+    bucket = "test-dummy-bucket"
+    key = "it's me!deadbeef"
+    secret = "asedf;lkjdf;a'lksjd"
+    with S3(bucket, create_bucket=True):
+        with from_url('s3://test-dummy-bucket/base',
+                      aws_access_key_id=key,
+                      aws_secret_access_key=secret) as s3:
+
+            with s3.open('foo.pkl', 'wb') as fp:
+                pickle.dump({'test': 'data'}, fp)
+
+            s3.rename('foo.pkl', 'bar.pkl')
+
+        with from_url('s3://test-dummy-bucket') as s3:
+            assert not s3.exists('base/foo.pkl')
+            assert s3.exists('base/bar.pkl')
+
+        with open_url('s3://test-dummy-bucket/base/bar.pkl', 'rb',
+                      aws_access_key_id=key,
+                      aws_secret_access_key=secret) as f:
+            assert pickle.load(f) == {'test': 'data'}
