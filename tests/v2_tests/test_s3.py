@@ -247,3 +247,16 @@ def test_rename(s3_fixture):
     with open_url('s3://test-bucket/base/bar.pkl', 'rb',
                   **s3_fixture.aws_kwargs) as f:
         assert pickle.load(f) == {'test': 'data'}
+
+
+def test_remove(s3_fixture):
+    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+
+        with pytest.raises(FileNotFoundError) as err:
+            s3.remove('non-existent-object')
+        assert str(err.value) == "No such S3 object: 'non-existent-object'"
+
+        touch(s3, 'foo.data', '0123456789')
+        assert s3.exists('foo.data')
+        s3.remove('foo.data')
+        assert not s3.exists('foo.data')
