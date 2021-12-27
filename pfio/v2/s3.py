@@ -525,9 +525,14 @@ class S3(FS):
     def remove(self, file_path: str, recursive=False):
         '''Removes an object
 
+        It raises a FileNotFoundError when the specified file doesn't exist.
         '''
         if recursive:
             raise io.UnsupportedOperation("Recursive delete not supported")
+
+        if not self.exists(file_path):
+            msg = "No such S3 object: '{}'".format(file_path)
+            raise FileNotFoundError(msg)
 
         self._checkfork()
         key = os.path.join(self.cwd, file_path)
