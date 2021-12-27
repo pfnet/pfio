@@ -43,8 +43,9 @@ class LocalFileStat(FileStat):
 
 
 class Local(FS):
-    def __init__(self, cwd=None):
+    def __init__(self, cwd=None, **_):
         super().__init__()
+
         if cwd is None:
             self._cwd = ''
         else:
