@@ -293,13 +293,19 @@ class S3(FS):
     - ``aws_secret_access_key``, ``AWS_SECRET_ACCESS_KEY``
     - ``endpoint``, ``S3_ENDPOINT``
 
+    When opening a file in read mode, by default it enables buffering.
+    The default buffer size is pfio.v2.S3.DEFAULT_BUFFER_SIZE,
+    which is used when `buffering` is set to -1.
+    If `buffering=0` it disables buffering, and if `buffering>0`,
+    the specified value is used as the buffer size.
     '''
 
     def __init__(self, bucket, prefix=None,
                  endpoint=None, create_bucket=False,
                  aws_access_key_id=None,
                  aws_secret_access_key=None,
-                 mpu_chunksize=32*1024*1024):
+                 mpu_chunksize=32*1024*1024,
+                 buffering=-1):
         super().__init__()
         self.bucket = bucket
         if prefix is not None:
@@ -308,6 +314,9 @@ class S3(FS):
             self.cwd = ''
 
         self.mpu_chunksize = mpu_chunksize
+        self.buffering = buffering
+        if self.buffering < 0:
+            self.buffering = DEFAULT_BUFFER_SIZE
 
         # boto3.set_stream_logger()
 
@@ -369,7 +378,8 @@ class S3(FS):
         if 'r' in mode:
             obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
             if 'b' in mode:
-                obj = io.BufferedReader(obj, buffer_size=DEFAULT_BUFFER_SIZE)
+                if self.buffering:
+                    obj = io.BufferedReader(obj, buffer_size=self.buffering)
             else:
                 obj = io.TextIOWrapper(obj)
 
