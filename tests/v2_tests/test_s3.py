@@ -79,6 +79,7 @@ def test_s3_files(s3_fixture):
         assert not s3.isdir("/bas")
 
 
+# TODO: Find out a way to know buffer size used in a BufferedReader
 @pytest.mark.parametrize("buffering, reader_type",
                          [(-1, io.BufferedReader),
                           (0, _ObjectReader),
