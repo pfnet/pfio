@@ -10,7 +10,7 @@ from moto import mock_s3
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
-from pfio.v2 import Hdfs, Local, S3, Zip, from_url, lazify, open_url
+from pfio.v2 import S3, Hdfs, Local, Zip, from_url, lazify, open_url
 
 
 @contextlib.contextmanager
