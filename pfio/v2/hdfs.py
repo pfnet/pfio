@@ -180,7 +180,7 @@ class Hdfs(FS):
 
     '''
 
-    def __init__(self, cwd=None):
+    def __init__(self, cwd=None, **_):
         super().__init__()
         self._fs = _create_fs()
         assert self._fs is not None

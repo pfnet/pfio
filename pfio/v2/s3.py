@@ -9,6 +9,8 @@ from botocore.exceptions import ClientError
 
 from .fs import FS, FileStat
 
+DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
+
 
 def _normalize_key(key: str) -> str:
     key = os.path.normpath(key)
@@ -40,8 +42,10 @@ class S3PrefixStat(FileStat):
         return True
 
 
-class _ObjectReader:
+class _ObjectReader(io.RawIOBase):
     def __init__(self, client, bucket, key, mode, kwargs):
+        super(_ObjectReader, self).__init__()
+
         self.client = client
         self.bucket = bucket
         self.key = key
@@ -140,6 +144,14 @@ class _ObjectReader:
 
     def write(self, data):
         raise io.UnsupportedOperation('not writable')
+
+    def readall(self):
+        return self.read(-1)
+
+    def readinto(self, b):
+        buf = self.read(len(b))
+        b[:len(buf)] = buf
+        return len(buf)
 
 
 class _ObjectWriter:
@@ -280,13 +292,21 @@ class S3(FS):
     - ``aws_secret_access_key``, ``AWS_SECRET_ACCESS_KEY``
     - ``endpoint``, ``S3_ENDPOINT``
 
+    It supports buffering when opening a file in binary read mode ("rb").
+    When ``buffering`` is set to -1 (default), the buffer size will be
+    the size of the file or ``pfio.v2.S3.DEFAULT_MAX_BUFFER_SIZE``,
+    whichever smaller.
+    ``buffering=0`` disables buffering, and ``buffering>0`` forcibly sets the
+    specified value as the buffer size in bytes.
     '''
 
     def __init__(self, bucket, prefix=None,
                  endpoint=None, create_bucket=False,
                  aws_access_key_id=None,
                  aws_secret_access_key=None,
-                 mpu_chunksize=32*1024*1024):
+                 mpu_chunksize=32*1024*1024,
+                 buffering=-1,
+                 **_):
         super().__init__()
         self.bucket = bucket
         if prefix is not None:
@@ -295,6 +315,7 @@ class S3(FS):
             self.cwd = ''
 
         self.mpu_chunksize = mpu_chunksize
+        self.buffering = buffering
 
         # boto3.set_stream_logger()
 
@@ -356,9 +377,11 @@ class S3(FS):
         if 'r' in mode:
             obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
             if 'b' in mode:
-                # TODO: BufferedIOBase requires readinto() implemeted
-                # obj = io.BufferedReader(obj)
-                pass
+                if self.buffering:
+                    bs = self.buffering
+                    if bs < 0:
+                        bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
+                    obj = io.BufferedReader(obj, buffer_size=bs)
             else:
                 obj = io.TextIOWrapper(obj)
 

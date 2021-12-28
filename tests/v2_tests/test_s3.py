@@ -1,3 +1,4 @@
+import io
 import multiprocessing as mp
 import os
 import pickle
@@ -8,6 +9,7 @@ from moto import mock_s3
 
 from pfio.v2 import S3, from_url, open_url
 from pfio.v2.fs import ForkedError
+from pfio.v2.s3 import _ObjectReader
 
 
 @pytest.fixture
@@ -28,8 +30,16 @@ def s3_fixture():
         yield _S3Fixture()
 
 
-def test_s3(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+def touch(s3, path, content):
+    with s3.open(path, 'w') as fp:
+        fp.write(content)
+
+    assert s3.exists(path)
+
+
+def test_s3_init(s3_fixture):
+    with from_url('s3://test-bucket/base',
+                  **s3_fixture.aws_kwargs) as s3:
         assert s3_fixture.bucket == s3.bucket
         assert '/base' == s3.cwd
         assert s3_fixture.aws_kwargs['aws_access_key_id'] \
@@ -38,24 +48,13 @@ def test_s3(s3_fixture):
             == s3.aws_secret_access_key
         assert s3.endpoint is None
 
+
+def test_s3_files(s3_fixture):
+    with from_url('s3://test-bucket/base',
+                  **s3_fixture.aws_kwargs) as s3:
+
         with s3.open('foo.txt', 'w') as fp:
             fp.write('bar')
-            assert not fp.closed
-
-        with s3.open('foo.txt', 'r') as fp:
-            assert 'bar' == fp.read()
-            assert not fp.closed
-
-        with s3.open('foo.txt', 'rb') as fp:
-            assert b'b' == fp.read(1)
-            assert b'a' == fp.read(1)
-            assert b'r' == fp.read(1)
-            assert b'' == fp.read(1)
-            assert b'' == fp.read(1)
-            fp.seek(1)
-            assert b'a' == fp.read(1)
-            assert b'r' == fp.read(1)
-            assert b'' == fp.read(1)
             assert not fp.closed
 
         assert ['foo.txt'] == list(s3.list())
@@ -79,6 +78,48 @@ def test_s3(s3_fixture):
         assert s3.isdir("/base")
         assert not s3.isdir("/bas")
 
+
+# TODO: Find out a way to know buffer size used in a BufferedReader
+@pytest.mark.parametrize("buffering, reader_type",
+                         [(-1, io.BufferedReader),
+                          (0, _ObjectReader),
+                          (2, io.BufferedReader)])
+def test_s3_read(s3_fixture, buffering, reader_type):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
+
+        with s3.open('foo.txt', 'w') as fp:
+            fp.write('bar')
+            assert not fp.closed
+
+        with s3.open('foo.txt', 'r') as fp:
+            assert isinstance(fp, io.TextIOWrapper)
+            assert 'bar' == fp.read()
+            assert not fp.closed
+
+        with s3.open('foo.txt', 'rb') as fp:
+            assert isinstance(fp, reader_type)
+            assert b'b' == fp.read(1)
+            assert b'a' == fp.read(1)
+            assert b'r' == fp.read(1)
+            assert b'' == fp.read(1)
+            assert b'' == fp.read(1)
+            fp.seek(1)
+            assert b'a' == fp.read(1)
+            assert b'r' == fp.read(1)
+            assert b'' == fp.read(1)
+            assert not fp.closed
+
+
+def test_s3_fork(s3_fixture):
+    with from_url('s3://test-bucket/base',
+                  **s3_fixture.aws_kwargs) as s3:
+
+        with s3.open('foo.txt', 'w') as fp:
+            fp.write('bar')
+            assert not fp.closed
+
         def f(s3):
             try:
                 s3.open('foo.txt', 'r')
@@ -96,7 +137,7 @@ def test_s3(s3_fixture):
             try:
                 with S3(bucket='test-bucket', **s3_fixture.aws_kwargs) as s4:
                     with s4.open('base/foo.txt', 'r') as fp:
-                        fp.read()
+                        assert fp.read()
             except ForkedError:
                 pytest.fail('ForkedError')
 
@@ -139,13 +180,6 @@ def test_s3_mpu(s3_fixture):
 
         assert 7 * 1024 * 1024 * 4 == len(data)
         assert "0123456" == data[7:14]
-
-
-def touch(s3, path, content):
-    with s3.open(path, 'w') as fp:
-        fp.write(content)
-
-    assert s3.exists(path)
 
 
 def test_s3_recursive(s3_fixture):
@@ -200,8 +234,11 @@ def _seek_check(f):
     assert f.tell() == 12, "the position should be kept after an error"
 
 
-def test_s3_seek(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3_seek(s3_fixture, buffering):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
 
         # Make a 10-bytes test data
         touch(s3, 'foo.data', '0123456789')
@@ -221,8 +258,11 @@ def test_s3_seek(s3_fixture):
             _seek_check(f)
 
 
-def test_s3_pickle(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3_pickle(s3_fixture, buffering):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
 
         with s3.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
@@ -232,15 +272,18 @@ def test_s3_pickle(s3_fixture):
         assert pickle.load(f) == {'test': 'data'}
 
 
-def test_rename(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_rename(s3_fixture, buffering):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
 
         with s3.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
 
         s3.rename('foo.pkl', 'bar.pkl')
 
-    with from_url('s3://test-bucket') as s3:
+    with from_url('s3://test-bucket', **s3_fixture.aws_kwargs) as s3:
         assert not s3.exists('base/foo.pkl')
         assert s3.exists('base/bar.pkl')
 
@@ -249,9 +292,34 @@ def test_rename(s3_fixture):
         assert pickle.load(f) == {'test': 'data'}
 
 
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3_read_and_readall(s3_fixture, buffering):
+    with from_url('s3://test-bucket/',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
+
+        # Make a 10-bytes test data
+        touch(s3, 'foo.data', '0123456789')
+
+    with open_url('s3://test-bucket/foo.data', 'rb',
+                  **s3_fixture.aws_kwargs) as f:
+        assert f.read() == b'0123456789'
+
+        f.seek(5, os.SEEK_SET)
+        assert f.read() == b'56789'
+
+        f.seek(5, os.SEEK_SET)
+        assert f.read(2) == b'56'
+
+        f.seek(5, os.SEEK_SET)
+        assert f.read(1000) == b'56789'
+
+        f.seek(5, os.SEEK_SET)
+        assert f.raw.readall() == b'56789'
+
+
 def test_remove(s3_fixture):
     with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
-
         with pytest.raises(FileNotFoundError) as err:
             s3.remove('non-existent-object')
         assert str(err.value) == "No such S3 object: 'non-existent-object'"

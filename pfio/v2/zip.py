@@ -52,7 +52,7 @@ class ZipFileStat(FileStat):
 class Zip(FS):
     _readonly = True
 
-    def __init__(self, backend, file_path, mode='r', cwd=None):
+    def __init__(self, backend, file_path, mode='r', **_):
         super().__init__()
         self.backend = backend
         self.file_path = file_path
