@@ -30,8 +30,11 @@ def s3_fixture():
         yield _S3Fixture()
 
 
-def test_s3(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3(s3_fixture, buffering):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
         assert s3_fixture.bucket == s3.bucket
         assert '/base' == s3.cwd
         assert s3_fixture.aws_kwargs['aws_access_key_id'] \
@@ -164,6 +167,58 @@ def test_s3_recursive(s3_fixture):
             assert p.startswith('base/')
 
 
+def test_buffering_default(s3_fixture):
+    with from_url('s3://test-bucket/', **s3_fixture.aws_kwargs) as s3:
+
+        touch(s3, 'foo.data', '0123456789')
+
+    # TODO: Find out a way to check the buffer size from BufferSize
+    with open_url('s3://test-bucket/foo.data', 'rb',
+                  **s3_fixture.aws_kwargs) as f:
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+    with from_url('s3://test-bucket') as fs:
+        f = fs.open('foo.data', 'rb')
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+
+def test_buffering_custom(s3_fixture):
+    with from_url('s3://test-bucket/', **s3_fixture.aws_kwargs) as s3:
+
+        touch(s3, 'foo.data', '0123456789')
+
+    # TODO: Find out a way to check the buffer size from BufferSize
+    with open_url('s3://test-bucket/foo.data', 'rb',
+                  **s3_fixture.aws_kwargs,
+                  buffering=5) as f:
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+    with from_url('s3://test-bucket', buffering=5) as fs:
+        f = fs.open('foo.data', 'rb')
+        assert isinstance(f, io.BufferedReader)
+        assert f.read() == b'0123456789'
+
+
+def test_buffering_no_buffer(s3_fixture):
+    with from_url('s3://test-bucket/', **s3_fixture.aws_kwargs) as s3:
+
+        touch(s3, 'foo.data', '0123456789')
+
+    with open_url('s3://test-bucket/foo.data', 'rb',
+                  **s3_fixture.aws_kwargs,
+                  buffering=0) as f:
+        assert isinstance(f, _ObjectReader)
+        assert f.read() == b'0123456789'
+
+    with from_url('s3://test-bucket', buffering=0) as fs:
+        f = fs.open('foo.data', 'rb')
+        assert isinstance(f, _ObjectReader)
+        assert f.read() == b'0123456789'
+
+
 def _seek_check(f):
     # Seek by absolute position
     ###########################
@@ -202,8 +257,11 @@ def _seek_check(f):
     assert f.tell() == 12, "the position should be kept after an error"
 
 
-def test_s3_seek(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3_seek(s3_fixture, buffering):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
 
         # Make a 10-bytes test data
         touch(s3, 'foo.data', '0123456789')
@@ -223,8 +281,11 @@ def test_s3_seek(s3_fixture):
             _seek_check(f)
 
 
-def test_s3_pickle(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3_pickle(s3_fixture, buffering):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
 
         with s3.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
@@ -234,8 +295,11 @@ def test_s3_pickle(s3_fixture):
         assert pickle.load(f) == {'test': 'data'}
 
 
-def test_rename(s3_fixture):
-    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_rename(s3_fixture, buffering):
+    with from_url('s3://test-bucket/base',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
 
         with s3.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
@@ -251,8 +315,11 @@ def test_rename(s3_fixture):
         assert pickle.load(f) == {'test': 'data'}
 
 
-def test_s3_read_and_readall(s3_fixture):
-    with from_url('s3://test-bucket/', **s3_fixture.aws_kwargs) as s3:
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3_read_and_readall(s3_fixture, buffering):
+    with from_url('s3://test-bucket/',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
 
         # Make a 10-bytes test data
         touch(s3, 'foo.data', '0123456789')
@@ -284,46 +351,3 @@ def test_remove(s3_fixture):
         assert s3.exists('foo.data')
         s3.remove('foo.data')
         assert not s3.exists('foo.data')
-
-
-def test_buffering(s3_fixture):
-    with from_url('s3://test-bucket/', **s3_fixture.aws_kwargs) as s3:
-
-        touch(s3, 'foo.data', '0123456789')
-
-    # default size buffer
-    # TODO: Find out a way to check the buffer size from BufferSize
-    with open_url('s3://test-bucket/foo.data', 'rb',
-                  **s3_fixture.aws_kwargs) as f:
-        assert isinstance(f, io.BufferedReader)
-        assert f.read() == b'0123456789'
-
-    with from_url('s3://test-bucket') as fs:
-        f = fs.open('foo.data', 'rb')
-        assert isinstance(f, io.BufferedReader)
-        assert f.read() == b'0123456789'
-
-    # custom size buffer
-    # TODO: Find out a way to check the buffer size from BufferSize
-    with open_url('s3://test-bucket/foo.data', 'rb',
-                  **s3_fixture.aws_kwargs,
-                  buffering=5) as f:
-        assert isinstance(f, io.BufferedReader)
-        assert f.read() == b'0123456789'
-
-    with from_url('s3://test-bucket', buffering=5) as fs:
-        f = fs.open('foo.data', 'rb')
-        assert isinstance(f, io.BufferedReader)
-        assert f.read() == b'0123456789'
-
-    # no buffer
-    with open_url('s3://test-bucket/foo.data', 'rb',
-                  **s3_fixture.aws_kwargs,
-                  buffering=0) as f:
-        assert isinstance(f, _ObjectReader)
-        assert f.read() == b'0123456789'
-
-    with from_url('s3://test-bucket', buffering=0) as fs:
-        f = fs.open('foo.data', 'rb')
-        assert isinstance(f, _ObjectReader)
-        assert f.read() == b'0123456789'
