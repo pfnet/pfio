@@ -9,7 +9,6 @@ from botocore.exceptions import ClientError
 
 from .fs import FS, FileStat
 
-
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
 
 
