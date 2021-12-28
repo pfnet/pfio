@@ -4,7 +4,7 @@ import copy
 import os
 import stat
 from abc import abstractmethod
-from io import IOBase, UnsupportedOperation
+from io import IOBase
 from types import TracebackType
 from typing import Any, Callable, Iterator, Optional, Type
 from urllib.parse import urlparse
@@ -335,7 +335,7 @@ def from_url(url: str, **kwargs) -> 'FS':
     def _zip_check_create_not_supported():
         if kwargs.get('create', False):
             msg = '"create" option is not supported for Zip FS.'
-            raise UnsupportedOperation(msg)
+            raise ValueError(msg)
 
     # force_type \ suffix | .zip    | other
     # --------------------+---------+------

@@ -161,10 +161,10 @@ def test_from_url_create_option():
         assert not fs.exists(path)
 
     # With ZIP, create option raises an error
-    with pytest.raises(io.UnsupportedOperation):
+    with pytest.raises(ValueError):
         from_url('/foobar.zip', create=True)
 
-    with pytest.raises(io.UnsupportedOperation):
+    with pytest.raises(ValueError):
         from_url('/foobar.zip', create=True, force_type='zip')
 
 

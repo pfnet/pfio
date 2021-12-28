@@ -59,7 +59,7 @@ class Zip(FS):
         self.mode = mode
 
         if create:
-            raise io.UnsupportedOperation("create option is not supported")
+            raise ValueError("create option is not supported")
 
         if 'r' in mode and 'w' in mode:
             raise io.UnsupportedOperation('Read-write mode is not supported')
