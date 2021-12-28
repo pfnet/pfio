@@ -1,6 +1,5 @@
 # Test fs.FS compatibility
 import contextlib
-import io
 import multiprocessing as mp
 import os
 import tempfile
@@ -10,7 +9,7 @@ from moto import mock_s3
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
-from pfio.v2 import S3, Hdfs, Local, Zip, from_url, lazify, open_url
+from pfio.v2 import S3, Local, Zip, from_url, lazify, open_url
 
 
 @contextlib.contextmanager
@@ -97,78 +96,7 @@ def test_smoke(target):
         assert subfs.exists('foo')
 
 
-@mock_s3
-def test_factory_open():
-    assert isinstance(from_url('.'), Local)
-    with open_url('./setup.cfg') as fp:
-        assert isinstance(fp, io.IOBase)
-
-    bucket = 'foobar'
-    with S3(bucket, create_bucket=True) as s3:
-        with s3.open('baz.txt', 'w') as fp:
-            fp.write('bom')
-
-        with s3.open('baz.txt', 'r') as fp:
-            assert 'bom' == fp.read()
-
-    assert isinstance(from_url('s3://foobar/boom/bom'), S3)
-
-    with open_url('s3://foobar/boom/bom.txt', 'w') as fp:
-        fp.write('hello')
-
-    with open_url('s3://foobar/boom/bom.txt', 'r') as fp:
-        assert 'hello' == fp.read()
-
-    with from_url('s3://foobar/') as fs:
-        assert isinstance(fs, S3)
-
-    with from_url('s3://foobar/path/') as fs:
-        assert isinstance(fs, S3)
-
-
-@mock_s3
-def test_from_url_create_option():
-    # posix filesystem
-    with tempfile.TemporaryDirectory() as d:
-        path = os.path.join(d, 'non-existent-directory')
-        with pytest.raises(ValueError):
-            from_url(path)
-
-        from_url(path, create=True)
-        assert os.path.exists(path) and os.path.isdir(path)
-
-    # HDFS
-    hdfs = Hdfs()
-    path = os.path.join(hdfs.cwd, randstring())
-    url = 'hdfs://{}'.format(path)
-    with pytest.raises(ValueError):
-        fs = from_url(url)
-
-    fs = from_url(url, create=True)
-    assert fs.exists(path)
-
-    hdfs.remove(path, recursive=True)
-    hdfs.close()
-
-    # With S3, create option has no effect
-    bucket = "test-dummy-bucket"
-    with S3(bucket, create_bucket=True):
-        path = 's3://{}/path/'.format(bucket)
-        fs = from_url(path)
-        assert not fs.exists(path)
-
-        fs = from_url(path, create=True)
-        assert not fs.exists(path)
-
-    # With ZIP, create option raises an error
-    with pytest.raises(ValueError):
-        from_url('/foobar.zip', create=True)
-
-    with pytest.raises(ValueError):
-        from_url('/foobar.zip', create=True, force_type='zip')
-
-
-def test_force_type():
+def test_from_url_force_type():
     with from_url(".", force_type='file') as fs:
         assert isinstance(fs, Local)
 

@@ -1,4 +1,5 @@
 import getpass
+import io
 import os
 import pickle
 import shutil
@@ -7,9 +8,11 @@ import tempfile
 import unittest
 from collections.abc import Iterable
 
+import pytest
 from pyarrow import hdfs
 
 from pfio.testing import randstring
+from pfio.v2 import from_url, open_url
 from pfio.v2.hdfs import (Hdfs, HdfsFileStat, _get_principal_name_from_keytab,
                           _get_principal_name_from_klist,
                           _parse_principal_name_from_keytab,
@@ -209,6 +212,50 @@ class TestHdfs(unittest.TestCase):
             self.assertTrue(stat.mode & 0o40000)
 
             fs.remove(test_dir_name)
+
+    def test_fs_factory(self):
+        with Hdfs(self.dirname) as fs:
+            with fs.open('foo.txt', 'w') as fp:
+                fp.write('bar')
+
+            fs.makedirs('nested_dir')
+            with fs.open('nested_dir/hello.txt', 'w') as fp:
+                fp.write('world')
+
+            uri = 'hdfs://' + fs.cwd
+
+        with from_url(uri) as fs:
+            assert isinstance(fs, Hdfs)
+            assert fs.exists('foo.txt')
+            assert fs.isdir('nested_dir')
+            with fs.open('foo.txt', 'r') as f:
+                assert f.read() == 'bar'
+            with fs.open('nested_dir/hello.txt', 'r') as f:
+                assert f.read() == 'world'
+
+        with from_url(os.path.join(uri, 'nested_dir')) as fs:
+            assert isinstance(fs, Hdfs)
+            assert fs.exists('hello.txt')
+            with fs.open('hello.txt', 'r') as f:
+                assert f.read() == 'world'
+
+        with open_url(os.path.join(uri, 'foo.txt'), 'rt') as f:
+            assert isinstance(f, io.TextIOWrapper)
+            assert f.read() == 'bar'
+
+    def test_from_url_create_option(self):
+        hdfs = Hdfs(self.dirname)
+
+        dirname = randstring()
+        path = os.path.join(hdfs.cwd, dirname)
+        uri = 'hdfs://' + path
+        with pytest.raises(ValueError):
+            from_url(uri)
+
+        from_url(uri, create=True)
+
+        rootfs = from_url('hdfs://' + hdfs.cwd)
+        assert rootfs.isdir(dirname)
 
 
 @unittest.skipIf(shutil.which('hdfs') is None, "HDFS client not installed")
