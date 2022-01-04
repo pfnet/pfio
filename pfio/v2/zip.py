@@ -52,11 +52,14 @@ class ZipFileStat(FileStat):
 class Zip(FS):
     _readonly = True
 
-    def __init__(self, backend, file_path, mode='r', **_):
+    def __init__(self, backend, file_path, mode='r', create=False, **_):
         super().__init__()
         self.backend = backend
         self.file_path = file_path
         self.mode = mode
+
+        if create:
+            raise ValueError("create option is not supported")
 
         if 'r' in mode and 'w' in mode:
             raise io.UnsupportedOperation('Read-write mode is not supported')

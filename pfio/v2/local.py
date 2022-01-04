@@ -43,7 +43,7 @@ class LocalFileStat(FileStat):
 
 
 class Local(FS):
-    def __init__(self, cwd=None, **_):
+    def __init__(self, cwd=None, create=False, **_):
         super().__init__()
 
         if cwd is None:
@@ -52,7 +52,10 @@ class Local(FS):
             self._cwd = cwd
 
         if not self.isdir(''):
-            raise ValueError('{} must be a directory'.format(self._cwd))
+            if create:
+                os.makedirs(self._cwd)
+            else:
+                raise ValueError('{} must be a directory'.format(self._cwd))
 
     @property
     def cwd(self):

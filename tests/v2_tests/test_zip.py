@@ -15,7 +15,8 @@ import pytest
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, make_random_str, make_zip
-from pfio.v2 import ZipFileStat, local
+from pfio.v2 import ZipFileStat, from_url, local
+from pfio.v2.zip import Zip
 
 ZIP_TEST_FILENAME_LIST = {
     "dir_name1": "testdir1",
@@ -520,6 +521,23 @@ class TestZip(unittest.TestCase):
             with self.assertRaises(ValueError):
                 with z.open(testfile_name, "w") as zipped_file:
                     zipped_file.write(test_string)
+
+    def test_fs_factory(self):
+        with from_url(os.path.abspath(self.zip_file_path)) as fs:
+            assert isinstance(fs, Zip)
+            assert fs.isdir('testdir2')
+            assert fs.exists('testdir2/testfile1')
+            assert fs.exists('testfile2')
+
+            with fs.open('testfile2', 'r') as f:
+                assert f.read() == 'this is a test string\n'
+
+    def test_from_url_create_option(self):
+        with pytest.raises(ValueError):
+            from_url('/foobar.zip', create=True)
+
+        with pytest.raises(ValueError):
+            from_url('/foobar.zip', create=True, force_type='zip')
 
 
 class TestZipWithLargeData(unittest.TestCase):

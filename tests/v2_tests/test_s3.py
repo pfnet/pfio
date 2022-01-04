@@ -328,3 +328,43 @@ def test_remove(s3_fixture):
         assert s3.exists('foo.data')
         s3.remove('foo.data')
         assert not s3.exists('foo.data')
+
+
+def test_fs_factory(s3_fixture):
+    with s3_fixture.fs as s3:
+        with s3.open('boom/baz.txt', 'w') as fp:
+            fp.write('bom')
+
+        with s3.open('boom/baz.txt', 'r') as fp:
+            assert 'bom' == fp.read()
+
+    assert isinstance(from_url('s3://test-bucket/'), S3)
+    assert isinstance(from_url('s3://test-bucket/boom'), S3)
+
+    with open_url('s3://test-bucket/boom/bom.txt', 'w') as fp:
+        fp.write('hello')
+
+    with open_url('s3://test-bucket/boom/bom.txt', 'r') as fp:
+        assert 'hello' == fp.read()
+
+    with from_url('s3://test-bucket/') as fs:
+        assert isinstance(fs, S3)
+        assert fs.exists('boom/bom.txt')
+        with fs.open('boom/bom.txt', 'rt') as f:
+            assert f.read() == 'hello'
+
+    with from_url('s3://test-bucket/boom/') as fs:
+        assert isinstance(fs, S3)
+        assert fs.exists('bom.txt')
+        with fs.open('bom.txt', 'rt') as f:
+            assert f.read() == 'hello'
+
+
+def test_from_url_create_option(s3_fixture):
+    # In S3, actually create option has no effect
+    path = 's3://{}/path/'.format(s3_fixture.bucket)
+    with from_url(path) as fs:
+        assert not fs.exists(path)
+
+    with from_url(path, create=True) as fs:
+        assert not fs.exists(path)

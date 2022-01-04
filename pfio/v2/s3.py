@@ -306,6 +306,7 @@ class S3(FS):
                  aws_secret_access_key=None,
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
+                 create=False,
                  **_):
         super().__init__()
         self.bucket = bucket
@@ -313,6 +314,9 @@ class S3(FS):
             self.cwd = prefix
         else:
             self.cwd = ''
+
+        # In S3, create flag can be disregarded
+        del create
 
         self.mpu_chunksize = mpu_chunksize
         self.buffering = buffering

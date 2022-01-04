@@ -1,10 +1,13 @@
+import io
 import os
 import pickle
 import tempfile
 import unittest
 from collections.abc import Iterable
 
-from pfio.v2 import Local, LocalFileStat
+import pytest
+
+from pfio.v2 import Local, LocalFileStat, from_url, open_url
 
 
 class TestLocal(unittest.TestCase):
@@ -246,6 +249,42 @@ class TestLocal(unittest.TestCase):
                 self.assertEqual(getattr(stat, k), getattr(expected, kexpect))
 
             fs.remove(test_dir_name)
+
+    def test_fs_factory(self):
+        with Local(self.testdir.name) as fs:
+            with fs.open('foo.txt', 'w') as fp:
+                fp.write('bar')
+
+            fs.makedirs('nested_dir')
+            with fs.open('nested_dir/hello.txt', 'w') as fp:
+                fp.write('world')
+
+        with from_url(self.testdir.name) as fs:
+            assert isinstance(fs, Local)
+            assert fs.exists('foo.txt')
+            assert fs.isdir('nested_dir')
+            with fs.open('foo.txt', 'r') as f:
+                assert f.read() == 'bar'
+            with fs.open('nested_dir/hello.txt', 'r') as f:
+                assert f.read() == 'world'
+
+        with from_url(os.path.join(self.testdir.name, 'nested_dir')) as fs:
+            assert isinstance(fs, Local)
+            assert fs.exists('hello.txt')
+            with fs.open('hello.txt', 'r') as f:
+                assert f.read() == 'world'
+
+        with open_url(os.path.join(self.testdir.name, 'foo.txt'), 'rt') as f:
+            assert isinstance(f, io.TextIOWrapper)
+            assert f.read() == 'bar'
+
+    def test_from_url_create_option(self):
+        path = os.path.join(self.testdir.name, 'non-existent-directory')
+        with pytest.raises(ValueError):
+            from_url(path)
+
+        from_url(path, create=True)
+        assert os.path.exists(path) and os.path.isdir(path)
 
 
 if __name__ == '__main__':

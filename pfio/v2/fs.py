@@ -313,6 +313,8 @@ def from_url(url: str, **kwargs) -> 'FS':
             One of "zip", "hdfs", "s3", or "file", returned
             respectively. Default is ``"file"``.
 
+        create (bool): Create the specified path doesn't exist.
+
     .. note:: Some FS resouces won't be closed when using this
         functionality.
 
@@ -330,18 +332,25 @@ def from_url(url: str, **kwargs) -> 'FS':
         if force_type != scheme:
             raise ValueError("URL scheme mismatch with forced type")
 
+    def _zip_check_create_not_supported():
+        if kwargs.get('create', False):
+            msg = '"create" option is not supported for Zip FS.'
+            raise ValueError(msg)
+
     # force_type \ suffix | .zip    | other
     # --------------------+---------+------
     #                 zip | ok      | try zip
     #             (other) | try dir | try dir
     #                None | try zip | try dir
     if force_type == 'zip':
+        _zip_check_create_not_supported()
         dirname, filename = os.path.split(parsed.path)
         fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
         fs = fs.open_zip(filename)
 
     elif force_type is None:
         if parsed.path.endswith('.zip'):
+            _zip_check_create_not_supported()
             dirname, filename = os.path.split(parsed.path)
             fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
             fs = fs.open_zip(filename)
