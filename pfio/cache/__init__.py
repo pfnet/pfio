@@ -1,8 +1,6 @@
 import abc
 from abc import abstractmethod
-from typing import Callable
-
-from pfio._typing import Optional
+from typing import Callable, Optional
 
 
 class Cache(abc.ABC):
