@@ -53,7 +53,7 @@ $ pip install --user -e .[test]
 $ pytest
 ```
 
-Bump version numbers in `pfio/version.py` and in `docs/source/conf.py` .
+Bump version numbers in `pfio/version.py` .
 
 Push and open a pull request to invoke CI. Once CI passed and the pull request merged,
 tag a release:
