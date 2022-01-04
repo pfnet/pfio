@@ -8,27 +8,29 @@
 
 # -- Path setup --------------------------------------------------------------
 
+import os
+import sys
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
+from datetime import datetime
 
 sys.path.insert(0, os.path.abspath('../../'))
 # sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
+import pfio
+
 # -- Project information -----------------------------------------------------
 
 project = 'PFIO'
-copyright = '2019-2021, Preferred Networks, Inc.'
+copyright = '2019-{}, Preferred Networks, Inc.'.format(datetime.today().year)
 author = 'Preferred Networks, Inc.'
 
 # The short X.Y version
-version = '2.1'
+version = ''
 # The full version, including alpha/beta/rc tags
-release = '2.1.1'
-
+release = pfio.__version__
 
 # -- General configuration ---------------------------------------------------
 
@@ -48,7 +50,7 @@ extensions = [
     'sphinx.ext.githubpages',
 ]
 
-autodoc_mock_imports = ['chainer']
+autodoc_mock_imports = []
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
