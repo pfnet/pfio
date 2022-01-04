@@ -178,6 +178,15 @@ class Hdfs(FS):
     be defined instead. ``$CLASSPATH`` will be needed in case ``hdfs``
     command is not available from ``$PATH``.
 
+    .. note:: With environment variable
+          ``KRB5_KTNAME=path/to/your.keytab`` set, ``hdfs``
+          handler automatically starts automatic and periodical
+          updating Kerberos ticket using `krbticket
+          <https://pypi.org/project/krbticket/>`_ . The update
+          frequency is every 10 minutes by default.
+    .. note::
+          Only the username in the first entry in The
+          keytab will be used to update the Kerberos ticket.
     '''
 
     def __init__(self, cwd=None, create=False, **_):
