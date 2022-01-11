@@ -205,7 +205,9 @@ class Hdfs(FS):
 
         if not self.isdir(''):
             if create:
-                self.makedirs('')
+                # Since this process (isdir -> makedirs) is not atomic,
+                # makedirs can conflict in case of a parallel workload.
+                self.makedirs('', exist_ok=True)
             else:
                 raise ValueError('{} must be a directory'.format(self.cwd))
 

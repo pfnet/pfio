@@ -53,7 +53,9 @@ class Local(FS):
 
         if not self.isdir(''):
             if create:
-                os.makedirs(self._cwd)
+                # Since this process (isdir -> makedirs) is not atomic,
+                # makedirs can conflict in case of a parallel workload.
+                os.makedirs(self._cwd, exist_ok=True)
             else:
                 raise ValueError('{} must be a directory'.format(self._cwd))
 
