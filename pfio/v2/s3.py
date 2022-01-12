@@ -394,6 +394,9 @@ class S3(FS):
                     # This is undocumented property; but resident at
                     # least since 2009 (the merge of io-c branch).
                     # We'll use it until the day of removal.
+                    if bs == 0:
+                        # empty file case: _CHUNK_SIZE must be positive
+                        bs = DEFAULT_MAX_BUFFER_SIZE
                     obj._CHUNK_SIZE = bs
 
         elif 'w' in mode:
