@@ -318,6 +318,33 @@ def test_s3_read_and_readall(s3_fixture, buffering):
         assert f.raw.readall() == b'56789'
 
 
+@pytest.mark.parametrize("buffering", [-1, 0])
+def test_s3_readlines(s3_fixture, buffering):
+    with from_url('s3://test-bucket/',
+                  buffering=buffering,
+                  **s3_fixture.aws_kwargs) as s3:
+
+        # Make a 10-bytes test data
+        txt = '''first line
+second line
+third line
+'''
+        touch(s3, 'foo.txt', txt)
+
+    with open_url('s3://test-bucket/foo.txt', 'r',
+                  **s3_fixture.aws_kwargs) as f:
+        lines = f.readlines()
+
+        assert "first line\n" == lines[0]
+        assert "second line\n" == lines[1]
+        assert "third line\n" == lines[2]
+
+        # Test the undocumented feature still exists
+        assert len(txt) == getattr(f, '_CHUNK_SIZE')
+        f._CHUNK_SIZE = 233458
+        assert 233458 == f._CHUNK_SIZE
+
+
 def test_remove(s3_fixture):
     with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
         with pytest.raises(FileNotFoundError) as err:

@@ -380,14 +380,24 @@ class S3(FS):
         path = _normalize_key(path)
         if 'r' in mode:
             obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
+
+            bs = self.buffering
+            if bs < 0:
+                bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
+
             if 'b' in mode:
                 if self.buffering:
-                    bs = self.buffering
-                    if bs < 0:
-                        bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
                     obj = io.BufferedReader(obj, buffer_size=bs)
             else:
                 obj = io.TextIOWrapper(obj)
+                if self.buffering:
+                    # This is undocumented property; but resident at
+                    # least since 2009 (the merge of io-c branch).
+                    # We'll use it until the day of removal.
+                    if bs == 0:
+                        # empty file case: _CHUNK_SIZE must be positive
+                        bs = DEFAULT_MAX_BUFFER_SIZE
+                    obj._CHUNK_SIZE = bs
 
         elif 'w' in mode:
             obj = _ObjectWriter(self.client, self.bucket, path, mode,
