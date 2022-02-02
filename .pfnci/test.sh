@@ -2,8 +2,8 @@
 set -eux
 
 source /root/.bash_docker
-pyenv global 3.7.12 3.8.12 3.9.7 3.10.0
-tox -e py37,py38,py39,py310 && :
+pyenv global 3.8.12 3.9.7 3.10.0
+tox -e py38,py39,py310 && :
 tox_status=$?
 
 # test doc, needs python >= 3.6
