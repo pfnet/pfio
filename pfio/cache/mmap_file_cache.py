@@ -5,6 +5,7 @@ import pickle
 from struct import calcsize, unpack
 
 from pfio import cache
+from pfio.cache.file_cache import _default_cache_path
 
 
 class ReadOnlyFileCache(cache.Cache):
@@ -33,7 +34,7 @@ class ReadOnlyFileCache(cache.Cache):
             raise ValueError("length has to be between 0 and 2^64")
 
         if dir is None:
-            self.dir = cache.FileCache._DEFAULT_CACHE_PATH
+            self.dir = _default_cache_path()
         else:
             self.dir = dir
         cache.file_cache._check_local(self.dir)

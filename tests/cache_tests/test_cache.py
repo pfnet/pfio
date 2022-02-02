@@ -367,3 +367,24 @@ def test_preload_error_not_found(test_class):
         assert cache.preload('preserved') is False
 
         cache.close()
+
+
+@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
+def test_default_cache_path(test_class):
+    orig = os.getenv('XDG_CACHE_HOME')
+
+    os.environ['XDG_CACHE_HOME'] = "/tmp/pfio-cache"
+
+    try:
+        with test_class(16) as c:
+            assert "/tmp/pfio-cache/pfio" == c.dir
+
+        os.environ['XDG_CACHE_HOME'] = ''
+
+        with test_class(16) as c:
+            path = os.path.join(os.getenv('HOME'), '.cache', 'pfio')
+            assert path == c.dir
+
+    finally:
+        if orig is not None:
+            os.environ['XDG_CACHE_HOME'] = orig
