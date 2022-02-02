@@ -189,8 +189,8 @@ class Hdfs(FS):
           keytab will be used to update the Kerberos ticket.
     '''
 
-    def __init__(self, cwd=None, create=False, **_):
-        super().__init__()
+    def __init__(self, cwd=None, create=False, reset_on_fork=False, **_):
+        super().__init__(reset_on_fork=reset_on_fork)
         self._fs = _create_fs()
         assert self._fs is not None
         self.username = self._get_principal_name()
@@ -210,6 +210,17 @@ class Hdfs(FS):
                 self.makedirs('', exist_ok=True)
             else:
                 raise ValueError('{} must be a directory'.format(self.cwd))
+
+    def _reset(self):
+        self._fs = _create_fs()
+
+    def __getstate__(self):
+        state = self.__dict__
+        state['_fs'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def _get_principal_name(self):
         # get the default principal name from `klist` cache
