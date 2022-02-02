@@ -19,7 +19,7 @@ RUN bash -c /tmp/install-pyenv.sh
 
 COPY install-python.sh /tmp/install-python.sh
 
-RUN /tmp/install-python.sh "3.6.15"
+# RUN /tmp/install-python.sh "3.6.15"
 RUN /tmp/install-python.sh "3.7.12"
 RUN /tmp/install-python.sh "3.8.12"
 RUN /tmp/install-python.sh "3.9.7"
