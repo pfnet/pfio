@@ -10,10 +10,22 @@ from struct import calcsize, pack, unpack
 
 from pfio import cache
 
+# Deprecated, but leaving for backward compatibility just in case any
+# system directly using this value
 _DEFAULT_CACHE_PATH = os.path.join(
     os.getenv('HOME'), ".pfio", "cache")
 
 _FORCE_LOCAL = True
+
+
+def _default_cache_path():
+    basedir = os.getenv('XDG_CACHE_HOME')
+
+    if not basedir:
+        basedir = os.path.join(os.getenv('HOME'), ".cache")
+
+    cachedir = os.path.join(basedir, "pfio")
+    return cachedir
 
 
 class LockContext:
@@ -103,7 +115,8 @@ class FileCache(cache.Cache):
     '''Cache system with local filesystem
 
     Stores cache data in a local temporary file created in
-    ``~/.pfio/cache`` by default. Cache data is
+    ``$XDG_CACHE_HOME/pfio`` by default. If it is unset,
+    ``$HOME/.cache/pfio`` will be the cache destination. Cache data is
     automatically deleted after the object is collected. When this
     object is not correctly closed, (e.g., the process killed by
     SIGTERM), the cache remains after the death of process.
@@ -161,7 +174,7 @@ class FileCache(cache.Cache):
             self.lock = DummyLock()
 
         if dir is None:
-            self.dir = _DEFAULT_CACHE_PATH
+            self.dir = _default_cache_path()
         else:
             self.dir = dir
         os.makedirs(self.dir, exist_ok=True)
