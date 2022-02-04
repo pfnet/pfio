@@ -374,7 +374,7 @@ class S3(FS):
                 raise e
 
     def __getstate__(self):
-        state = self.__dict__
+        state = self.__dict__.copy()
         state['client'] = None
         return state
 
