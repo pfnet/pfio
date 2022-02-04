@@ -215,7 +215,7 @@ class Hdfs(FS):
         self._fs = _create_fs()
 
     def __getstate__(self):
-        state = self.__dict__
+        state = self.__dict__.copy()
         state['_fs'] = None
         return state
 
