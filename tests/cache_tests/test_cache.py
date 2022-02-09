@@ -4,8 +4,8 @@ import pickle
 import random
 import tempfile
 
+import numpy as np
 import pytest
-
 from pfio.cache import FileCache, MultiprocessFileCache, NaiveCache
 
 
@@ -73,6 +73,33 @@ def test_cache(test_class, mt_safe, do_pickle, do_shuffle):
         if not do_pickle:
             data = pickle.loads(data)
         assert j * 2 == data
+
+
+@pytest.mark.parametrize("test_class", [NaiveCache, FileCache,
+                                        MultiprocessFileCache])
+@pytest.mark.parametrize("mt_safe", [True, False])
+@pytest.mark.parametrize("do_shuffle", [True, False])
+def test_cache_numpy(test_class, mt_safe, do_shuffle):
+    length = l = 1024
+    cache = make_cache(test_class, mt_safe, True, l)
+    arr_list = np.random.rand(l, 3, 4)
+    def getter(i):
+        return arr_list[i]
+    if do_shuffle:
+        shuffled = list(random.sample(range(length), length)) * 2
+    else:
+        shuffled = list(range(length)) * 2
+
+    for i in shuffled:
+        j = i % l
+        data = cache.get_and_cache(j, getter)
+        assert np.array_equal(arr_list[j], data)
+
+    for i in shuffled:
+        j = i % l
+        data = cache.get(j)
+        assert data is not None
+        assert np.array_equal(arr_list[j], data)
 
 
 def _getbin(i):
