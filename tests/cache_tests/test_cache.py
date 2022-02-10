@@ -6,6 +6,7 @@ import tempfile
 
 import numpy as np
 import pytest
+
 from pfio.cache import FileCache, MultiprocessFileCache, NaiveCache
 
 
