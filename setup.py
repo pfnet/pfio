@@ -51,7 +51,7 @@ setup(
     packages=find_packages(),
     package_data={'pfio': package_data},
     extras_require={
-        'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort', 'moto'],
+        'test': ['pytest', 'flake8', 'autopep8', 'parameterized', 'isort', 'moto', 'numpy'],
         # When updating doc deps, docs/requirements.txt should be updated too
         'doc': ['sphinx', 'sphinx_rtd_theme'],
         'bench': ['numpy>=1.19.5', 'torch>=1.9.0', 'Pillow<=8.2.0'],

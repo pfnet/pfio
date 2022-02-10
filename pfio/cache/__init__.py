@@ -50,7 +50,7 @@ class Cache(abc.ABC):
 
         '''
         data = self.get(i)
-        if not data:
+        if data is None:
             data = backend_get(i)
             self.put(i, data)
         return data
