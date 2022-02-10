@@ -83,6 +83,7 @@ def test_cache_numpy(test_class, mt_safe, do_shuffle):
     length = l = 1024
     cache = make_cache(test_class, mt_safe, True, l)
     arr_list = np.random.rand(l, 3, 4)
+
     def getter(i):
         return arr_list[i]
     if do_shuffle:
