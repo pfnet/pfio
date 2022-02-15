@@ -5,8 +5,8 @@ import multiprocessing
 import os
 import re
 import subprocess
-from xml.etree import ElementTree
 import warnings
+from xml.etree import ElementTree
 
 import pyarrow
 from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
