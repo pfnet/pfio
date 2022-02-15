@@ -1,10 +1,12 @@
 import getpass
 import io
 import logging
+import multiprocessing
 import os
 import re
 import subprocess
 from xml.etree import ElementTree
+import warnings
 
 import pyarrow
 from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
@@ -178,6 +180,27 @@ class Hdfs(FS):
     be defined instead. ``$CLASSPATH`` will be needed in case ``hdfs``
     command is not available from ``$PATH``.
 
+
+    .. warning:: Although ``reset_on_fork=False`` is recommended for
+          HDFS, some applications such as PyTorch DataLoader need
+          forking for performance. In that case, it is strongly
+          recommended not to instantiate :class:`Hdfs` *before*
+          forking. Details are described in PFIO issue #123.
+          Simple workaround is to set multiprocessing start
+          method as ``'forkserver'`` and start the very first
+          child process before everything.
+
+          .. code-block::
+
+             import multiprocessing
+             multiprocessing.set_start_method('forkserver')
+             p = multiprocessing.Process()
+             p.start()
+             p.join()
+
+
+          See: https://github.com/pfnet/pfio/issues/123
+
     .. note:: With environment variable
           ``KRB5_KTNAME=path/to/your.keytab`` set, ``hdfs``
           handler automatically starts automatic and periodical
@@ -187,6 +210,7 @@ class Hdfs(FS):
     .. note::
           Only the username in the first entry in The
           keytab will be used to update the Kerberos ticket.
+
     '''
 
     def __init__(self, cwd=None, create=False, reset_on_fork=False, **_):
@@ -210,6 +234,11 @@ class Hdfs(FS):
                 self.makedirs('', exist_ok=True)
             else:
                 raise ValueError('{} must be a directory'.format(self.cwd))
+
+        if reset_on_fork and\
+           multiprocessing.get_start_method() != 'forkserver':
+            # See https://github.com/pfnet/pfio/pull/123 for detail
+            warnings.warn('Non-forkserver start method under HDFS detected.')
 
     def _reset(self):
         self._fs = _create_fs()

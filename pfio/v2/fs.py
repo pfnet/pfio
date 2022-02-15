@@ -322,6 +322,9 @@ def from_url(url: str, **kwargs) -> 'FS':
     built from it accordingly. The URL path is supposed to
     be a directory for file systems or a path prefix for S3.
 
+    .. warning:: When opening an ``hdfs://...`` URL, be sure
+        about forking context. See: :class:`Hdfs` .
+
     Arguments:
         url (str): A URL string compliant with RFC 1738.
 
