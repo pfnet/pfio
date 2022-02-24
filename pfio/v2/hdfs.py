@@ -181,14 +181,16 @@ class Hdfs(FS):
     command is not available from ``$PATH``.
 
 
-    .. warning:: Although ``reset_on_fork=False`` is recommended for
-          HDFS, some applications such as PyTorch DataLoader need
-          forking for performance. In that case, it is strongly
-          recommended not to instantiate :class:`Hdfs` *before*
-          forking. Details are described in PFIO issue #123.
-          Simple workaround is to set multiprocessing start
-          method as ``'forkserver'`` and start the very first
-          child process before everything.
+    .. warning:: In principle, ``reset_on_fork=False`` is recommended
+          for HDFS in order not to shoot yourself in the foot;
+          multiprocessing with a JVM instance that has different
+          memory model may cause unexpected behavior. If you do *need*
+          forking, for example, PyTorch DataLoader with multiple
+          workers for performance, it is strongly recommended not to
+          instantiate :class:`Hdfs` before forking. Details are
+          described in PFIO issue #123.  Simple workaround is to set
+          multiprocessing start method as ``'forkserver'`` and start
+          the very first child process before everything.
 
           .. code-block::
 

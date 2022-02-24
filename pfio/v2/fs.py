@@ -322,8 +322,8 @@ def from_url(url: str, **kwargs) -> 'FS':
     built from it accordingly. The URL path is supposed to
     be a directory for file systems or a path prefix for S3.
 
-    .. warning:: When opening an ``hdfs://...`` URL, be sure
-        about forking context. See: :class:`Hdfs` .
+    .. warning:: When opening an ``hdfs://...`` URL, be sure about
+        forking context. See: :class:`Hdfs` for discussion.
 
     Arguments:
         url (str): A URL string compliant with RFC 1738.
@@ -335,7 +335,7 @@ def from_url(url: str, **kwargs) -> 'FS':
         create (bool): Create the specified path doesn't exist.
 
         reset_on_fork (bool): Reset stateful objects (e.g. connection
-            to the remote system) before fork.
+            to the remote system) after fork.
 
     .. note:: Some FS resouces won't be closed when using this
         functionality.
