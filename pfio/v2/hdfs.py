@@ -184,8 +184,8 @@ class Hdfs(FS):
     .. warning:: It is strongly discouraged to use :class:`Hdfs` under
           multiprocessing. Setting ``reset_on_fork=False`` is
           recommended for HDFS in order not to shoot yourself in the
-          foot. Forking a JVM instance that has a different memory
-          model may cause unexpected behavior. If you do *need*
+          foot, because forking a JVM instance that has a different
+          memory model may cause unexpected behavior. If you do *need*
           forking, for example, PyTorch DataLoader with multiple
           workers for performance, it is strongly recommended not to
           instantiate :class:`Hdfs` before forking. Details are
