@@ -9,6 +9,10 @@ from types import TracebackType
 from typing import Any, Callable, Iterator, Optional, Type
 from urllib.parse import urlparse
 
+from deprecation import deprecated
+
+from pfio.version import __version__  # NOQA
+
 
 class FileStat(abc.ABC):
     """Detailed file or directory information abstraction
@@ -82,8 +86,9 @@ class FS(abc.ABC):
 
     _cwd = ''
 
-    def __init__(self):
+    def __init__(self, reset_on_fork=False):
         self.pid = os.getpid()
+        self.reset_on_fork = reset_on_fork
 
     @property
     def cwd(self):
@@ -124,11 +129,22 @@ class FS(abc.ABC):
         sub = copy.copy(self)
 
         sub._cwd = os.path.join(self.cwd, rel_path)
+        sub._reset()
         return sub
 
     def _checkfork(self):
-        if self.is_forked:
+        if not self.is_forked:
+            return
+
+        # Forked!
+        if self.reset_on_fork:
+            self._reset()
+        else:
             raise ForkedError()
+
+    @abstractmethod
+    def _reset(self):
+        raise NotImplementedError()
 
     @property
     def is_forked(self):
@@ -306,6 +322,9 @@ def from_url(url: str, **kwargs) -> 'FS':
     built from it accordingly. The URL path is supposed to
     be a directory for file systems or a path prefix for S3.
 
+    .. warning:: When opening an ``hdfs://...`` URL, be sure about
+        forking context. See: :class:`Hdfs` for discussion.
+
     Arguments:
         url (str): A URL string compliant with RFC 1738.
 
@@ -315,8 +334,14 @@ def from_url(url: str, **kwargs) -> 'FS':
 
         create (bool): Create the specified path doesn't exist.
 
+        reset_on_fork (bool): Reset stateful objects (e.g. connection
+            to the remote system) after fork.
+
     .. note:: Some FS resouces won't be closed when using this
         functionality.
+
+    .. note:: Pickling the FS object may or may not work correctly
+        depending on the implementation.
 
     '''
     parsed = urlparse(url)
@@ -381,6 +406,8 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
     return fs
 
 
+@deprecated(deprecated_in='2.2.0', removed_in='2.3.0',
+            current_version=__version__)
 def lazify(init_func, lazy_init=True, recreate_on_fork=True) -> "FS":
     '''Make FS init lazy and recreate on fork
 

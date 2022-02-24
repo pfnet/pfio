@@ -1,9 +1,11 @@
 import getpass
 import io
 import logging
+import multiprocessing
 import os
 import re
 import subprocess
+import warnings
 from xml.etree import ElementTree
 
 import pyarrow
@@ -178,6 +180,30 @@ class Hdfs(FS):
     be defined instead. ``$CLASSPATH`` will be needed in case ``hdfs``
     command is not available from ``$PATH``.
 
+
+    .. warning:: It is strongly discouraged to use :class:`Hdfs` under
+          multiprocessing. Setting ``reset_on_fork=False`` is
+          recommended for HDFS in order not to shoot yourself in the
+          foot, because forking a JVM instance that has a different
+          memory model may cause unexpected behavior. If you do *need*
+          forking, for example, PyTorch DataLoader with multiple
+          workers for performance, it is strongly recommended not to
+          instantiate :class:`Hdfs` before forking. Details are
+          described in PFIO issue #123.  Simple workaround is to set
+          multiprocessing start method as ``'forkserver'`` and start
+          the very first child process before everything.
+
+          .. code-block::
+
+             import multiprocessing
+             multiprocessing.set_start_method('forkserver')
+             p = multiprocessing.Process()
+             p.start()
+             p.join()
+
+
+          See: https://github.com/pfnet/pfio/issues/123
+
     .. note:: With environment variable
           ``KRB5_KTNAME=path/to/your.keytab`` set, ``hdfs``
           handler automatically starts automatic and periodical
@@ -187,10 +213,11 @@ class Hdfs(FS):
     .. note::
           Only the username in the first entry in The
           keytab will be used to update the Kerberos ticket.
+
     '''
 
-    def __init__(self, cwd=None, create=False, **_):
-        super().__init__()
+    def __init__(self, cwd=None, create=False, reset_on_fork=False, **_):
+        super().__init__(reset_on_fork=reset_on_fork)
         self._fs = _create_fs()
         assert self._fs is not None
         self.username = self._get_principal_name()
@@ -210,6 +237,22 @@ class Hdfs(FS):
                 self.makedirs('', exist_ok=True)
             else:
                 raise ValueError('{} must be a directory'.format(self.cwd))
+
+        if reset_on_fork and\
+           multiprocessing.get_start_method() != 'forkserver':
+            # See https://github.com/pfnet/pfio/pull/123 for detail
+            warnings.warn('Non-forkserver start method under HDFS detected.')
+
+    def _reset(self):
+        self._fs = _create_fs()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['_fs'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def _get_principal_name(self):
         # get the default principal name from `klist` cache

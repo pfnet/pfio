@@ -307,9 +307,11 @@ class S3(FS):
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
                  create=False,
+                 reset_on_fork=False,
                  **_):
-        super().__init__()
+        super().__init__(reset_on_fork=reset_on_fork)
         self.bucket = bucket
+        self.create_bucket = create_bucket
         if prefix is not None:
             self.cwd = prefix
         else:
@@ -352,17 +354,32 @@ class S3(FS):
         if self.endpoint is not None:
             kwargs['endpoint_url'] = self.endpoint
 
+        self.kwargs = kwargs
+        self._connect()
+
+    def _reset(self):
+        self._connect()
+
+    def _connect(self):
         # print('boto3.client options:', kwargs)
-        self.client = boto3.client('s3', **kwargs)
+        self.client = boto3.client('s3', **self.kwargs)
 
         try:
-            self.client.head_bucket(Bucket=bucket)
+            self.client.head_bucket(Bucket=self.bucket)
         except ClientError as e:
-            if e.response['Error']['Code'] == '404' and create_bucket:
-                res = self.client.create_bucket(Bucket=bucket)
-                print("Bucket", bucket, "created:", res)
+            if e.response['Error']['Code'] == '404' and self.create_bucket:
+                res = self.client.create_bucket(Bucket=self.bucket)
+                print("Bucket", self.bucket, "created:", res)
             else:
                 raise e
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['client'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def open(self, path, mode='r', **kwargs):
         '''Opens an object accessor for read or write

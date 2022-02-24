@@ -1,8 +1,6 @@
 import io
 import logging
 import os
-import sys
-import warnings
 import zipfile
 from datetime import datetime
 
@@ -52,8 +50,9 @@ class ZipFileStat(FileStat):
 class Zip(FS):
     _readonly = True
 
-    def __init__(self, backend, file_path, mode='r', create=False, **_):
-        super().__init__()
+    def __init__(self, backend, file_path, mode='r', create=False,
+                 reset_on_fork=False, **_):
+        super().__init__(reset_on_fork=reset_on_fork)
         self.backend = backend
         self.file_path = file_path
         self.mode = mode
@@ -67,32 +66,11 @@ class Zip(FS):
         if 'w' in mode:
             self._readonly = False
 
-        self.fileobj = self.backend.open(file_path, mode + 'b')
+        self._reset()
 
-        if isinstance(self.backend, Zip) \
-           and sys.version_info < (3, 7, ):
-            # In Python < 3.7, the returned file object from zipfile.open,
-            # i.e. ZipExtFile, is not seekable,
-            # while in order to open as zip, the zipfile module requires
-            # the given file object to be seekable, which makes
-            # nested zip impossible.
-            # As a workaround, in case of nested zip,  we read the
-            # whole nested zipfile into BytesIO object,
-            # which is a seekable file object, upon open.
-            # However, it might cause performance and memory
-            # issues when the zipfile is huge. A warning is generated
-            # for user.
-
-            warnings.warn('In Python < 3.7, '
-                          'To support opening nested zip as container, '
-                          'PFIO has to read '
-                          'the entire nested zip upon open, '
-                          'which might cause performance or '
-                          'memory issues when the nested zip is huge.',
-                          category=RuntimeWarning)
-            self.fileobj = io.BytesIO(self.fileobj.read())
-
-        self.zipobj = zipfile.ZipFile(self.fileobj, mode)
+    def _reset(self):
+        self.fileobj = self.backend.open(self.file_path, self.mode + 'b')
+        self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
 
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,

@@ -9,7 +9,8 @@ from moto import mock_s3
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
-from pfio.v2 import S3, Local, Zip, from_url, lazify, open_url
+from pfio.v2 import S3, Local, Zip, from_url, open_url
+from pfio.v2.fs import ForkedError
 
 
 @contextlib.contextmanager
@@ -159,27 +160,44 @@ def test_seekeable_read(target):
                 assert c == s[0]
 
 
+class DummyLoader:
+    def __init__(self, dirname, content, reset_on_fork):
+        self.s3 = from_url(dirname, reset_on_fork=reset_on_fork)
+        self.content = content
+        self.reset_on_fork = reset_on_fork
+
+    def __call__(self):
+        assert self.s3.is_forked
+
+        if not self.reset_on_fork:
+            with pytest.raises(ForkedError):
+                self.s3.open('file', 'rb')
+
+        else:
+            # Should be reset and be able to read the contents when
+            # reset_on_fork is True
+            with self.s3.open('file', 'rb') as fp:
+                assert self.content == fp.read()
+
+
+@mock_s3
 def test_recreate():
+    content = b'deadbeef'
+    # TODO: test with hdfs?
+    with gen_fs("s3") as fs:
+        with fs.open('file', 'wb') as fp:
+            fp.write(content)
 
-    with tempfile.TemporaryDirectory() as d:
-        zipfilename = os.path.join(d, "test.zip")
-        z = ZipForTest(zipfilename)
-        barrier = mp.Barrier(1)
+    dirname = "s3://test-dummy-bucket/"
 
-        with lazify(lambda: from_url(zipfilename)) as f:
-            with f.open('file', 'rb') as fp:
-                content = fp.read()
-                assert content
-                assert z.content('file') == content
+    # With forkserver set, it hangs
+    # mp.set_start_method('forkserver', force=True)
 
-            def func():
-                # accessing the shared container
-                with f.open('file', 'rb') as fp:
-                    barrier.wait()
-                    assert content == fp.read()
+    for recreate_on_fork in [True, False]:
 
-            p = mp.Process(target=func)
-            p.start()
+        loader = DummyLoader(dirname, content, recreate_on_fork)
 
-            p.join(timeout=1)
-            assert p.exitcode == 0
+        p = mp.Process(target=loader)
+        p.start()
+        p.join(timeout=1)
+        assert p.exitcode == 0

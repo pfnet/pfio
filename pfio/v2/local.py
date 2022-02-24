@@ -43,8 +43,8 @@ class LocalFileStat(FileStat):
 
 
 class Local(FS):
-    def __init__(self, cwd=None, create=False, **_):
-        super().__init__()
+    def __init__(self, cwd=None, create=False, reset_on_fork=False, **_):
+        super().__init__(reset_on_fork=reset_on_fork)
 
         if cwd is None:
             self._cwd = ''
@@ -65,6 +65,9 @@ class Local(FS):
             return self._cwd
 
         return os.getcwd()
+
+    def _reset(self):
+        pass
 
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
