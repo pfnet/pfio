@@ -112,6 +112,19 @@ def test_s3_read(s3_fixture, buffering, reader_type):
             assert not fp.closed
 
 
+def test_empty_file(s3_fixture):
+    with from_url('s3://test-bucket/base',
+                  **s3_fixture.aws_kwargs) as s3:
+
+        # Create an empty file
+        with s3.open('foo.dat', 'wb'):
+            pass
+
+        # It should be able to read it without error
+        with s3.open('foo.dat', 'rb') as f:
+            assert len(f.read()) == 0
+
+
 def test_s3_fork(s3_fixture):
     with from_url('s3://test-bucket/base',
                   **s3_fixture.aws_kwargs) as s3:

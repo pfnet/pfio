@@ -403,7 +403,7 @@ class S3(FS):
                 bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
 
             if 'b' in mode:
-                if self.buffering:
+                if self.buffering and bs != 0:
                     obj = io.BufferedReader(obj, buffer_size=bs)
             else:
                 obj = io.TextIOWrapper(obj)
