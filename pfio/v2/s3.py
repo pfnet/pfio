@@ -1,6 +1,7 @@
 import hashlib
 import io
 import os
+import sys
 from types import TracebackType
 from typing import Optional, Type
 
@@ -10,6 +11,14 @@ from botocore.exceptions import ClientError
 from .fs import FS, FileStat
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
+
+# bpo-42853 is resident (3.
+
+_python_version = (sys.version_info.major,
+                   sys.version_info.minor,
+                   sys.version_info.micro)
+bpo_42853_resident = (3, 8, 0) <= _python_version and\
+    _python_version < (3, 9, 7)
 
 
 def _normalize_key(key: str) -> str:
@@ -62,6 +71,11 @@ class _ObjectReader(io.RawIOBase):
     def read(self, size=-1) -> bytes:
         # Always returns binary; as this object is wrapped with
         # TextIOWrapper in case of text mode open.
+
+        # Workaround
+        if bpo_42853_resident:
+            if size < 0 or size > 2*1024*1024*1024:
+                raise RuntimeError(':py38bokumetu')
 
         s = self.pos
 
