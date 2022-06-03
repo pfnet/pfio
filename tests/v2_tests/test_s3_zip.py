@@ -1,3 +1,4 @@
+import io
 import os
 import shutil
 import tempfile
@@ -6,8 +7,9 @@ import zipfile
 import pytest
 from moto import mock_s3
 
+import pfio
 from pfio.testing import ZipForTest
-from pfio.v2 import S3, from_url
+from pfio.v2 import S3, Zip, from_url
 
 
 @mock_s3
@@ -26,6 +28,13 @@ def test_s3_zip():
 
             with s3.open('test.zip', 'rb') as fp:
                 assert zipfile.is_zipfile(fp)
+
+        with from_url('s3://{}/test.zip'.format(bucket),
+                      buffering=0) as z:
+            assert isinstance(z, Zip)
+            assert 'buffering' in z.kwargs
+            assert not isinstance(z.fileobj, io.BufferedReader)
+            assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
 
 
 @mock_s3

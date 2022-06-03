@@ -51,11 +51,12 @@ class Zip(FS):
     _readonly = True
 
     def __init__(self, backend, file_path, mode='r', create=False,
-                 reset_on_fork=False, **_):
+                 reset_on_fork=False, **kwargs):
         super().__init__(reset_on_fork=reset_on_fork)
         self.backend = backend
         self.file_path = file_path
         self.mode = mode
+        self.kwargs = kwargs
 
         if create:
             raise ValueError("create option is not supported")
@@ -69,7 +70,9 @@ class Zip(FS):
         self._reset()
 
     def _reset(self):
-        self.fileobj = self.backend.open(self.file_path, self.mode + 'b')
+        self.fileobj = self.backend.open(self.file_path,
+                                         self.mode + 'b',
+                                         **self.kwargs)
         self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
 
     def open(self, file_path, mode='r',

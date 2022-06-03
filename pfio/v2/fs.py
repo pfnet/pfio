@@ -108,9 +108,9 @@ class FS(abc.ABC):
                  [str, int], Any]] = None) -> Type["IOBase"]:
         raise NotImplementedError()
 
-    def open_zip(self, file_path: str, mode='r') -> Type["Zip"]:  # NOQA
+    def open_zip(self, file_path: str, mode='r', **kwargs) -> Type["Zip"]:  # NOQA
         from .zip import Zip
-        return Zip(self, file_path, mode)
+        return Zip(self, file_path, mode, **kwargs)
 
     def subfs(self, rel_path: str) -> Type["FS"]:
         '''Virtually changes the working directory
@@ -371,14 +371,14 @@ def from_url(url: str, **kwargs) -> 'FS':
         _zip_check_create_not_supported()
         dirname, filename = os.path.split(parsed.path)
         fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
-        fs = fs.open_zip(filename)
+        fs = fs.open_zip(filename, **kwargs)
 
     elif force_type is None:
         if parsed.path.endswith('.zip'):
             _zip_check_create_not_supported()
             dirname, filename = os.path.split(parsed.path)
             fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
-            fs = fs.open_zip(filename)
+            fs = fs.open_zip(filename, **kwargs)
         else:
             dirname = parsed.path
             fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
