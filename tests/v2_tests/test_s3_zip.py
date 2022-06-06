@@ -13,10 +13,11 @@ from pfio.v2 import S3, Zip, from_url
 
 
 @mock_s3
-def test_s3_zip():
+@pytest.mark.parametrize("local_cache", [False, True])
+def test_s3_zip(local_cache):
     with tempfile.TemporaryDirectory() as d:
         zipfilename = os.path.join(d, "test.zip")
-        _ = ZipForTest(zipfilename)
+        zft = ZipForTest(zipfilename)
         bucket = "test-dummy-bucket"
 
         with from_url('s3://{}/'.format(bucket),
@@ -30,11 +31,16 @@ def test_s3_zip():
                 assert zipfile.is_zipfile(fp)
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      buffering=0) as z:
+                      buffering=0, local_cache=local_cache) as z:
             assert isinstance(z, Zip)
             assert 'buffering' in z.kwargs
             assert not isinstance(z.fileobj, io.BufferedReader)
-            assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
+            if not local_cache:
+                assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
+
+            assert zipfile.is_zipfile(z.fileobj)
+            with z.open('file', 'rb') as fp:
+                assert zft.content('file') == fp.read()
 
 
 @mock_s3

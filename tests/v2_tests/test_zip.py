@@ -872,6 +872,9 @@ def test_is_zipfile():
     with tempfile.TemporaryDirectory() as tmpdir:
         zipfilename = os.path.join(tmpdir, 'test.zip')
         _ = ZipForTest(zipfilename)
+
+        assert zipfile.is_zipfile(zipfilename)
+
         with local as fs:
             with fs.open(zipfilename, 'rb') as fp:
                 assert zipfile.is_zipfile(fp)
