@@ -31,10 +31,18 @@ def test_s3_zip(local_cache):
                 assert zipfile.is_zipfile(fp)
 
         with from_url('s3://{}/test.zip'.format(bucket),
+                      local_cache=local_cache) as z:
+            assert isinstance(z, Zip)
+            assert isinstance(z.fileobj, io.BufferedReader)
+
+            assert zipfile.is_zipfile(z.fileobj)
+            with z.open('file', 'rb') as fp:
+                assert zft.content('file') == fp.read()
+
+        with from_url('s3://{}/test.zip'.format(bucket),
                       buffering=0, local_cache=local_cache) as z:
             assert isinstance(z, Zip)
             assert 'buffering' in z.kwargs
-            assert not isinstance(z.fileobj, io.BufferedReader)
             if not local_cache:
                 assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
             else:

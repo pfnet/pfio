@@ -184,7 +184,7 @@ class CachedWrapper:
         self.pos %= self.size
         if self.pos != self.fileobj.tell():
             self.fileobj.seek(self.pos, io.SEEK_SET)
-        return buf
+        return bytes(buf)
 
     def readline(self):
         raise NotImplementedError()
