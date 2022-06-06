@@ -6,12 +6,11 @@ Of course, it's read only
 
 import io
 import os
-import tempfile
 import shutil
-
-from typing import Optional
-from types import TracebackType
+import tempfile
 from dataclasses import dataclass
+from types import TracebackType
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -42,6 +41,7 @@ class CachedWrapper:
 
     TODO: add document here
     '''
+
     def __init__(self, fileobj, size, cachedir=None):
         self.fileobj = fileobj
         self.cachedir = cachedir

@@ -4,9 +4,9 @@ import os
 import zipfile
 from datetime import datetime
 
-from .fs import FS, FileStat
 from pfio.cache.sparse_file import CachedWrapper
 
+from .fs import FS, FileStat
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())

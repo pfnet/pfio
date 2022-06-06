@@ -5,7 +5,6 @@ import tempfile
 import zipfile
 
 from pfio.cache.sparse_file import CachedWrapper
-
 from pfio.testing import ZipForTest
 
 
