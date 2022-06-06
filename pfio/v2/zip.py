@@ -4,8 +4,6 @@ import os
 import zipfile
 from datetime import datetime
 
-from pfio.cache.sparse_file import CachedWrapper
-
 from .fs import FS, FileStat
 
 logger = logging.getLogger(__name__)
@@ -53,14 +51,11 @@ class Zip(FS):
     _readonly = True
 
     def __init__(self, backend, file_path, mode='r', create=False,
-                 reset_on_fork=False,
-                 local_cache=False, local_cachedir=None, **kwargs):
+                 reset_on_fork=False, **kwargs):
         super().__init__(reset_on_fork=reset_on_fork)
         self.backend = backend
         self.file_path = file_path
         self.mode = mode
-        self.local_cache = local_cache
-        self.local_cachedir = local_cachedir
         self.kwargs = kwargs
 
         if create:
@@ -71,7 +66,6 @@ class Zip(FS):
 
         if 'w' in mode:
             self._readonly = False
-            assert not self.local_cache
 
         self._reset()
 
@@ -79,13 +73,6 @@ class Zip(FS):
         self.fileobj = self.backend.open(self.file_path,
                                          self.mode + 'b',
                                          **self.kwargs)
-
-        if self.local_cache:
-            stat = self.backend.stat(self.file_path)
-            self.orig_fileobj = self.fileobj
-            self.fileobj = CachedWrapper(self.orig_fileobj, stat.size,
-                                         cachedir=self.local_cachedir)
-
         self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
 
     def open(self, file_path, mode='r',
@@ -109,8 +96,6 @@ class Zip(FS):
         self._checkfork()
         self.zipobj.close()
         self.fileobj.close()
-        if self.local_cache:
-            self.orig_fileobj.close()
 
     def stat(self, path):
         self._checkfork()

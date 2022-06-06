@@ -7,6 +7,8 @@ from typing import Optional, Type
 import boto3
 from botocore.exceptions import ClientError
 
+from pfio.cache.sparse_file import CachedWrapper
+
 from .fs import FS, FileStat
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
@@ -381,7 +383,9 @@ class S3(FS):
     def __setstate__(self, state):
         self.__dict__ = state
 
-    def open(self, path, mode='r', **kwargs):
+    def open(self, path, mode='r',
+             local_cache=False, local_cachedir=None,
+             **kwargs):
         '''Opens an object accessor for read or write
 
         .. note:: Multi-part upload is not yet available.
@@ -401,6 +405,11 @@ class S3(FS):
             bs = self.buffering
             if bs < 0:
                 bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
+
+            if local_cache:
+                # Do sparse file cache
+                obj = CachedWrapper(obj, obj.content_length, local_cachedir,
+                                    close_on_close=True)
 
             if 'b' in mode:
                 if self.buffering and bs != 0:

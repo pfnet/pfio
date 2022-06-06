@@ -37,6 +37,9 @@ def test_s3_zip(local_cache):
             assert not isinstance(z.fileobj, io.BufferedReader)
             if not local_cache:
                 assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
+            else:
+                assert isinstance(z.fileobj,
+                                  pfio.cache.sparse_file.CachedWrapper)
 
             assert zipfile.is_zipfile(z.fileobj)
             with z.open('file', 'rb') as fp:

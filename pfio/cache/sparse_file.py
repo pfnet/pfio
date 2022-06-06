@@ -42,7 +42,7 @@ class CachedWrapper:
     TODO: add document here
     '''
 
-    def __init__(self, fileobj, size, cachedir=None):
+    def __init__(self, fileobj, size, cachedir=None, close_on_close=False):
         self.fileobj = fileobj
         self.cachedir = cachedir
         self.size = size
@@ -61,11 +61,14 @@ class CachedWrapper:
         self.ranges = [_Range(0, size)]
         self._closed = False
         self._frozen = False
+        self.close_on_close = close_on_close
 
     def close(self):
         if not self._closed:
             self._closed = True
             self.cachefp.close()
+            if self.close_on_close:
+                self.fileobj.close()
 
     def preserve(self, dest):
         # Hard link and save them
