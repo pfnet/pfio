@@ -274,12 +274,14 @@ class CachedWrapper(_CachedWrapper):
         if self._closed:
             raise RuntimeError("closed")
 
-        if size < 0:
+        if size < 0 or (self.size - self.pos < size):
             size = self.size - self.pos
 
         start = self.pos // self.pagesize
         end = (self.pos + size) // self.pagesize
+        # print((self.pos, self.pos+size), "=>", list(range(start, end+1)), "size", self.size)
         for i in range(start, end + 1):
+            # print('range=', i, "total=", len(self.ranges))
             r = self.ranges[i]
             
             if not r.cached:
