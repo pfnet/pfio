@@ -266,7 +266,9 @@ class CachedWrapper(_CachedWrapper):
         self.ranges = [_Range(i * self.pagesize, self.pagesize, cached=False)
                        for i in range(pagecount)]
 
-        self.ranges.append(_Range(pagecount*self.pagesize, size % self.pagesize, cached=False))
+        remain = size % self.pagesize
+        if remain > 0:
+            self.ranges.append(_Range(pagecount*self.pagesize, remain, cached=False))
 
     def read(self, size=-1) -> bytes:
         if self._closed:
