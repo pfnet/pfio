@@ -36,7 +36,7 @@ class _Range:
                       cached=self.cached)
 
 
-class CachedWrapper:
+class _CachedWrapper:
     '''A transparent local cache for remote files
 
     TODO: add document here
@@ -250,3 +250,51 @@ class CachedWrapper:
         buf = self.read(len(b))
         b[:len(buf)] = buf
         return len(buf)
+
+
+class CachedWrapper(_CachedWrapper):
+    '''A transparent local cache for remote files
+
+    TODO: add document here
+    '''
+
+    def __init__(self, fileobj, size, cachedir=None, close_on_close=False, pagesize=16*1024*1024):
+        super().__init__(fileobj, size, cachedir, close_on_close)
+        assert pagesize > 0
+        self.pagesize = pagesize
+        pagecount = size // pagesize
+        self.ranges = [_Range(i * self.pagesize, self.pagesize, cached=False)
+                       for i in range(pagecount)]
+
+        self.ranges.append(_Range(pagecount*self.pagesize, size % self.pagesize, cached=False))
+
+    def read(self, size=-1) -> bytes:
+        if self._closed:
+            raise RuntimeError("closed")
+
+        if size < 0:
+            size = self.size - self.pos
+
+        start = self.pos // self.pagesize
+        end = (self.pos + size) // self.pagesize
+        for i in range(start, end + 1):
+            r = self.ranges[i]
+            
+            if not r.cached:
+                assert not self._frozen
+                self.fileobj.seek(r.start, io.SEEK_SET)
+                data = self.fileobj.read(r.length)
+                written = os.pwrite(self.cachefp.fileno(), data, r.start)
+                if written < 0:
+                    raise RuntimeError("bad file descriptor")
+
+                self.ranges[i] = _Range(r.start, r.length, cached=True)
+                # print(written, "/", r.length, "bytes written at", r.start)
+                
+        buf = os.pread(self.cachefp.fileno(), size, self.pos)
+
+        self.pos += len(buf)
+        self.pos %= self.size
+        if self.pos != self.fileobj.tell():
+            self.fileobj.seek(self.pos, io.SEEK_SET)
+        return buf
