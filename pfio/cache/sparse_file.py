@@ -255,10 +255,44 @@ class _CachedWrapper:
 class CachedWrapper(_CachedWrapper):
     '''A transparent local cache for remote files
 
-    TODO: add document here
+    This wrapper makes a transparent read-only local cache as sparse
+    file.  The local cache behaves as read-mirror of remote file -
+    when a known range is requested, it'll be local read. If it's not
+    locally cached, it fetches the range and stores as local file.
+
+    .. note:: It's not thread-safe yet.
+
+    Example usage follows:
+
+    .. code-block::
+
+        from pfio.v2 import from_url
+        from pfio.cache import SparseFileCache
+
+        with from_url("s3://bucket/path-prefix/") as s3:
+          large_file = "path/to/large/file"
+          stat = s3.stat(large_file)
+          with SparseFileCache(s3.open(large_file), stat.size,
+                               close_on_close=True) as fp:
+            fp.seek(1024)
+            # Read file from 1024 to 1024+65536 and cache it
+            data = fp.read(65536)
+
+
+    It is internally used behind ZIP fs:
+
+    .. code-block::
+
+        from pfio.v2 import from_url
+
+        with from_url("s3://bucket/your.zip", local_cache=True) as fs:
+          with fs.open("file-in-zip.jpg", 'rb') as fp:
+            data = rp.read()
+
     '''
 
-    def __init__(self, fileobj, size, cachedir=None, close_on_close=False, pagesize=16*1024*1024):
+    def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
+                 pagesize=16*1024*1024):
         super().__init__(fileobj, size, cachedir, close_on_close)
         assert pagesize > 0
         self.pagesize = pagesize
@@ -268,7 +302,8 @@ class CachedWrapper(_CachedWrapper):
 
         remain = size % self.pagesize
         if remain > 0:
-            self.ranges.append(_Range(pagecount*self.pagesize, remain, cached=False))
+            r = _Range(pagecount*self.pagesize, remain, cached=False)
+            self.ranges.append(r)
 
     def read(self, size=-1) -> bytes:
         if self._closed:
@@ -279,22 +314,22 @@ class CachedWrapper(_CachedWrapper):
 
         start = self.pos // self.pagesize
         end = (self.pos + size) // self.pagesize
-        # print((self.pos, self.pos+size), "=>", list(range(start, end+1)), "size", self.size)
+
         for i in range(start, end + 1):
             # print('range=', i, "total=", len(self.ranges))
             r = self.ranges[i]
-            
+
             if not r.cached:
                 assert not self._frozen
                 self.fileobj.seek(r.start, io.SEEK_SET)
                 data = self.fileobj.read(r.length)
-                written = os.pwrite(self.cachefp.fileno(), data, r.start)
-                if written < 0:
+                n = os.pwrite(self.cachefp.fileno(), data, r.start)
+                if n < 0:
                     raise RuntimeError("bad file descriptor")
 
                 self.ranges[i] = _Range(r.start, r.length, cached=True)
                 # print(written, "/", r.length, "bytes written at", r.start)
-                
+
         buf = os.pread(self.cachefp.fileno(), size, self.pos)
 
         self.pos += len(buf)

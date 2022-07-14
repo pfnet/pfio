@@ -4,7 +4,7 @@ import random
 import tempfile
 import zipfile
 
-from pfio.cache.sparse_file import CachedWrapper
+from pfio.cache import SparseFileCache
 from pfio.testing import ZipForTest
 
 
@@ -19,7 +19,7 @@ def test_sparse_file_cache():
         size = stat.st_size
         with open(filepath, 'rb') as xfp:
 
-            with CachedWrapper(xfp, size) as fp:
+            with SparseFileCache(xfp, size) as fp:
 
                 fp.seek(26)
                 data = fp.read(17)
@@ -49,7 +49,7 @@ def test_sparse_file_cache2():
         size = stat.st_size
         with open(filepath, 'rb') as xfp, open(filepath, 'rb') as yfp:
 
-            with CachedWrapper(xfp, size) as fp:
+            with SparseFileCache(xfp, size) as fp:
 
                 fp.seek(26)
                 # print('seek done:', fp.pos, xfp.tell())
@@ -94,7 +94,7 @@ def test_sparse_cache_zip():
 
         size = stat.st_size
         with open(filepath, 'rb') as xfp:
-            with CachedWrapper(xfp, size) as cfp:
+            with SparseFileCache(xfp, size) as cfp:
                 with zipfile.ZipFile(cfp, 'r') as zfp:
 
                     assert zfp.testzip() is None

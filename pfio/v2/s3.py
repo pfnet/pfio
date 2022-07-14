@@ -390,6 +390,15 @@ class S3(FS):
 
         .. note:: Multi-part upload is not yet available.
 
+        Arguments:
+            path (str): relative path from basedir
+
+            mode (str): open mode
+
+            local_cache (bool): use sparse file cache for opening ZIP file
+
+            local_cachedir (dir): local path to store sparse file cache
+
         '''
         self._checkfork()
         if 'a' in mode:

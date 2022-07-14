@@ -72,6 +72,14 @@ but several methods are not yet implemented.
 .. autoclass:: pfio.v2.pathlib.Path
    :members:
 
+Sparse File Cache
+-----------------
+
+.. autoclass:: pfio.cache.SparseFileCache
+   :members:
+
+.. autoclass:: pfio.cache.sparse_file.CachedWrapper
+   :members:
 
 
 Cache API
