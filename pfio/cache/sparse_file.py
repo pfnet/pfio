@@ -430,7 +430,6 @@ class MPCachedWrapper(CachedWrapper):
               data = rp.read()
     '''
 
-
     def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
                  local_cachefile=None, local_indexfile=None,
                  pagesize=16*1024*1024, multithread_safe=False):
