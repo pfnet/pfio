@@ -73,6 +73,7 @@ class Zip(FS):
         self.fileobj = self.backend.open(self.file_path,
                                          self.mode + 'b',
                                          **self.kwargs)
+        assert self.fileobj is not None
         self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
 
     def open(self, file_path, mode='r',

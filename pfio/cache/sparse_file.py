@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Optional
 
+from .file_cache import DummyLock, RWLock
+
 
 @dataclass(frozen=True)
 class _Range:
@@ -36,15 +38,23 @@ class _Range:
                       cached=self.cached)
 
 
-class _CachedWrapper:
-    '''A transparent local cache for remote files
+class _CachedWrapperBase:
+    '''A transparent local cache for remote files base class
 
     TODO: add document here
     '''
 
-    def __init__(self, fileobj, size, cachedir=None, close_on_close=False):
+    def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
+                 multithread_safe=False):
         self.fileobj = fileobj
         self.cachedir = cachedir
+
+        self.multithread_safe = multithread_safe
+        if self.multithread_safe:
+            self.lock = RWLock()
+        else:
+            self.lock = DummyLock()
+
         self.size = size
         assert size > 0
         if cachedir is None:
@@ -64,38 +74,133 @@ class _CachedWrapper:
         self.close_on_close = close_on_close
 
     def close(self):
-        if not self._closed:
-            self._closed = True
-            self.cachefp.close()
-            if self.close_on_close:
-                self.fileobj.close()
+        with self.lock.wrlock():
+            if not self._closed:
+                self._closed = True
+                self.cachefp.close()
+                if self.close_on_close:
+                    self.fileobj.close()
 
     def preserve(self, dest):
-        # Hard link and save them
-        try:
-            os.link(self.cachefp.name, dest)
-            self.cachefp.close()
-        except OSError:
-            # TODO: check errno to make sure handling the
-            # 'different-drive' error.
-            shutil.copyfile(self.cachefp.name, dest)
+        with self.lock.wrlock():
+            # Hard link and save them
+            try:
+                os.link(self.cachefp.name, dest)
+                self.cachefp.close()
+            except OSError:
+                # TODO: check errno to make sure handling the
+                # 'different-drive' error.
+                shutil.copyfile(self.cachefp.name, dest)
 
-        self.cachefp = open(dest, 'rb')
-        self._frozen = True
+            self.cachefp = open(dest, 'rb')
+            self._frozen = True
 
-    def _get_range(self, r) -> (bytearray, _Range):
-        # print('get range:', r)
-        if r.cached:
-            return os.pread(self.cachefp.fileno(), r.length, r.start), r
+    def readline(self):
+        raise NotImplementedError()
 
-        assert not self._frozen
-        self.fileobj.seek(r.start, io.SEEK_SET)
-        data = self.fileobj.read(r.length)
-        written = os.pwrite(self.cachefp.fileno(), data, r.start)
-        if written < 0:
-            raise RuntimeError("bad file descriptor")
-        # print(written, "/", r.length, "bytes written at", r.start)
-        return data, _Range(r.start, r.length, True)
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type: Optional[BaseException],
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> bool:
+        self.close()
+
+    def flush(self):
+        pass
+
+    @property
+    def closed(self):
+        return self._closed
+
+    def isatty(self):
+        return False
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def tell(self):
+        return self.pos
+
+    def truncate(self, size=None):
+        raise io.UnsupportedOperation('truncate')
+
+    def seek(self, pos, whence=io.SEEK_SET):
+        with self.lock.wrlock():
+            return self._seek(pos, whence)
+
+    def _seek(self, pos, whence):
+        # print(dir(self.fileobj))
+        if whence in [0, io.SEEK_SET]:
+            if pos < 0:
+                raise OSError(22, "[Errno 22] Invalid argument")
+        elif whence in [1, io.SEEK_CUR]:
+            pos += self.pos
+        elif whence in [2, io.SEEK_END]:
+            pos += self.size
+        else:
+            raise ValueError('Wrong whence value: {}'.format(whence))
+
+        if pos < 0:
+            raise OSError(22, "[Errno 22] Invalid argument")
+        self.pos = pos
+        self.fileobj.seek(self.pos, io.SEEK_SET)
+        return self.pos
+
+    def writable(self):
+        return False
+
+    def write(self, data):
+        raise io.UnsupportedOperation('not writable')
+
+    def readall(self):
+        return self.read(-1)
+
+    def readinto(self, b):
+        buf = self.read(len(b))
+        b[:len(buf)] = buf
+        return len(buf)
+
+    def _read_all_cache(self):
+        for r in self.ranges:
+            if r.cached:
+                data = os.pread(self.cachefp.fileno(), r.length, r.start)
+                # print(r1, 'includes', r0, 'len(r0)?=', len(data))
+                yield data, r
+            else:
+                yield None, r
+
+
+class DynamicCachedWrapper(_CachedWrapperBase):
+    '''Dynamic-page based local cache wrapper
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def read(self, size=-1) -> bytes:
+        if size < 0:
+            size = self.size - self.pos
+
+        buf = bytearray(size)
+        offset = 0
+        with self.lock.wrlock():
+            if self._closed:
+                raise RuntimeError("closed")
+
+            # TODO: unnecessary copy; optimize with os.readv?
+            for data in self._read(size):
+                buf[offset:offset+len(data)] = data
+                offset += len(data)
+
+            self.pos += len(buf)
+            self.pos %= self.size
+            if self.pos != self.fileobj.tell():
+                self.fileobj.seek(self.pos, io.SEEK_SET)
+            return bytes(buf)
 
     def _read(self, size):
         new_ranges = []
@@ -157,103 +262,23 @@ class _CachedWrapper:
 
             r0 = _Range(r1.right, r0.right - r1.right)
 
-    def _read_all_cache(self):
-        for r in self.ranges:
-            if r.cached:
-                data = os.pread(self.cachefp.fileno(), r.length, r.start)
-                # print(r1, 'includes', r0, 'len(r0)?=', len(data))
-                yield data, r
-            else:
-                yield None, r
+    def _get_range(self, r) -> (bytearray, _Range):
+        # print('get range:', r)
+        if r.cached:
+            return os.pread(self.cachefp.fileno(), r.length, r.start), r
 
-    def read(self, size=-1) -> bytes:
-        if self._closed:
-            raise RuntimeError("closed")
-
-        if size < 0:
-            size = self.size - self.pos
-
-        buf = bytearray(size)
-        offset = 0
-        # TODO: unnecessary copy; optimize with os.readv?
-        for data in self._read(size):
-            buf[offset:offset+len(data)] = data
-            offset += len(data)
-
-        self.pos += len(buf)
-        self.pos %= self.size
-        if self.pos != self.fileobj.tell():
-            self.fileobj.seek(self.pos, io.SEEK_SET)
-        return bytes(buf)
-
-    def readline(self):
-        raise NotImplementedError()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type: Optional[BaseException],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
-        self.close()
-
-    def flush(self):
-        pass
-
-    @property
-    def closed(self):
-        return self._closed
-
-    def isatty(self):
-        return False
-
-    def readable(self):
-        return True
-
-    def seekable(self):
-        return True
-
-    def tell(self):
-        return self.pos
-
-    def truncate(self, size=None):
-        raise io.UnsupportedOperation('truncate')
-
-    def seek(self, pos, whence=io.SEEK_SET):
-        # print(dir(self.fileobj))
-        if whence in [0, io.SEEK_SET]:
-            if pos < 0:
-                raise OSError(22, "[Errno 22] Invalid argument")
-        elif whence in [1, io.SEEK_CUR]:
-            pos += self.pos
-        elif whence in [2, io.SEEK_END]:
-            pos += self.size
-        else:
-            raise ValueError('Wrong whence value: {}'.format(whence))
-
-        if pos < 0:
-            raise OSError(22, "[Errno 22] Invalid argument")
-        self.pos = pos
-        self.fileobj.seek(self.pos, io.SEEK_SET)
-        return self.pos
-
-    def writable(self):
-        return False
-
-    def write(self, data):
-        raise io.UnsupportedOperation('not writable')
-
-    def readall(self):
-        return self.read(-1)
-
-    def readinto(self, b):
-        buf = self.read(len(b))
-        b[:len(buf)] = buf
-        return len(buf)
+        assert not self._frozen
+        self.fileobj.seek(r.start, io.SEEK_SET)
+        data = self.fileobj.read(r.length)
+        written = os.pwrite(self.cachefp.fileno(), data, r.start)
+        if written < 0:
+            raise RuntimeError("bad file descriptor")
+        # print(written, "/", r.length, "bytes written at", r.start)
+        return data, _Range(r.start, r.length, True)
 
 
-class CachedWrapper(_CachedWrapper):
-    '''A transparent local cache for remote files
+class CachedWrapper(_CachedWrapperBase):
+    '''A page-based transparent local cache for remote files
 
     This wrapper makes a transparent read-only local cache as sparse
     file.  The local cache behaves as read-mirror of remote file -
@@ -292,8 +317,9 @@ class CachedWrapper(_CachedWrapper):
     '''
 
     def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
-                 pagesize=16*1024*1024):
-        super().__init__(fileobj, size, cachedir, close_on_close)
+                 pagesize=16*1024*1024, multithread_safe=False):
+        super().__init__(fileobj, size, cachedir, close_on_close,
+                         multithread_safe=multithread_safe)
         assert pagesize > 0
         self.pagesize = pagesize
         pagecount = size // pagesize
@@ -306,6 +332,12 @@ class CachedWrapper(_CachedWrapper):
             self.ranges.append(r)
 
     def read(self, size=-1) -> bytes:
+        with self.lock.wrlock():
+            # TODO: it this giant lock becomes the bottleneck, split
+            # this lock into per-page locks
+            return self._read(size)
+
+    def _read(self, size) -> bytes:
         if self._closed:
             raise RuntimeError("closed")
 
@@ -328,7 +360,6 @@ class CachedWrapper(_CachedWrapper):
                     raise RuntimeError("bad file descriptor")
 
                 self.ranges[i] = _Range(r.start, r.length, cached=True)
-                # print(written, "/", r.length, "bytes written at", r.start)
 
         buf = os.pread(self.cachefp.fileno(), size, self.pos)
 
