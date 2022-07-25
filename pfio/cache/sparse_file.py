@@ -317,8 +317,9 @@ class CachedWrapper(_CachedWrapperBase):
     '''
 
     def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
-                 pagesize=16*1024*1024):
-        super().__init__(fileobj, size, cachedir, close_on_close)
+                 pagesize=16*1024*1024, multithread_safe=False):
+        super().__init__(fileobj, size, cachedir, close_on_close,
+                         multithread_safe=multithread_safe)
         assert pagesize > 0
         self.pagesize = pagesize
         pagecount = size // pagesize

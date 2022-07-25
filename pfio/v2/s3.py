@@ -418,7 +418,7 @@ class S3(FS):
             if local_cache:
                 # Do sparse file cache
                 obj = CachedWrapper(obj, obj.content_length, local_cachedir,
-                                    close_on_close=True)
+                                    close_on_close=True, multithread_safe=True)
 
             if 'b' in mode:
                 if self.buffering and bs != 0:
