@@ -130,7 +130,7 @@ class _CachedWrapperBase:
 
     def seek(self, pos, whence=io.SEEK_SET):
         with self.lock.wrlock():
-            self._seek(pos, whence)
+            return self._seek(pos, whence)
 
     def _seek(self, pos, whence):
         # print(dir(self.fileobj))
@@ -332,37 +332,39 @@ class CachedWrapper(_CachedWrapperBase):
             self.ranges.append(r)
 
     def read(self, size=-1) -> bytes:
+        with self.lock.wrlock():
+            # TODO: it this giant lock becomes the bottleneck, split
+            # this lock into per-page locks
+            return self._read(size)
+
+    def _read(self, size) -> bytes:
+        if self._closed:
+            raise RuntimeError("closed")
+
         if size < 0 or (self.size - self.pos < size):
             size = self.size - self.pos
 
         start = self.pos // self.pagesize
         end = (self.pos + size) // self.pagesize
 
-        with self.lock.wrlock():
-            # TODO: it this giant lock becomes the bottleneck, split
-            # this lock into per-page locks
+        for i in range(start, end + 1):
+            # print('range=', i, "total=", len(self.ranges))
+            r = self.ranges[i]
 
-            if self._closed:
-                raise RuntimeError("closed")
+            if not r.cached:
+                assert not self._frozen
+                self.fileobj.seek(r.start, io.SEEK_SET)
+                data = self.fileobj.read(r.length)
+                n = os.pwrite(self.cachefp.fileno(), data, r.start)
+                if n < 0:
+                    raise RuntimeError("bad file descriptor")
 
-            for i in range(start, end + 1):
-                # print('range=', i, "total=", len(self.ranges))
-                r = self.ranges[i]
+                self.ranges[i] = _Range(r.start, r.length, cached=True)
 
-                if not r.cached:
-                    assert not self._frozen
-                    self.fileobj.seek(r.start, io.SEEK_SET)
-                    data = self.fileobj.read(r.length)
-                    n = os.pwrite(self.cachefp.fileno(), data, r.start)
-                    if n < 0:
-                        raise RuntimeError("bad file descriptor")
+        buf = os.pread(self.cachefp.fileno(), size, self.pos)
 
-                    self.ranges[i] = _Range(r.start, r.length, cached=True)
-
-            buf = os.pread(self.cachefp.fileno(), size, self.pos)
-
-            self.pos += len(buf)
-            self.pos %= self.size
-            if self.pos != self.fileobj.tell():
-                self.fileobj.seek(self.pos, io.SEEK_SET)
-            return buf
+        self.pos += len(buf)
+        self.pos %= self.size
+        if self.pos != self.fileobj.tell():
+            self.fileobj.seek(self.pos, io.SEEK_SET)
+        return buf
