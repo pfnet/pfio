@@ -64,9 +64,10 @@ class _CachedWrapperBase:
     '''
 
     def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
-                 multithread_safe=False):
+                 cache_size_limit=None, multithread_safe=False):
         self.fileobj = fileobj
         self.cachedir = cachedir
+        self.cache_size_limit = cache_size_limit
 
         self.multithread_safe = multithread_safe
         if self.multithread_safe:
@@ -337,16 +338,23 @@ class CachedWrapper(_CachedWrapperBase):
     '''
 
     def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
-                 pagesize=16*1024*1024, multithread_safe=False):
+                 pagesize=16*1024*1024, multithread_safe=False,
+                 cache_size_limit=None):
         super().__init__(fileobj, size, cachedir, close_on_close,
+                         cache_size_limit=cache_size_limit,
                          multithread_safe=multithread_safe)
         assert pagesize > 0
         self.pagesize = pagesize
-        pagecount = size // pagesize
+        self.size = size
+        self._init_ranges()
+
+    def _init_ranges(self):
+        self.cache_size = 0
+        pagecount = self.size // self.pagesize
         self.ranges = [_Range(i * self.pagesize, self.pagesize, cached=False)
                        for i in range(pagecount)]
 
-        remain = size % self.pagesize
+        remain = self.size % self.pagesize
         if remain > 0:
             r = _Range(pagecount*self.pagesize, remain, cached=False)
             self.ranges.append(r)
@@ -356,6 +364,11 @@ class CachedWrapper(_CachedWrapperBase):
             # TODO: it this giant lock becomes the bottleneck, split
             # this lock into per-page locks
             return self._read(size)
+
+    def _is_full(self) -> bool:
+        if self.cache_size_limit is None:
+            return False
+        return self.cache_size >= self.cache_size_limit
 
     def _read(self, size) -> bytes:
         if self._closed:
@@ -388,6 +401,12 @@ class CachedWrapper(_CachedWrapperBase):
         self.pos %= self.size
         if self.pos != self.fileobj.tell():
             self.fileobj.seek(self.pos, io.SEEK_SET)
+
+        # cache_size_limit is a soft limit
+        if self._is_full():
+            os.truncate(self.cachefp.fileno(), 0)
+            self._init_ranges()
+
         return buf
 
 
@@ -431,13 +450,15 @@ class MPCachedWrapper(CachedWrapper):
     '''
 
     def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
+                 cache_size_limit=None, pagesize=16*1024*1024,
                  local_cachefile=None, local_indexfile=None,
-                 pagesize=16*1024*1024, multithread_safe=False):
+                 multithread_safe=False):
         super().__init__(fileobj, size, cachedir, close_on_close,
+                         cache_size_limit=cache_size_limit,
                          multithread_safe=multithread_safe)
         assert pagesize > 0
         self.pagesize = pagesize
-        pagecount = size // pagesize
+        self.size = size
 
         # Both none or both string file
         assert bool(local_indexfile) == bool(local_cachefile)
@@ -450,17 +471,7 @@ class MPCachedWrapper(CachedWrapper):
             self.local_indexfile = self.indexfp.name
             self.local_cachefile = self.cachefp.name
             self._open_fd(self.indexfp.name, self.cachefp.name)
-
-            for i in range(pagecount):
-                r = _Range(i * self.pagesize, self.pagesize, cached=False)
-                self._set_index(i, r)
-                r = self._get_index(i)
-
-            remain = size % self.pagesize
-            if remain > 0:
-                offset = pagecount * self.pagesize
-                r = _Range(offset, remain, cached=False)
-                self._set_index(pagecount, r)
+            self._init_indexfile()
 
         else:
             self.indexfp = open(local_indexfile, 'rb')
@@ -485,6 +496,20 @@ class MPCachedWrapper(CachedWrapper):
         self.local_cachefile = cachefile
         self.indexfd = os.open(self.local_indexfile, os.O_RDWR)
         self.cachefd = os.open(self.local_cachefile, os.O_RDWR)
+
+    def _init_indexfile(self):
+        pagecount = self.size // self.pagesize
+
+        for i in range(pagecount):
+            r = _Range(i * self.pagesize, self.pagesize, cached=False)
+            self._set_index(i, r)
+            r = self._get_index(i)
+
+        remain = self.size % self.pagesize
+        if remain > 0:
+            offset = pagecount * self.pagesize
+            r = _Range(offset, remain, cached=False)
+            self._set_index(pagecount, r)
 
     def _get_index(self, i):
         assert i >= 0
@@ -535,4 +560,20 @@ class MPCachedWrapper(CachedWrapper):
         self.pos %= self.size
         if self.pos != self.fileobj.tell():
             self.fileobj.seek(self.pos, io.SEEK_SET)
+
+        with _shflock(self.indexfd):
+            is_full = self._is_full()
+
+        # If the cache file is more than the limit, just flush them all.
+        if is_full:
+            with _exflock(self.indexfd):
+                os.truncate(self.cachefd, 0)
+                self._init_indexfile()
+
         return buf
+
+    def _is_full(self):
+        if self.cache_size_limit is None:
+            return False
+        stat = os.stat(self.local_cachefile)
+        return stat.st_blocks * 512 >= self.cache_size_limit
