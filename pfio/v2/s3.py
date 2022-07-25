@@ -7,8 +7,6 @@ from typing import Optional, Type
 import boto3
 from botocore.exceptions import ClientError
 
-from pfio.cache.sparse_file import CachedWrapper, MPCachedWrapper
-
 from .fs import FS, FileStat
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
@@ -392,13 +390,6 @@ class S3(FS):
             path (str): relative path from basedir
 
             mode (str): open mode
-
-            local_cache (bool): use sparse file cache for opening ZIP file
-
-            local_cachedir (dir): local path to store sparse file cache
-
-            multiprocess_safe (bool): to make the whole object protected with multiprocessing locks
-
         '''
         self._checkfork()
         if 'a' in mode:

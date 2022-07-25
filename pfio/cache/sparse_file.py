@@ -12,11 +12,10 @@ import struct
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
-from multiprocessing import Lock, Manager
 from types import TracebackType
 from typing import Optional
 
-from .file_cache import DummyLock, LockContext, RWLock
+from .file_cache import DummyLock, RWLock
 
 
 @dataclass(frozen=True)
@@ -411,7 +410,26 @@ def _exflock(fd):
 
 
 class MPCachedWrapper(CachedWrapper):
-    '''Multiprocessing version of cached wrapper'''
+    '''Multiprocessing version of cached wrapper
+
+        It is internally used behind ZIP fs for multiprocessing:
+
+    .. code-block::
+
+        import os
+        from pfio.v2 import from_url
+
+        with from_url("s3://bucket/your.zip",
+                      local_cache=True, reset_on_fork=True) as fs:
+
+          pid = os.fork()
+          if pid:
+            os.wait()
+          else:
+            with fs.open("file-in-zip.jpg", 'rb') as fp:
+              data = rp.read()
+    '''
+
 
     def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
                  local_cachefile=None, local_indexfile=None,
@@ -432,41 +450,55 @@ class MPCachedWrapper(CachedWrapper):
                                                        dir=self.cachedir)
             self.local_indexfile = self.indexfp.name
             self.local_cachefile = self.cachefp.name
+            self._open_fd(self.indexfp.name, self.cachefp.name)
 
-            width = _Range.size()
             for i in range(pagecount):
-                offset = i * width
                 r = _Range(i * self.pagesize, self.pagesize, cached=False)
-                written = os.pwrite(self.indexfp.fileno(), r.pack(), offset)
-                assert written == width
+                self._set_index(i, r)
+                r = self._get_index(i)
 
             remain = size % self.pagesize
             if remain > 0:
                 offset = pagecount * self.pagesize
-                r = _Range(pagecount*self.pagesize, remain, cached=False)
-                written = os.pwrite(self.indexfp.fileno(), r.pack(), offset)
-                assert written == width
+                r = _Range(offset, remain, cached=False)
+                self._set_index(pagecount, r)
 
         else:
-            self.indexfp = open(local_indexfile, 'rwb')
-            self.cachefp = open(local_cachefile, 'rwb')
+            self.indexfp = open(local_indexfile, 'rb')
+            self.cachefp = open(local_cachefile, 'rb')
 
-            self.local_indexfile = local_indexfile
-            self.local_cachefile = local_cachefile
+            self._open_fd(local_indexfile, local_cachefile)
 
         self.pid = os.getpid()
+
+    def close(self):
+        if self._closed:
+            return
+
+        os.close(self.cachefd)
+        os.close(self.indexfd)
+        self.indexfp.close()
+        self.cachefp.close()
+        self._closed = True
+
+    def _open_fd(self, indexfile, cachefile):
+        self.local_indexfile = indexfile
+        self.local_cachefile = cachefile
+        self.indexfd = os.open(self.local_indexfile, os.O_RDWR)
+        self.cachefd = os.open(self.local_cachefile, os.O_RDWR)
 
     def _get_index(self, i):
         assert i >= 0
         width = _Range.size()
-        buf = os.pread(self.indexfp.fileno(), width, width * i)
+        buf = os.pread(self.indexfd, width, width * i)
         return _Range.unpack(buf)
 
     def _set_index(self, i, r):
         assert i >= 0
         assert r is not None
         width = _Range.size()
-        os.pwrite(self.indexfp.fileno(), r.pack(), width * i)
+        written = os.pwrite(self.indexfd, r.pack(), width * i)
+        assert width == written
 
     def read(self, size=-1) -> bytes:
         if self._closed:
@@ -479,14 +511,13 @@ class MPCachedWrapper(CachedWrapper):
         end = (self.pos + size) // self.pagesize
 
         for i in range(start, end + 1):
-            # print('range=', i, "total=", len(self.ranges))
-            with _shflock(self.indexfp.fileno()):
+            with _shflock(self.indexfd):
                 r = self._get_index(i)
 
             if not r.cached:
                 assert not self._frozen
 
-                with _exflock(self.indexfp.fileno()):
+                with _exflock(self.indexfd):
                     r = self._get_index(i)
                     if r.cached:
                         continue
@@ -494,12 +525,12 @@ class MPCachedWrapper(CachedWrapper):
                     self.fileobj.seek(r.start, io.SEEK_SET)
                     # print("fetching", r.start, r.length, os.getpid())
                     data = self.fileobj.read(r.length)
-                    n = os.pwrite(self.cachefp.fileno(), data, r.start)
+                    n = os.pwrite(self.cachefd, data, r.start)
                     if n < 0:
                         raise RuntimeError("bad file descriptor")
                     self._set_index(i, _Range(r.start, r.length, cached=True))
 
-        buf = os.pread(self.cachefp.fileno(), size, self.pos)
+        buf = os.pread(self.cachefd, size, self.pos)
 
         self.pos += len(buf)
         self.pos %= self.size

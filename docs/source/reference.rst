@@ -78,7 +78,13 @@ Sparse File Cache
 .. autoclass:: pfio.cache.SparseFileCache
    :members:
 
+.. autoclass:: pfio.cache.MultiprocessSparseFileCache
+   :members:
+
 .. autoclass:: pfio.cache.sparse_file.CachedWrapper
+   :members:
+
+.. autoclass:: pfio.cache.sparse_file.MPCachedWrapper
    :members:
 
 
