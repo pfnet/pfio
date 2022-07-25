@@ -1,7 +1,9 @@
 import io
+import multiprocessing
 import os
 import shutil
 import tempfile
+import traceback
 import zipfile
 
 import pytest
@@ -52,6 +54,68 @@ def test_s3_zip(local_cache):
             assert zipfile.is_zipfile(z.fileobj)
             with z.open('file', 'rb') as fp:
                 assert zft.content('file') == fp.read()
+
+
+@mock_s3
+def test_s3_zip_mp():
+    with tempfile.TemporaryDirectory() as d:
+        n_workers = 32
+        n_samples_per_worker = 1024
+        sample_size = 8192
+        # 1000 1024-byte files
+        data = {'dir': {
+            'file-{}'.format(i): b'x' * 1024 * 17
+            for i in range(sample_size)}
+        }
+
+        zipfilename = os.path.join(d, "test.zip")
+        _ = ZipForTest(zipfilename, data)
+        bucket = "test-dummy-bucket"
+        q = multiprocessing.Queue()
+
+        # Copy ZIP
+        with from_url('s3://{}/'.format(bucket),
+                      create_bucket=True) as s3:
+            assert isinstance(s3, S3)
+            with open(zipfilename, 'rb') as src,\
+                    s3.open('test.zip', 'wb') as dst:
+                shutil.copyfileobj(src, dst)
+
+            with s3.open('test.zip', 'rb') as fp:
+                assert zipfile.is_zipfile(fp)
+
+        def child(zfs, worker_idx):
+            try:
+                for i in range(n_samples_per_worker):
+                    sample_idx = (
+                        worker_idx * n_samples_per_worker + i) // sample_size
+                    filename = 'dir/file-{}'.format(sample_idx)
+                    with zfs.open(filename, 'rb') as fp:
+                        data1 = fp.read()
+                    assert data['dir']['file-{}'.format(sample_idx)] == data1
+                q.put(('ok', None))
+            except Exception as e:
+                traceback.print_tb()
+                q.put(('ng', e))
+
+        with from_url('s3://{}/test.zip'.format(bucket),
+                      local_cache=True, reset_on_fork=True) as fs:
+
+            # Add tons of data into the cache in parallel
+
+            ps = [multiprocessing.Process(target=child, args=(fs, worker_idx))
+                  for worker_idx in range(n_workers)]
+            for p in ps:
+                p.start()
+            for p in ps:
+                p.join()
+                ok, e = q.get()
+                assert 'ok' == ok, str(e)
+
+            for worker_idx in range(n_workers):
+                child(fs, worker_idx)
+                ok, e = q.get()
+                assert 'ok' == ok, str(e)
 
 
 @mock_s3

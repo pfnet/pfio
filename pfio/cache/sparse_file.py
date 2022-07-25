@@ -4,10 +4,13 @@ A cache system for remote file system that stores cache as mmap'ed file locally
 Of course, it's read only
 '''
 
+import fcntl
 import io
 import os
 import shutil
+import struct
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Optional
@@ -20,6 +23,10 @@ class _Range:
     start: int
     length: int
     cached: bool = False
+
+    @staticmethod
+    def size():
+        return struct.calcsize('QLL')
 
     def overlap(self, rhs) -> bool:
         return (self.start - rhs.right) * (self.right - rhs.start) < 0
@@ -36,6 +43,18 @@ class _Range:
         assert self.cached == rhs.cached
         return _Range(min(self.start, rhs.start), max(self.right, rhs.right),
                       cached=self.cached)
+
+    def pack(self):
+        # Total 16 bytes
+        # Q: unsigned long long: 8 bytes
+        # L: unsigned long: 4 bytes
+        # Upper bytes of cache is reserved for some other usage, maybe
+        return struct.pack('QLL', self.start, self.cached, self.length)
+
+    @staticmethod
+    def unpack(buf):
+        (s, c, l) = struct.unpack('QLL', buf)
+        return _Range(start=s, cached=bool(c), length=l)
 
 
 class _CachedWrapperBase:
@@ -65,6 +84,7 @@ class _CachedWrapperBase:
         os.makedirs(self.cachedir, exist_ok=True)
         self.cachefp = tempfile.NamedTemporaryFile(delete=True,
                                                    dir=self.cachedir)
+
         # self.cachefp = open('cache.file', 'rwb')
         # self.cachefp = os.open('cache.file', os.O_RDWR|os.O_TRUNC)
         # TODO: make this tree if the size gets too long for O(n) scan
@@ -354,6 +374,7 @@ class CachedWrapper(_CachedWrapperBase):
             if not r.cached:
                 assert not self._frozen
                 self.fileobj.seek(r.start, io.SEEK_SET)
+                # print("fetching", r.start, r.length, os.getpid())
                 data = self.fileobj.read(r.length)
                 n = os.pwrite(self.cachefp.fileno(), data, r.start)
                 if n < 0:
@@ -362,6 +383,153 @@ class CachedWrapper(_CachedWrapperBase):
                 self.ranges[i] = _Range(r.start, r.length, cached=True)
 
         buf = os.pread(self.cachefp.fileno(), size, self.pos)
+
+        self.pos += len(buf)
+        self.pos %= self.size
+        if self.pos != self.fileobj.tell():
+            self.fileobj.seek(self.pos, io.SEEK_SET)
+        return buf
+
+
+@contextmanager
+def _shflock(fd):
+    fcntl.flock(fd, fcntl.LOCK_SH)
+    try:
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+@contextmanager
+def _exflock(fd):
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    try:
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+class MPCachedWrapper(CachedWrapper):
+    '''Multiprocessing version of cached wrapper
+
+        It is internally used behind ZIP fs for multiprocessing:
+
+    .. code-block::
+
+        import os
+        from pfio.v2 import from_url
+
+        with from_url("s3://bucket/your.zip",
+                      local_cache=True, reset_on_fork=True) as fs:
+
+          pid = os.fork()
+          if pid:
+            os.wait()
+          else:
+            with fs.open("file-in-zip.jpg", 'rb') as fp:
+              data = rp.read()
+    '''
+
+    def __init__(self, fileobj, size, cachedir=None, close_on_close=False,
+                 local_cachefile=None, local_indexfile=None,
+                 pagesize=16*1024*1024, multithread_safe=False):
+        super().__init__(fileobj, size, cachedir, close_on_close,
+                         multithread_safe=multithread_safe)
+        assert pagesize > 0
+        self.pagesize = pagesize
+        pagecount = size // pagesize
+
+        # Both none or both string file
+        assert bool(local_indexfile) == bool(local_cachefile)
+
+        if local_indexfile is None:
+            self.indexfp = tempfile.NamedTemporaryFile(delete=False,
+                                                       dir=self.cachedir)
+            self.cachefp = tempfile.NamedTemporaryFile(delete=False,
+                                                       dir=self.cachedir)
+            self.local_indexfile = self.indexfp.name
+            self.local_cachefile = self.cachefp.name
+            self._open_fd(self.indexfp.name, self.cachefp.name)
+
+            for i in range(pagecount):
+                r = _Range(i * self.pagesize, self.pagesize, cached=False)
+                self._set_index(i, r)
+                r = self._get_index(i)
+
+            remain = size % self.pagesize
+            if remain > 0:
+                offset = pagecount * self.pagesize
+                r = _Range(offset, remain, cached=False)
+                self._set_index(pagecount, r)
+
+        else:
+            self.indexfp = open(local_indexfile, 'rb')
+            self.cachefp = open(local_cachefile, 'rb')
+
+            self._open_fd(local_indexfile, local_cachefile)
+
+        self.pid = os.getpid()
+
+    def close(self):
+        if self._closed:
+            return
+
+        os.close(self.cachefd)
+        os.close(self.indexfd)
+        self.indexfp.close()
+        self.cachefp.close()
+        self._closed = True
+
+    def _open_fd(self, indexfile, cachefile):
+        self.local_indexfile = indexfile
+        self.local_cachefile = cachefile
+        self.indexfd = os.open(self.local_indexfile, os.O_RDWR)
+        self.cachefd = os.open(self.local_cachefile, os.O_RDWR)
+
+    def _get_index(self, i):
+        assert i >= 0
+        width = _Range.size()
+        buf = os.pread(self.indexfd, width, width * i)
+        return _Range.unpack(buf)
+
+    def _set_index(self, i, r):
+        assert i >= 0
+        assert r is not None
+        width = _Range.size()
+        written = os.pwrite(self.indexfd, r.pack(), width * i)
+        assert width == written
+
+    def read(self, size=-1) -> bytes:
+        if self._closed:
+            raise RuntimeError("closed")
+
+        if size < 0 or (self.size - self.pos < size):
+            size = self.size - self.pos
+
+        start = self.pos // self.pagesize
+        end = (self.pos + size) // self.pagesize
+
+        for i in range(start, end + 1):
+            with _shflock(self.indexfd):
+                r = self._get_index(i)
+
+            if not r.cached:
+                assert not self._frozen
+
+                with _exflock(self.indexfd):
+                    r = self._get_index(i)
+                    if r.cached:
+                        continue
+
+                    self.fileobj.seek(r.start, io.SEEK_SET)
+                    # print("fetching", r.start, r.length, os.getpid())
+                    data = self.fileobj.read(r.length)
+                    n = os.pwrite(self.cachefd, data, r.start)
+                    if n < 0:
+                        raise RuntimeError("bad file descriptor")
+                    self._set_index(i, _Range(r.start, r.length, cached=True))
+
+        buf = os.pread(self.cachefd, size, self.pos)
 
         self.pos += len(buf)
         self.pos %= self.size

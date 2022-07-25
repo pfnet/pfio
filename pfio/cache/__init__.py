@@ -61,3 +61,5 @@ from pfio.cache.mmap_file_cache import ReadOnlyFileCache  # NOQA
 from pfio.cache.multiprocess_file_cache import MultiprocessFileCache  # NOQA
 from pfio.cache.naive import NaiveCache  # NOQA
 from pfio.cache.sparse_file import CachedWrapper as SparseFileCache  # NOQA
+from pfio.cache.sparse_file import \
+    MPCachedWrapper as MultiprocessSparseFileCache  # NOQA

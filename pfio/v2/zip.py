@@ -4,6 +4,8 @@ import os
 import zipfile
 from datetime import datetime
 
+from pfio.cache.sparse_file import CachedWrapper, MPCachedWrapper
+
 from .fs import FS, FileStat
 
 logger = logging.getLogger(__name__)
@@ -49,8 +51,14 @@ class ZipFileStat(FileStat):
 
 class Zip(FS):
     _readonly = True
+    '''
+            local_cache (bool): use sparse file cache for opening ZIP file
+
+            local_cachedir (dir): local path to store sparse file cache
+    '''
 
     def __init__(self, backend, file_path, mode='r', create=False,
+                 local_cache=False, local_cachedir=None,
                  reset_on_fork=False, **kwargs):
         super().__init__(reset_on_fork=reset_on_fork)
         self.backend = backend
@@ -67,12 +75,51 @@ class Zip(FS):
         if 'w' in mode:
             self._readonly = False
 
+        self.local_cache = local_cache
+        self.local_cachedir = local_cachedir
+        self.local_cachefile = None
+        self.local_indexfile = None
+
         self._reset()
 
     def _reset(self):
-        self.fileobj = self.backend.open(self.file_path,
-                                         self.mode + 'b',
-                                         **self.kwargs)
+        buffering = self.kwargs.get('buffering', 16*1024*1024)
+
+        if self.local_cache:
+            # Don't use io.BufferedReader for sparse file cache
+            self.kwargs['buffering'] = 0
+
+        obj = self.backend.open(self.file_path,
+                                self.mode + 'b',
+                                **self.kwargs)
+
+        stat = self.backend.stat(self.file_path)
+
+        # Use sparse file cache: Optimization for a remote object
+        # store system e.g. AWS S3 or HDFS
+        if self.local_cache:
+            self.kwargs['buffering'] = buffering
+
+            if self.reset_on_fork:
+                obj = MPCachedWrapper(obj, stat.size, self.local_cachedir,
+                                      local_cachefile=self.local_cachefile,
+                                      local_indexfile=self.local_indexfile,
+                                      close_on_close=True,
+                                      multithread_safe=True)
+
+                # Update local cachefile in case of being forked
+                self.local_cachefile = obj.local_cachefile
+                self.local_indexfile = obj.local_indexfile
+            else:
+                obj = CachedWrapper(obj, stat.size, self.local_cachedir,
+                                    close_on_close=True, multithread_safe=True)
+
+                # Default 16MB buffer size
+            if buffering > 0:
+                obj = io.BufferedReader(obj, buffer_size=buffering)
+
+        self.fileobj = obj
+
         assert self.fileobj is not None
         self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
 

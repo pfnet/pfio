@@ -139,6 +139,7 @@ class FS(abc.ABC):
         # Forked!
         if self.reset_on_fork:
             self._reset()
+            self.pid = os.getpid()
         else:
             raise ForkedError()
 
