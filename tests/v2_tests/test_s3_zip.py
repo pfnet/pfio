@@ -69,7 +69,7 @@ def test_s3_zip_mp():
         }
 
         zipfilename = os.path.join(d, "test.zip")
-        zft = ZipForTest(zipfilename, data)
+        _ = ZipForTest(zipfilename, data)
         bucket = "test-dummy-bucket"
         q = multiprocessing.Queue()
 

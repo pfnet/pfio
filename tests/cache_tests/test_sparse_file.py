@@ -91,7 +91,6 @@ def test_sparse_file_cache_mp():
         filepath = os.path.join(tempdir, "test.zip")
 
         n_workers = 8
-        n_samples_per_worker = 1024
 
         # 1000 1024-byte files
         data = {'dir': {
