@@ -7,7 +7,7 @@ from typing import Optional, Type
 import boto3
 from botocore.exceptions import ClientError
 
-from pfio.cache.sparse_file import CachedWrapper
+from pfio.cache.sparse_file import CachedWrapper, MPCachedWrapper
 
 from .fs import FS, FileStat
 
@@ -383,9 +383,7 @@ class S3(FS):
     def __setstate__(self, state):
         self.__dict__ = state
 
-    def open(self, path, mode='r',
-             local_cache=False, local_cachedir=None,
-             **kwargs):
+    def open(self, path, mode='r', **kwargs):
         '''Opens an object accessor for read or write
 
         .. note:: Multi-part upload is not yet available.
@@ -398,6 +396,8 @@ class S3(FS):
             local_cache (bool): use sparse file cache for opening ZIP file
 
             local_cachedir (dir): local path to store sparse file cache
+
+            multiprocess_safe (bool): to make the whole object protected with multiprocessing locks
 
         '''
         self._checkfork()
@@ -414,11 +414,6 @@ class S3(FS):
             bs = self.buffering
             if bs < 0:
                 bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
-
-            if local_cache:
-                # Do sparse file cache
-                obj = CachedWrapper(obj, obj.content_length, local_cachedir,
-                                    close_on_close=True, multithread_safe=True)
 
             if 'b' in mode:
                 if self.buffering and bs != 0:
