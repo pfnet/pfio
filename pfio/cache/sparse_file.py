@@ -567,8 +567,10 @@ class MPCachedWrapper(CachedWrapper):
         # If the cache file is more than the limit, just flush them all.
         if is_full:
             with _exflock(self.indexfd):
-                os.truncate(self.cachefd, 0)
-                self._init_indexfile()
+                is_full = self._is_full()
+                if is_full:
+                    os.truncate(self.cachefd, 0)
+                    self._init_indexfile()
 
         return buf
 
