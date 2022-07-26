@@ -75,6 +75,7 @@ class _CachedWrapperBase:
         else:
             self.lock = DummyLock()
 
+        self.pos = 0
         self.size = size
         assert size > 0
         if cachedir is None:
@@ -379,8 +380,10 @@ class CachedWrapper(_CachedWrapperBase):
 
         start = self.pos // self.pagesize
         end = (self.pos + size) // self.pagesize
+        if (self.pos + size) % self.pagesize != 0:
+            end += 1
 
-        for i in range(start, end + 1):
+        for i in range(start, end):
             # print('range=', i, "total=", len(self.ranges))
             r = self.ranges[i]
 
@@ -533,8 +536,10 @@ class MPCachedWrapper(CachedWrapper):
 
         start = self.pos // self.pagesize
         end = (self.pos + size) // self.pagesize
+        if (self.pos + size) % self.pagesize != 0:
+            end += 1
 
-        for i in range(start, end + 1):
+        for i in range(start, end):
             with _shflock(self.indexfd):
                 r = self._get_index(i)
 

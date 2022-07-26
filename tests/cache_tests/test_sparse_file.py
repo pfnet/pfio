@@ -5,6 +5,8 @@ import random
 import tempfile
 import zipfile
 
+import pytest
+
 from pfio.cache import MultiprocessSparseFileCache, SparseFileCache
 from pfio.testing import ZipForTest
 
@@ -37,7 +39,8 @@ def test_sparse_file_cache():
                 fp.seek(0)
 
 
-def test_sparse_file_cache2():
+@pytest.mark.parametrize("pagesize", [123, 4095, 9979, 16*1024*1024])
+def test_sparse_file_cache2(pagesize):
 
     with tempfile.TemporaryDirectory() as tempdir:
         filepath = os.path.join(tempdir, "test.zip")
@@ -50,7 +53,7 @@ def test_sparse_file_cache2():
         size = stat.st_size
         with open(filepath, 'rb') as xfp, open(filepath, 'rb') as yfp:
 
-            with SparseFileCache(xfp, size) as fp:
+            with SparseFileCache(xfp, size, pagesize=pagesize) as fp:
 
                 fp.seek(26)
                 # print('seek done:', fp.pos, xfp.tell())
@@ -168,3 +171,45 @@ def test_sparse_cache_zip():
 
                     with zfp.open("dir/f", "r") as fp:
                         assert b'bar' == fp.read()
+
+
+@pytest.mark.parametrize("klass", [SparseFileCache,
+                                   MultiprocessSparseFileCache])
+@pytest.mark.parametrize("pagesize",
+                         [4095, 9979, 123, 16*1024*1024, 128*1024*1024])
+def test_cache(pagesize, klass):
+    with tempfile.TemporaryDirectory() as tempdir:
+        filepath = os.path.join(tempdir, "test16MB")
+        pb = b'**pocketburger**'
+        data = pb * 1024 * 1024
+
+        with open(filepath, 'wb') as fp:
+            fp.write(data)
+
+        with open(filepath, 'rb') as ofp:
+            with klass(ofp, len(data), pagesize=pagesize) as fp:
+                for i in range(1024*1024):
+                    assert not fp._is_full()
+                    assert pb == fp.read(16)
+
+
+@pytest.mark.parametrize("klass", [SparseFileCache,
+                                   MultiprocessSparseFileCache])
+@pytest.mark.parametrize("limit", [4096*1024, 1024*1024])
+@pytest.mark.parametrize("pagesize", [4095, 9979])
+def test_cache_limit(pagesize, limit, klass):
+    with tempfile.TemporaryDirectory() as tempdir:
+        filepath = os.path.join(tempdir, "test16MB")
+        pb = b'**pocketburger**'
+        data = pb * 1024 * 1024
+
+        with open(filepath, 'wb') as fp:
+            fp.write(data)
+
+        with open(filepath, 'rb', buffering=0) as ofp:
+
+            with klass(ofp, len(data), pagesize=pagesize,
+                       cache_size_limit=limit) as fp:
+                for i in range(1024*1024):
+                    assert not fp._is_full()
+                    assert pb == fp.read(16)
