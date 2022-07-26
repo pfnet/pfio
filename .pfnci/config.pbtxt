@@ -3,13 +3,13 @@ configs{
   key: "chainerio"
   value {
     requirement {
-      cpu: 2
-      memory: 6
+      cpu: 4
+      memory: 16
       disk: 10
     }
     # https://github.pfidev.jp/ci/imosci/blob/master/proto/data.proto#L933
     time_limit {
-      seconds: 900 # 15 minutes
+      seconds: 1200 # 20 minutes
     }
     command:
         "bash .pfnci/script.sh"
@@ -26,7 +26,7 @@ configs{
     }
     # https://github.pfidev.jp/ci/imosci/blob/master/proto/data.proto#L933
     time_limit {
-      seconds: 600 # 15 minutes
+      seconds: 900 # 15 minutes
     }
     command:
         "bash .pfnci/script-old.sh"
