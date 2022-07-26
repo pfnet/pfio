@@ -188,9 +188,9 @@ def test_cache(pagesize, klass):
 
         with open(filepath, 'rb') as ofp:
             with klass(ofp, len(data), pagesize=pagesize) as fp:
-                for i in range(1024*1024):
+                for i in range(1024*16):
                     assert not fp._is_full()
-                    assert pb == fp.read(16)
+                    assert pb*64 == fp.read(1024)
 
 
 @pytest.mark.parametrize("klass", [SparseFileCache,
@@ -210,6 +210,6 @@ def test_cache_limit(pagesize, limit, klass):
 
             with klass(ofp, len(data), pagesize=pagesize,
                        cache_size_limit=limit) as fp:
-                for i in range(1024*1024):
+                for i in range(1024*16):
                     assert not fp._is_full()
-                    assert pb == fp.read(16)
+                    assert pb*64 == fp.read(1024)
