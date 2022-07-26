@@ -3,8 +3,8 @@ configs{
   key: "chainerio"
   value {
     requirement {
-      cpu: 2
-      memory: 6
+      cpu: 4
+      memory: 16
       disk: 10
     }
     # https://github.pfidev.jp/ci/imosci/blob/master/proto/data.proto#L933
