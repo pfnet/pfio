@@ -3,3 +3,4 @@ boto3
 deprecation
 sphinx-rtd-theme
 sphinx
+urllib3

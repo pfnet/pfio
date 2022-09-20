@@ -58,7 +58,7 @@ setup(
     },
     python_requires=">=3.6",
     # When updating install requires, docs/requirements.txt should be updated too
-    install_requires=['pyarrow>=6.0.0', 'boto3', 'deprecation'],
+    install_requires=['pyarrow>=6.0.0', 'boto3', 'deprecation', 'urllib3'],
     include_package_data=True,
     zip_safe=False,
 
