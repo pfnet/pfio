@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -eux
 
-source /root/.bash_docker
-pyenv global 3.7.12 #3.8.12 3.9.7 3.10.0
+export PYENV_ROOT=$HOME/.pyenv
+
+export PATH=${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}
+pyenv global 3.7.13 3.8.13
 python -m pip install --upgrade pip
 pip install tox
 pip install -e .[test]
-tox -e py37
+tox -e py37,py38

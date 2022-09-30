@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -eux
 
-source /root/.bash_docker
-pyenv global 3.8.12 3.9.7 3.10.0
-tox -e py38,py39,py310 && :
+export PYENV_ROOT=$HOME/.pyenv
+
+export PATH=${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}
+pyenv global 3.9.13 3.10.6
+tox -e py39,py310 && :
 tox_status=$?
 
 # test doc, needs python >= 3.6
-pyenv global 3.9.7
+pyenv global 3.10.6
 pip install .[doc]
 cd docs && make html && :
 sphinx_status=$?

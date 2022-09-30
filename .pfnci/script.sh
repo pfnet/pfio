@@ -16,7 +16,7 @@ main() {
   docker_args=(docker run  --rm --volume="$(pwd):/repo/" --workdir="/repo/" )
 
   run "${docker_args[@]}" \
-      "asia.gcr.io/pfn-public-ci/pfio:latest" \
+      "asia-northeast1-docker.pkg.dev/pfn-artifactregistry/public-ci-pfio/pfio:latest" \
       bash .pfnci/test.sh
 }
 
