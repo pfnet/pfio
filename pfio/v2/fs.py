@@ -46,7 +46,7 @@ class FileStat(abc.ABC):
     size = None
 
     def isdir(self):
-        """Returns whether the target is a directory, based on the permission flag
+        """Returns whether the target is a directory from the permission flag
 
         Note that some systems do not support directory tree semantics.
 

@@ -1,30 +1,30 @@
 FROM ubuntu:20.04
 
-LABEL maintainer="tianqi@preferred.jp"
+LABEL maintainer="kota@preferred.jp"
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata && \
     apt-get install -y --no-install-recommends libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev python-openssl ca-certificates zip tzdata libsqlite3-dev \
-    gcc g++ cmake make libffi-dev patch wget && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+    gcc g++ cmake make libffi-dev patch wget liblzma-dev
 
 ADD pyenv.tar.gz /root/
-RUN ls /root
-RUN mv /root/pyenv-2.2.0 /root/.pyenv
+# RUN ls /root
+RUN mv /root/pyenv-2.3.4 /root/.pyenv
 ENV PYENV_ROOT /root/.pyenv
 
-COPY install-pyenv.sh /tmp/install-pyenv.sh
-RUN bash -c /tmp/install-pyenv.sh
+# COPY install-pyenv.sh /tmp/install-pyenv.sh
+# RUN bash /tmp/install-pyenv.sh
 
-COPY install-python.sh /tmp/install-python.sh
+RUN $PYENV_ROOT/plugins/python-build/install.sh
 
-# RUN /tmp/install-python.sh "3.6.15"
-RUN /tmp/install-python.sh "3.7.12"
-RUN /tmp/install-python.sh "3.8.12"
-RUN /tmp/install-python.sh "3.9.7"
-RUN /tmp/install-python.sh "3.10.0"
+ENV PATH ${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}
+ENV MAKE_OPTS "-j12"
 
-# install tox in the newest python
-COPY install-tox.sh /tmp/install-tox.sh
-RUN bash -c /tmp/install-tox.sh
+RUN pyenv install 3.10.6
+RUN pyenv install 3.7.13
+RUN pyenv install 3.8.13
+RUN pyenv install 3.9.13
+RUN pyenv global 3.10.6
+
+RUN pip install tox
