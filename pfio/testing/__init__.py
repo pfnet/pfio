@@ -3,6 +3,8 @@ import random
 import string
 import subprocess
 import http.server
+from contextlib import contextmanager
+from threading import Thread
 from unittest import mock
 from zipfile import ZipFile
 
@@ -117,7 +119,19 @@ class OnMemoryHTTPServerForTest(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
 
+@contextmanager
 def make_http_server():
-    OnMemoryHTTPServerForTest.files.clear()
-    httpd = http.server.HTTPServer(('', 0), OnMemoryHTTPServerForTest)
-    return httpd, httpd.server_address[1]
+    httpd = None
+    httpd_thread = None
+    try:
+        OnMemoryHTTPServerForTest.files.clear()
+        httpd = http.server.HTTPServer(('', 0), OnMemoryHTTPServerForTest)
+        httpd_thread = Thread(target=httpd.serve_forever)
+        httpd_thread.start()
+
+        yield httpd, httpd.server_address[1]
+    finally:
+        if httpd is not None:
+            httpd.shutdown()
+        if httpd_thread is not None:
+            httpd_thread.join()

@@ -4,7 +4,6 @@ import pickle
 import random
 import tempfile
 from contextlib import contextmanager
-from threading import Thread
 
 import numpy as np
 import pytest
@@ -16,53 +15,44 @@ from pfio.testing import make_http_server
 @contextmanager
 def make_cache(test_class, mt_safe, do_pickle, length,
                cache_size_limit=None):
-    httpd = None
-    httpd_thread = None
+    if test_class == NaiveCache:
+        assert cache_size_limit is None, \
+            "NaiveCache doesn't support cache size limit"
+        cache = test_class(length, multithread_safe=mt_safe,
+                           do_pickle=do_pickle)
+        assert not cache.multiprocess_safe
+        assert cache.multithread_safe == mt_safe
 
-    try:
-        if test_class == NaiveCache:
-            assert cache_size_limit is None, \
-                "NaiveCache doesn't support cache size limit"
-            cache = test_class(length, multithread_safe=mt_safe,
-                               do_pickle=do_pickle)
-            assert not cache.multiprocess_safe
-            assert cache.multithread_safe == mt_safe
+    elif test_class == FileCache:
+        cache = test_class(length, multithread_safe=mt_safe,
+                           cache_size_limit=cache_size_limit,
+                           do_pickle=do_pickle)
+        assert not cache.multiprocess_safe
+        assert cache.multithread_safe == mt_safe
 
-        elif test_class == FileCache:
-            cache = test_class(length, multithread_safe=mt_safe,
-                               cache_size_limit=cache_size_limit,
-                               do_pickle=do_pickle)
-            assert not cache.multiprocess_safe
-            assert cache.multithread_safe == mt_safe
+    elif test_class == MultiprocessFileCache:
+        cache = test_class(length, cache_size_limit=cache_size_limit,
+                           do_pickle=do_pickle,)
+        assert cache.multiprocess_safe
+        assert cache.multithread_safe
 
-        elif test_class == MultiprocessFileCache:
-            cache = test_class(length, cache_size_limit=cache_size_limit,
-                               do_pickle=do_pickle,)
-            assert cache.multiprocess_safe
-            assert cache.multithread_safe
+    elif test_class == HTTPCache:
+        assert cache_size_limit is None, \
+            "HTTPCache doesn't support cache size limit"
 
-        elif test_class == HTTPCache:
-            assert cache_size_limit is None, \
-                "HTTPCache doesn't support cache size limit"
-
-            httpd, port = make_http_server()
-            httpd_thread = Thread(target=httpd.serve_forever)
-            httpd_thread.start()
-
+        with make_http_server() as (httpd, port):
             cache = test_class(length, f"http://localhost:{port}/", do_pickle=do_pickle)
             assert cache.multiprocess_safe
             assert cache.multithread_safe
+            yield cache
 
-        else:
-            assert False
+        return
 
-        yield cache
+    else:
+        assert False
 
-    finally:
-        if httpd is not None:
-            httpd.shutdown()
-        if httpd_thread is not None:
-            httpd_thread.join()
+    yield cache
+
 
 @pytest.mark.parametrize("test_class", [NaiveCache, FileCache,
                                         MultiprocessFileCache,
