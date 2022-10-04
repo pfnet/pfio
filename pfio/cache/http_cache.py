@@ -8,6 +8,34 @@ from pfio.cache import Cache
 
 
 class HTTPCache(Cache):
+    """HTTP-based cache system
+
+    Stores cache data in an HTTP server with ``PUT`` and ``GET`` methods. Each cache entry corresponds to url suffixed
+    by index ``i``.
+
+    Arguments:
+        length (int):
+            Length of the cache.
+
+        url (string):
+            Prefix url of cache entries. Each entry corresponds to the url suffixed by each index. A user must specify
+            url as globally identical across the cache system in the server side, because ``HTTPCache`` doesn't suffix
+            the url by user or dataset information. Therefore, a user should include user and dataset in the url to
+            avoid conflicting the cache entry.
+
+            For example, let's assume that given url is ``http://cache.example.com/some/{user}/{dataset-id}/``.
+            Here, ``put(123)`` and ``get(123)`` correspond to ``http://cache.example.com/some/{user}/{dataset-id}/123``.
+
+        bearer_token_path (string):
+            Path to HTTP bearer token if authorization required. ``HTTPCache`` supports refresh of bearer token by
+            periodical reloading.
+
+        do_pickle (bool):
+            Do automatic pickle and unpickle inside the cache.
+
+    .. note:: This feature is experimental.
+
+    """
     def __init__(self, length: int, url: str, bearer_token_path=None, do_pickle=False):
         super().__init__()
 
