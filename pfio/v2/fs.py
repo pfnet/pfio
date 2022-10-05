@@ -6,7 +6,7 @@ import stat
 from abc import abstractmethod
 from io import IOBase
 from types import TracebackType
-from typing import Any, Callable, Iterator, Optional, Type
+from typing import Any, Callable, Iterator, Optional, Type, Union
 from urllib.parse import urlparse
 
 from deprecation import deprecated
