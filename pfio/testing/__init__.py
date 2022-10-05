@@ -1,7 +1,10 @@
+import http.server
 import os
 import random
 import string
 import subprocess
+from contextlib import contextmanager
+from threading import Thread
 from unittest import mock
 from zipfile import ZipFile
 
@@ -86,3 +89,50 @@ def patch_subprocess(stdout, stderr=b''):
 
         return wrapper
     return decorator
+
+
+class OnMemoryHTTPServerForTest(http.server.BaseHTTPRequestHandler):
+    files = {}
+
+    def do_GET(self):
+        content = OnMemoryHTTPServerForTest.files.get(self.path)
+
+        if content is None:
+            self.send_response_only(http.HTTPStatus.NOT_FOUND)
+            self.end_headers()
+        else:
+            self.send_response_only(http.HTTPStatus.OK)
+            self.send_header("Content-type", "application/octet-stream")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+
+    def do_PUT(self):
+        length = self.headers.get("Content-Length", None)
+        if length is None:
+            self.send_response_only(http.HTTPStatus.NOT_IMPLEMENTED)
+            self.end_headers()
+            return
+
+        OnMemoryHTTPServerForTest.files[self.path] = \
+            self.rfile.read(int(length))
+        self.send_response_only(http.HTTPStatus.CREATED)
+        self.end_headers()
+
+
+@contextmanager
+def make_http_server():
+    httpd = None
+    httpd_thread = None
+    try:
+        OnMemoryHTTPServerForTest.files.clear()
+        httpd = http.server.HTTPServer(('', 0), OnMemoryHTTPServerForTest)
+        httpd_thread = Thread(target=httpd.serve_forever)
+        httpd_thread.start()
+
+        yield httpd, httpd.server_address[1]
+    finally:
+        if httpd is not None:
+            httpd.shutdown()
+        if httpd_thread is not None:
+            httpd_thread.join()

@@ -180,6 +180,8 @@ Currently deletion of a data from cache is not supported.
 .. autoclass:: MultiprocessFileCache
    :members: preserve, preload
 
+.. autoclass:: HTTPCache
+   :members:
 
 
 Toplevel Functions in v1(deprecated)
