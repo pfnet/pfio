@@ -165,9 +165,6 @@ class Zip(FS):
              detail=False):
         self._checkfork()
 
-        if detail:
-            raise NotImplementedError()
-
         if path_or_prefix:
             path_or_prefix = os.path.join(self.cwd,
                                           os.path.normpath(path_or_prefix))
@@ -192,14 +189,19 @@ class Zip(FS):
                     "{} is not found".format(path_or_prefix))
 
         if recursive:
-            for name in self.zipobj.namelist():
+            for info in self.zipobj.infolist():
+                name = info.filename
                 if name.startswith(path_or_prefix):
                     name = name[len(path_or_prefix):].strip("/")
                     if name:
-                        yield name
+                        if detail:
+                            yield ZipFileStat(info)
+                        else:
+                            yield name
         else:
             _list = set()
-            for name in self.zipobj.namelist():
+            for info in self.zipobj.infolist():
+                name = info.filename
                 return_file_name = None
                 current_dir_list = os.path.normpath(name).split('/')
                 if not given_dir_list:
@@ -216,7 +218,10 @@ class Zip(FS):
                 if (return_file_name is not None
                         and return_file_name not in _list):
                     _list.add(return_file_name)
-                    yield return_file_name
+                    if detail:
+                        yield ZipFileStat(info)
+                    else:
+                        yield return_file_name
 
     def isdir(self, file_path: str):
         self._checkfork()

@@ -878,3 +878,7 @@ def test_is_zipfile():
         with local as fs:
             with fs.open(zipfilename, 'rb') as fp:
                 assert zipfile.is_zipfile(fp)
+
+        with local.open_zip(zipfilename) as zfs:
+            for o in zfs.list(recursive=True, detail=True):
+                assert isinstance(o, ZipFileStat)
