@@ -78,8 +78,12 @@ class Local(FS):
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
-    def list(self, path_or_prefix: str = '', recursive=False):
+    def list(self, path_or_prefix: str = '', recursive=False,
+             detail=False):
         path_or_prefix = os.path.join(self.cwd, path_or_prefix)
+
+        if detail:
+            raise NotImplementedError()
 
         if recursive:
             path_or_prefix = path_or_prefix.rstrip("/")

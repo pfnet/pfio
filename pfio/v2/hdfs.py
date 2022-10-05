@@ -306,7 +306,7 @@ class Hdfs(FS):
     def close(self):
         pass
 
-    def list(self, path: str = "", recursive=False):
+    def list(self, path: str = "", recursive=False, detail=False):
         self._checkfork()
 
         if not self.isdir(path):
@@ -317,7 +317,10 @@ class Hdfs(FS):
 
         infos = self._fs.get_file_info(FileSelector(path, recursive=recursive))
         for file_info in infos:
-            yield file_info.path[len(norm_path)+1:]
+            if detail:
+                yield HdfsFileStat(file_info)
+            else:
+                yield file_info.path[len(norm_path)+1:]
 
     def stat(self, path):
         self._checkfork()
