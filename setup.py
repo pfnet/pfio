@@ -42,6 +42,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
 
         'Topic :: System :: Filesystems',
     ],
@@ -57,7 +58,7 @@ setup(
         'hdfs': ['pyarrow>=6.0.0'],
     },
     # When updating install requires, docs/requirements.txt should be updated too
-    install_requires=['boto3', 'deprecation', 'urllib3'],
+    install_requires=['boto3', 'deprecation', 'urllib3', 'google-cloud-storage'],
     include_package_data=True,
     zip_safe=False,
 
