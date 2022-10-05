@@ -6,7 +6,7 @@ import stat
 from abc import abstractmethod
 from io import IOBase
 from types import TracebackType
-from typing import Any, Callable, Iterator, Optional, Type
+from typing import Any, Callable, Iterator, Optional, Type, Union
 from urllib.parse import urlparse
 
 from deprecation import deprecated
@@ -157,7 +157,7 @@ class FS(abc.ABC):
 
     @abstractmethod
     def list(self, path_or_prefix: Optional[str] = None,
-             recursive=False) -> Iterator[str]:
+             recursive=False, detail=False) -> Iterator[Union[FileStat, str]]:
         """Lists all the files and directories under
            the given ``path_or_prefix``
 
@@ -171,6 +171,9 @@ class FS(abc.ABC):
 
             recursive (bool): When this is ``True``, list files and directories
                 recursively.
+
+            detail (bool): If this is ``True``, the return values will be the
+                detail information of each file or directory.
 
         Returns:
             An Iterator that iterates though the files and directories.

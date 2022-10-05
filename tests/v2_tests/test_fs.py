@@ -9,8 +9,9 @@ from moto import mock_s3
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
-from pfio.v2 import S3, Local, Zip, from_url, open_url
+from pfio.v2 import S3, Local, LocalFileStat, Zip, from_url, open_url
 from pfio.v2.fs import ForkedError
+from pfio.v2.s3 import S3ObjectStat, S3PrefixStat
 
 
 @contextlib.contextmanager
@@ -63,6 +64,18 @@ def test_smoke(target):
         print('non-rec:', list(fs.list(recursive=False)))
         assert filename in list(fs.list())
         assert 2 == len(list(fs.list(recursive=False)))
+
+        assert 2 == len(list(fs.list(recursive=False, detail=True)))
+        for e in fs.list(recursive=False, detail=True):
+            if target == "local":
+                assert isinstance(e, LocalFileStat)
+            elif target == "s3":
+                if e.isdir():
+                    assert isinstance(e, S3PrefixStat)
+                else:
+                    assert isinstance(e, S3ObjectStat)
+            else:
+                assert False
 
         assert 'd/' in list(fs.list(recursive=False))
 

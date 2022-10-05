@@ -161,8 +161,12 @@ class Zip(FS):
 
         return ZipFileStat(self.zipobj.getinfo(actual_path))
 
-    def list(self, path_or_prefix: str = "", recursive=False):
+    def list(self, path_or_prefix: str = "", recursive=False,
+             detail=False):
         self._checkfork()
+
+        if detail:
+            raise NotImplementedError()
 
         if path_or_prefix:
             path_or_prefix = os.path.join(self.cwd,

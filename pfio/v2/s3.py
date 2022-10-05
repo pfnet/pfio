@@ -24,8 +24,8 @@ class S3ObjectStat(FileStat):
     def __init__(self, key, head):
         self.filename = key
         self.last_modified = head['LastModified'].timestamp()
-        self.size = head['ContentLength']
-        self.metadata = head['Metadata']
+        self.size = head.get('ContentLength', head.get('Size'))
+        self.metadata = head.get('Metadata', {})
         self._head = head
 
     def isdir(self):
@@ -431,7 +431,7 @@ class S3(FS):
 
         return obj
 
-    def list(self, prefix: str = "", recursive=False):
+    def list(self, prefix: str = "", recursive=False, detail=False):
         '''List all objects (and prefixes)
 
         Although there is not concept of directory in AWS S3 API,
@@ -461,9 +461,15 @@ class S3(FS):
         for res in iterator:
             # print(res)
             for common_prefix in res.get('CommonPrefixes', []):
-                yield common_prefix['Prefix'][len(key):]
+                if detail:
+                    yield S3PrefixStat(common_prefix['Prefix'][len(key):])
+                else:
+                    yield common_prefix['Prefix'][len(key):]
             for content in res.get('Contents', []):
-                yield content['Key'][len(key):]
+                if detail:
+                    yield S3ObjectStat(content['Key'][len(key):], content)
+                else:
+                    yield content['Key'][len(key):]
 
     def stat(self, path):
         '''Imitate FileStat with S3 Object metadata
