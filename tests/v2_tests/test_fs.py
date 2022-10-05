@@ -11,7 +11,7 @@ from parameterized import parameterized
 from pfio.testing import ZipForTest, randstring
 from pfio.v2 import S3, Local, LocalFileStat, Zip, from_url, open_url
 from pfio.v2.fs import ForkedError
-from pfio.v2.s3 import S3PrefixStat, S3ObjectStat
+from pfio.v2.s3 import S3ObjectStat, S3PrefixStat
 
 
 @contextlib.contextmanager
