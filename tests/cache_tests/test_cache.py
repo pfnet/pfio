@@ -8,7 +8,7 @@ from contextlib import contextmanager
 import numpy as np
 import pytest
 
-from pfio.cache import FileCache, MultiprocessFileCache, NaiveCache, HTTPCache
+from pfio.cache import FileCache, HTTPCache, MultiprocessFileCache, NaiveCache
 from pfio.testing import make_http_server
 
 
@@ -41,7 +41,9 @@ def make_cache(test_class, mt_safe, do_pickle, length,
             "HTTPCache doesn't support cache size limit"
 
         with make_http_server() as (httpd, port):
-            cache = test_class(length, f"http://localhost:{port}/", do_pickle=do_pickle)
+            cache = test_class(length,
+                               f"http://localhost:{port}/",
+                               do_pickle=do_pickle)
             assert cache.multiprocess_safe
             assert cache.multithread_safe
             yield cache
@@ -182,7 +184,8 @@ def test_index_range_naive():
         assert pickle.loads(cache.get(9)) == 9 ** 2
 
 
-@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache, HTTPCache])
+@pytest.mark.parametrize("test_class",
+                         [FileCache, MultiprocessFileCache, HTTPCache])
 def test_index_range_get(test_class):
     l = 10
     with make_cache(test_class, True, False, l) as cache:
@@ -196,7 +199,8 @@ def test_index_range_get(test_class):
             cache.get(l)
 
 
-@pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache, HTTPCache])
+@pytest.mark.parametrize("test_class",
+                         [FileCache, MultiprocessFileCache, HTTPCache])
 def test_index_range_put(test_class):
     l = 10
     with make_cache(test_class, True, False, l) as cache:
@@ -210,10 +214,14 @@ def test_index_range_put(test_class):
 @pytest.mark.parametrize("test_class", [FileCache, MultiprocessFileCache])
 def test_cache_limit_invalid_limits(test_class):
     with pytest.raises(ValueError):
-        with make_cache(test_class, True, False, 10, cache_size_limit=-1) as cache:
+        with make_cache(test_class, True, False, 10, cache_size_limit=-1) as _:
             pass
     with pytest.raises(ValueError):
-        with make_cache(test_class, True, False, 10, cache_size_limit='10') as cache:
+        with make_cache(test_class,
+                        True,
+                        False,
+                        10,
+                        cache_size_limit='10') as _:
             pass
 
 

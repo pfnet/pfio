@@ -1,8 +1,8 @@
+import http.server
 import os
 import random
 import string
 import subprocess
-import http.server
 from contextlib import contextmanager
 from threading import Thread
 from unittest import mock
@@ -114,7 +114,8 @@ class OnMemoryHTTPServerForTest(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             return
 
-        OnMemoryHTTPServerForTest.files[self.path] = self.rfile.read(int(length))
+        OnMemoryHTTPServerForTest.files[self.path] = \
+            self.rfile.read(int(length))
         self.send_response_only(http.HTTPStatus.CREATED)
         self.end_headers()
 
