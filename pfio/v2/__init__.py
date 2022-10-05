@@ -34,6 +34,7 @@ from .http_cache import HTTPCachedFS  # NOQA
 from .local import Local, LocalFileStat  # NOQA
 from .pathlib import Path  # NOQA
 from .s3 import S3  # NOQA
+from .gcs import Gcs
 from .zip import Zip, ZipFileStat  # NOQA
 
 local = Local()
