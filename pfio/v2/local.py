@@ -82,31 +82,36 @@ class Local(FS):
              detail=False):
         path_or_prefix = os.path.join(self.cwd, path_or_prefix)
 
-        if detail:
-            raise NotImplementedError()
-
         if recursive:
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
             prefix_end_index = len(path_or_prefix) + 1
-            yield from self._recursive_list(prefix_end_index, path_or_prefix)
+            yield from self._recursive_list(prefix_end_index,
+                                            path_or_prefix, detail)
         else:
             for e in os.scandir(path_or_prefix):
                 # ls -F
-                if e.is_dir():
+                if detail:
+                    yield LocalFileStat(e.stat(), e.name)
+                elif e.is_dir():
                     yield e.name + '/'
                 else:
                     yield e.name
 
-    def _recursive_list(self, prefix_end_index: int, path: str):
-        for file in os.scandir(path):
+    def _recursive_list(self, prefix_end_index: int, path: str,
+                        detail: bool):
+        for e in os.scandir(path):
             # ls -F
-            if file.is_dir():
-                yield file.path[prefix_end_index:] + '/'
-                yield from self._recursive_list(prefix_end_index,
-                                                file.path)
+            if detail:
+                yield LocalFileStat(e.stat(), e.name)
+            elif e.is_dir():
+                yield e.path[prefix_end_index:] + '/'
             else:
-                yield file.path[prefix_end_index:]
+                yield e.path[prefix_end_index:]
+
+            if e.is_dir():
+                yield from self._recursive_list(prefix_end_index,
+                                                e.path, detail)
 
     def stat(self, path):
         path = os.path.join(self.cwd, path)
