@@ -28,11 +28,11 @@ Or::
 
 '''
 from .fs import from_url, lazify, open_url  # NOQA
+from .gcs import GoogleCloudStorage, GoogleCloudStorageFileStat  # NOQA
 from .hdfs import Hdfs, HdfsFileStat  # NOQA
 from .local import Local, LocalFileStat  # NOQA
 from .pathlib import Path  # NOQA
 from .s3 import S3  # NOQA
-from .gcs import Gcs
 from .zip import Zip, ZipFileStat  # NOQA
 
 local = Local()
