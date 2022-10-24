@@ -156,3 +156,14 @@ def test_force_type2():
             # test.zip must be a directory or prefix, and thus it
             # should fail.
             from_url(url, force_type='file')
+
+        # Smoke test write mode
+        url = 's3://{}/testw.zip'.format(bucket)
+        with from_url(url, force_type='zip', mode='w') as s3z:
+            k = "file"
+            with s3z.open(k, 'wb') as fp:
+                fp.write(b"foo")
+
+            k = "dir/f"
+            with s3z.open(k, 'wb') as fp:
+                fp.write(b"bar")

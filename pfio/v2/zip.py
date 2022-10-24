@@ -93,7 +93,8 @@ class Zip(FS):
                                 self.mode + 'b',
                                 **self.kwargs)
 
-        stat = self.backend.stat(self.file_path)
+        if 'w' not in self.mode:
+            stat = self.backend.stat(self.file_path)
 
         # Use sparse file cache: Optimization for a remote object
         # store system e.g. AWS S3 or HDFS
