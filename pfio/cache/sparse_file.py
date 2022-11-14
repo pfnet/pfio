@@ -307,8 +307,6 @@ class CachedWrapper(_CachedWrapperBase):
     when a known range is requested, it'll be local read. If it's not
     locally cached, it fetches the range and stores as local file.
 
-    .. note:: It's not thread-safe yet.
-
     Example usage follows:
 
     .. code-block::
@@ -335,6 +333,18 @@ class CachedWrapper(_CachedWrapperBase):
         with from_url("s3://bucket/your.zip", local_cache=True) as fs:
           with fs.open("file-in-zip.jpg", 'rb') as fp:
             data = rp.read()
+
+    Arguments:
+
+        multithread_safe (bool): Defines multithread safety. If this
+            is ``True``, reader-writer locking system based on
+            ``threading.Lock`` is introduced behind the cache
+            management.
+
+        cache_size_limit (int): Max size of the cache file. If the amount
+            of cached data reaches this value, PFIO stops caching further
+            data. The default value is ``None`` to indicate that no limit.
+
 
     '''
 
