@@ -72,7 +72,7 @@ class HTTPCache(Cache):
         self.do_pickle = do_pickle
 
         # Allow redirect or retry once
-        self.conn = urllib3.poolmanager.PoolManager(retries=1)
+        self.conn = urllib3.poolmanager.PoolManager(retries=1, timeout=3)
 
     def __len__(self):
         return self.length
