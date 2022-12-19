@@ -124,6 +124,15 @@ class Zip(FS):
         assert self.fileobj is not None
         self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['fileobj'] = None
+        state['zipobj'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
