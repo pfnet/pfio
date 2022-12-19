@@ -1,7 +1,7 @@
+import logging
 import os
 import pickle
 import time
-import logging
 
 import urllib3
 import urllib3.exceptions
