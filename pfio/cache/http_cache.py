@@ -71,8 +71,31 @@ class HTTPCache(Cache):
 
         self.do_pickle = do_pickle
 
+        self.conn = None
+        self._prepare_conn()
+
+        self.pid = os.getpid()
+
+    @property
+    def is_forked(self):
+        return self.pid != os.getpid()
+
+    def _checkfork(self):
+        if self.is_forked:
+            self._prepare_conn()
+            self.pid = os.getpid()
+
+    def _prepare_conn(self):
         # Allow redirect or retry once
         self.conn = urllib3.poolmanager.PoolManager(retries=1, timeout=3)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['conn'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def __len__(self):
         return self.length
@@ -86,6 +109,7 @@ class HTTPCache(Cache):
         return True
 
     def put(self, i, data):
+        self._checkfork()
         if i < 0 or self.length <= i:
             raise IndexError("index {} out of range ([0, {}])"
                              .format(i, self.length - 1))
@@ -108,6 +132,7 @@ class HTTPCache(Cache):
         return False
 
     def get(self, i):
+        self._checkfork()
         if i < 0 or self.length <= i:
             raise IndexError("index {} out of range ([0, {}])"
                              .format(i, self.length - 1))
