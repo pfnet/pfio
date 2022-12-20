@@ -80,8 +80,8 @@ class HTTPCache(Cache):
     def is_forked(self):
         return self.pid != os.getpid()
 
-    def _checkfork(self):
-        if self.is_forked:
+    def _checkconn(self):
+        if self.is_forked or self.conn is None:
             self._prepare_conn()
             self.pid = os.getpid()
 
@@ -109,7 +109,7 @@ class HTTPCache(Cache):
         return True
 
     def put(self, i, data):
-        self._checkfork()
+        self._checkconn()
         if i < 0 or self.length <= i:
             raise IndexError("index {} out of range ([0, {}])"
                              .format(i, self.length - 1))
@@ -132,7 +132,7 @@ class HTTPCache(Cache):
         return False
 
     def get(self, i):
-        self._checkfork()
+        self._checkconn()
         if i < 0 or self.length <= i:
             raise IndexError("index {} out of range ([0, {}])"
                              .format(i, self.length - 1))
