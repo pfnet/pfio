@@ -10,7 +10,7 @@ RUN apt-get update && \
 
 ADD pyenv.tar.gz /root/
 # RUN ls /root
-RUN mv /root/pyenv-2.3.4 /root/.pyenv
+RUN mv /root/pyenv-2.3.9 /root/.pyenv
 ENV PYENV_ROOT /root/.pyenv
 
 # COPY install-pyenv.sh /tmp/install-pyenv.sh
@@ -21,10 +21,11 @@ RUN $PYENV_ROOT/plugins/python-build/install.sh
 ENV PATH ${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}
 ENV MAKE_OPTS "-j12"
 
-RUN pyenv install 3.10.6
-RUN pyenv install 3.7.13
-RUN pyenv install 3.8.13
-RUN pyenv install 3.9.13
-RUN pyenv global 3.10.6
+RUN pyenv install 3.11.1
+RUN pyenv install 3.10.9
+RUN pyenv install 3.7.16
+RUN pyenv install 3.8.16
+RUN pyenv install 3.9.16
+RUN pyenv global 3.11.1
 
-RUN pip install tox
+# RUN pip install tox

@@ -4,8 +4,7 @@ set -eux
 export PYENV_ROOT=$HOME/.pyenv
 
 export PATH=${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}
-pyenv global 3.7.13 3.8.13
+pyenv global 3.7.16 3.8.16 3.9.16
 python -m pip install --upgrade pip
 pip install tox
-pip install -e .[test]
-tox -e py37,py38
+tox -p 3 -r -e py37,py38,py39

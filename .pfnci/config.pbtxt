@@ -20,8 +20,8 @@ configs{
   key: "pfio.old-python" # Tests that test old python versions, e.g. python 3.6
   value {
     requirement {
-      cpu: 1
-      memory: 6
+      cpu: 4
+      memory: 16
       disk: 10
     }
     # https://github.pfidev.jp/ci/imosci/blob/master/proto/data.proto#L933
