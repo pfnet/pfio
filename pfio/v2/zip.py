@@ -4,7 +4,7 @@ import os
 import zipfile
 from datetime import datetime
 
-from pfio.cache.sparse_file import CachedWrapper, MPCachedWrapper
+from pfio.cache.sparse_file import MPCachedWrapper
 
 from .fs import FS, FileStat
 
@@ -58,9 +58,8 @@ class Zip(FS):
     '''
 
     def __init__(self, backend, file_path, mode='r', create=False,
-                 local_cache=False, local_cachedir=None,
-                 reset_on_fork=False, **kwargs):
-        super().__init__(reset_on_fork=reset_on_fork)
+                 local_cache=False, local_cachedir=None, **kwargs):
+        super().__init__()
         self.backend = backend
         self.file_path = file_path
         self.mode = mode
@@ -101,21 +100,17 @@ class Zip(FS):
         if self.local_cache:
             self.kwargs['buffering'] = buffering
 
-            if self.reset_on_fork:
-                obj = MPCachedWrapper(obj, stat.size, self.local_cachedir,
-                                      local_cachefile=self.local_cachefile,
-                                      local_indexfile=self.local_indexfile,
-                                      close_on_close=True,
-                                      multithread_safe=True)
+            obj = MPCachedWrapper(obj, stat.size, self.local_cachedir,
+                                  local_cachefile=self.local_cachefile,
+                                  local_indexfile=self.local_indexfile,
+                                  close_on_close=True,
+                                  multithread_safe=True)
 
-                # Update local cachefile in case of being forked
-                self.local_cachefile = obj.local_cachefile
-                self.local_indexfile = obj.local_indexfile
-            else:
-                obj = CachedWrapper(obj, stat.size, self.local_cachedir,
-                                    close_on_close=True, multithread_safe=True)
+            # Update local cachefile in case of being forked
+            self.local_cachefile = obj.local_cachefile
+            self.local_indexfile = obj.local_indexfile
 
-                # Default 16MB buffer size
+            # Default 16MB buffer size
             if buffering > 0:
                 obj = io.BufferedReader(obj, buffer_size=buffering)
 

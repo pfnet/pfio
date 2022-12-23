@@ -39,13 +39,6 @@ Zip Archive
 .. autoclass:: pfio.v2.Zip
    :members:
 
-Error
-~~~~~
-
-.. autoclass:: pfio.v2.fs.ForkedError
-   :members:
-
-
 Pathlib-like API
 ~~~~~~~~~~~~~~~~
 

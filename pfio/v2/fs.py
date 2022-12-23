@@ -67,18 +67,6 @@ class FileStat(abc.ABC):
         return str(self.__str__())
 
 
-class ForkedError(RuntimeError):
-    '''An error class when PFIO found the process forked.
-
-    If an FS object is not "lazy", any object usage detects process
-    fork and raises this ``ForkedError`` as soon as possible at the
-    child process. The parent process may or may not run well,
-    depending on the ``FS`` implementation.
-
-    '''
-    pass
-
-
 class FS(abc.ABC):
     '''FS access abstraction
 
@@ -86,9 +74,8 @@ class FS(abc.ABC):
 
     _cwd = ''
 
-    def __init__(self, reset_on_fork=False):
+    def __init__(self):
         self.pid = os.getpid()
-        self.reset_on_fork = reset_on_fork
 
     @property
     def cwd(self):
@@ -137,11 +124,8 @@ class FS(abc.ABC):
             return
 
         # Forked!
-        if self.reset_on_fork:
-            self._reset()
-            self.pid = os.getpid()
-        else:
-            raise ForkedError()
+        self._reset()
+        self.pid = os.getpid()
 
     @abstractmethod
     def _reset(self):
@@ -338,9 +322,6 @@ def from_url(url: str, **kwargs) -> 'FS':
 
         create (bool): Create the specified path doesn't exist.
 
-        reset_on_fork (bool): Reset stateful objects (e.g. connection
-            to the remote system) after fork.
-
     .. note:: Some FS resouces won't be closed when using this
         functionality.
 
@@ -348,15 +329,17 @@ def from_url(url: str, **kwargs) -> 'FS':
         depending on the implementation.
 
     '''
-    parsed = urlparse(url)
-    force_type = kwargs.pop('force_type', None)
+    if kwargs.pop('reset_on_fork', None) is not None:
+        print("reset_on_fork is deprecated. PFIO resets on fork by default")
 
+    parsed = urlparse(url)
     if parsed.scheme:
         scheme = parsed.scheme
     else:
         scheme = 'file'  # Default is local
 
     # When ``force_type`` is defined, it must be equal with given one.
+    force_type = kwargs.pop('force_type', None)
     if force_type is not None and force_type != "zip":
         if force_type != scheme:
             raise ValueError("URL scheme mismatch with forced type")

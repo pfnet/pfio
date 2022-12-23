@@ -99,7 +99,7 @@ def test_s3_zip_mp():
                 q.put(('ng', e))
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      local_cache=True, reset_on_fork=True) as fs:
+                      local_cache=True) as fs:
 
             # Add tons of data into the cache in parallel
 
