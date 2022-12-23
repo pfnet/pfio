@@ -60,12 +60,13 @@ def test_s3_zip(local_cache):
 def test_s3_zip_mp(mp_start_method):
     # mock_s3 doesn't work well in forkserver, thus we use server-mode moto
     address = "127.0.0.1"
-    port = 5000
+    port = 0  # auto-selection
     moto_server = server.ThreadedMotoServer(
         ip_address=address,
         port=port
     )
     moto_server.start()
+    port = moto_server._server.port
 
     kwargs = {
         "endpoint": f"http://{address}:{port}",
