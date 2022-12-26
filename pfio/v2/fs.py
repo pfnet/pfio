@@ -3,6 +3,7 @@ import contextlib
 import copy
 import os
 import stat
+import warnings
 from abc import abstractmethod
 from io import IOBase
 from types import TracebackType
@@ -342,7 +343,11 @@ def from_url(url: str, **kwargs) -> 'FS':
 
     '''
     if kwargs.pop('reset_on_fork', None) is not None:
-        print("reset_on_fork is deprecated. PFIO resets on fork by default")
+        warnings.warn(
+            "reset_on_fork is deprecated. PFIO resets on fork by default",
+            category=DeprecationWarning,
+            stacklevel=2
+        )
 
     parsed = urlparse(url)
     if parsed.scheme:
