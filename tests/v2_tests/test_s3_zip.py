@@ -7,7 +7,7 @@ import traceback
 import zipfile
 
 import pytest
-from moto import mock_s3
+from moto import mock_s3, server
 
 import pfio
 from pfio.testing import ZipForTest
@@ -56,8 +56,23 @@ def test_s3_zip(local_cache):
                 assert zft.content('file') == fp.read()
 
 
-@mock_s3
-def test_s3_zip_mp():
+@pytest.mark.parametrize("mp_start_method", ["fork", "forkserver"])
+def test_s3_zip_mp(mp_start_method):
+    # mock_s3 doesn't work well in forkserver, thus we use server-mode moto
+    address = "127.0.0.1"
+    port = 0  # auto-selection
+    moto_server = server.ThreadedMotoServer(
+        ip_address=address,
+        port=port
+    )
+    moto_server.start()
+    port = moto_server._server.port
+
+    kwargs = {
+        "endpoint": f"http://{address}:{port}",
+        "aws_access_key_id": "",
+        "aws_secret_access_key": "",
+    }
     with tempfile.TemporaryDirectory() as d:
         n_workers = 32
         n_samples_per_worker = 1024
@@ -71,39 +86,32 @@ def test_s3_zip_mp():
         zipfilename = os.path.join(d, "test.zip")
         _ = ZipForTest(zipfilename, data)
         bucket = "test-dummy-bucket"
-        q = multiprocessing.Queue()
+
+        mp_ctx = multiprocessing.get_context(mp_start_method)
+        q = mp_ctx.Queue()
 
         # Copy ZIP
         with from_url('s3://{}/'.format(bucket),
-                      create_bucket=True) as s3:
+                      create_bucket=True, **kwargs) as s3:
             assert isinstance(s3, S3)
-            with open(zipfilename, 'rb') as src,\
+            with open(zipfilename, 'rb') as src, \
                     s3.open('test.zip', 'wb') as dst:
                 shutil.copyfileobj(src, dst)
 
             with s3.open('test.zip', 'rb') as fp:
                 assert zipfile.is_zipfile(fp)
 
-        def child(zfs, worker_idx):
-            try:
-                for i in range(n_samples_per_worker):
-                    sample_idx = (
-                        worker_idx * n_samples_per_worker + i) // sample_size
-                    filename = 'dir/file-{}'.format(sample_idx)
-                    with zfs.open(filename, 'rb') as fp:
-                        data1 = fp.read()
-                    assert data['dir']['file-{}'.format(sample_idx)] == data1
-                q.put(('ok', None))
-            except Exception as e:
-                traceback.print_tb()
-                q.put(('ng', e))
-
         with from_url('s3://{}/test.zip'.format(bucket),
-                      local_cache=True, reset_on_fork=True) as fs:
+                      local_cache=True, reset_on_fork=True,
+                      **kwargs) as fs:
 
             # Add tons of data into the cache in parallel
 
-            ps = [multiprocessing.Process(target=child, args=(fs, worker_idx))
+            ps = [mp_ctx.Process(target=s3_zip_mp_child,
+                                 args=(q, fs, worker_idx,
+                                       n_samples_per_worker, sample_size,
+                                       data)
+                                 )
                   for worker_idx in range(n_workers)]
             for p in ps:
                 p.start()
@@ -113,9 +121,27 @@ def test_s3_zip_mp():
                 assert 'ok' == ok, str(e)
 
             for worker_idx in range(n_workers):
-                child(fs, worker_idx)
+                s3_zip_mp_child(q, fs, worker_idx,
+                                n_samples_per_worker, sample_size, data)
                 ok, e = q.get()
                 assert 'ok' == ok, str(e)
+
+    moto_server.stop()
+
+
+def s3_zip_mp_child(q, zfs, worker_idx,
+                    n_samples_per_worker, sample_size, data):
+    try:
+        for i in range(n_samples_per_worker):
+            sample_idx = (worker_idx * n_samples_per_worker + i) // sample_size
+            filename = 'dir/file-{}'.format(sample_idx)
+            with zfs.open(filename, 'rb') as fp:
+                data1 = fp.read()
+            assert data['dir']['file-{}'.format(sample_idx)] == data1
+        q.put(('ok', None))
+    except Exception as e:
+        traceback.print_tb()
+        q.put(('ng', e))
 
 
 @mock_s3
