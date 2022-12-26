@@ -10,7 +10,6 @@ from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
 from pfio.v2 import S3, Local, LocalFileStat, Zip, from_url, open_url
-from pfio.v2.fs import ForkedError
 from pfio.v2.s3 import S3ObjectStat, S3PrefixStat
 
 
@@ -174,23 +173,16 @@ def test_seekeable_read(target):
 
 
 class DummyLoader:
-    def __init__(self, dirname, content, reset_on_fork):
-        self.s3 = from_url(dirname, reset_on_fork=reset_on_fork)
+    def __init__(self, dirname, content):
+        self.s3 = from_url(dirname)
         self.content = content
-        self.reset_on_fork = reset_on_fork
 
     def __call__(self):
         assert self.s3.is_forked
 
-        if not self.reset_on_fork:
-            with pytest.raises(ForkedError):
-                self.s3.open('file', 'rb')
-
-        else:
-            # Should be reset and be able to read the contents when
-            # reset_on_fork is True
-            with self.s3.open('file', 'rb') as fp:
-                assert self.content == fp.read()
+        # Should be reset and be able to read the contents
+        with self.s3.open('file', 'rb') as fp:
+            assert self.content == fp.read()
 
 
 @mock_s3
@@ -206,11 +198,9 @@ def test_recreate():
     # With forkserver set, it hangs
     # mp.set_start_method('forkserver', force=True)
 
-    for recreate_on_fork in [True, False]:
+    loader = DummyLoader(dirname, content)
 
-        loader = DummyLoader(dirname, content, recreate_on_fork)
-
-        p = mp.Process(target=loader)
-        p.start()
-        p.join(timeout=1)
-        assert p.exitcode == 0
+    p = mp.Process(target=loader)
+    p.start()
+    p.join(timeout=1)
+    assert p.exitcode == 0

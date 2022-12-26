@@ -102,8 +102,7 @@ def test_s3_zip_mp(mp_start_method):
                 assert zipfile.is_zipfile(fp)
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      local_cache=True, reset_on_fork=True,
-                      **kwargs) as fs:
+                      local_cache=True, **kwargs) as fs:
 
             # Add tons of data into the cache in parallel
 

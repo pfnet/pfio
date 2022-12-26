@@ -584,11 +584,10 @@ class TestZipWithLargeData(unittest.TestCase):
                 f.read()
 
             def func():
-                # accessing the shared container isn't supported in v2
-                with self.assertRaises(RuntimeError):
-                    with z.open(self.testfile_name) as f:
-                        barrier.wait()
-                        f.read()
+                # accessing the shared container is supported by reset
+                with z.open(self.testfile_name) as f:
+                    barrier.wait()
+                    assert f.read()
 
             p1 = multiprocessing.Process(target=func)
             p2 = multiprocessing.Process(target=func)

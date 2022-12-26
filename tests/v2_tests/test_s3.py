@@ -8,7 +8,6 @@ import pytest
 from moto import mock_s3
 
 from pfio.v2 import S3, from_url, open_url
-from pfio.v2.fs import ForkedError
 from pfio.v2.s3 import _ObjectReader
 
 
@@ -134,12 +133,8 @@ def test_s3_fork(s3_fixture):
             assert not fp.closed
 
         def f(s3):
-            try:
-                s3.open('foo.txt', 'r')
-            except ForkedError:
-                pass
-            else:
-                pytest.fail('No Error on Forking')
+            with s3.open('foo.txt', 'r') as fp:
+                assert fp.read()
 
         p = mp.Process(target=f, args=(s3,))
         p.start()
@@ -147,12 +142,9 @@ def test_s3_fork(s3_fixture):
         assert p.exitcode == 0
 
         def g(s3):
-            try:
-                with S3(bucket='test-bucket', **s3_fixture.aws_kwargs) as s4:
-                    with s4.open('base/foo.txt', 'r') as fp:
-                        assert fp.read()
-            except ForkedError:
-                pytest.fail('ForkedError')
+            with S3(bucket='test-bucket', **s3_fixture.aws_kwargs) as s4:
+                with s4.open('base/foo.txt', 'r') as fp:
+                    assert fp.read()
 
         p = mp.Process(target=g, args=(s3,))
         p.start()

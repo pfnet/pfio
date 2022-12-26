@@ -11,7 +11,7 @@ from xml.etree import ElementTree
 import pyarrow
 from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
 
-from .fs import FS, FileStat
+from .fs import FS, FileStat, ForkedError
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -182,14 +182,12 @@ class Hdfs(FS):
 
 
     .. warning:: It is strongly discouraged to use :class:`Hdfs` under
-          multiprocessing. Setting ``reset_on_fork=False`` is
-          recommended for HDFS in order not to shoot yourself in the
-          foot, because forking a JVM instance that has a different
-          memory model may cause unexpected behavior. If you do *need*
-          forking, for example, PyTorch DataLoader with multiple
-          workers for performance, it is strongly recommended not to
-          instantiate :class:`Hdfs` before forking. Details are
-          described in PFIO issue #123.  Simple workaround is to set
+          multiprocessing. Once the object detects the process id changed
+          (which means it is forked), the object raises :class:`ForkedError`
+          before doing anything. If you do *need* forking, for example, PyTorch
+          DataLoader with multiple workers for performance, it is strongly
+          recommended not to instantiate :class:`Hdfs` before forking. Details
+          are described in PFIO issue #123.  Simple workaround is to set
           multiprocessing start method as ``'forkserver'`` and start
           the very first child process before everything.
 
@@ -216,8 +214,8 @@ class Hdfs(FS):
 
     '''
 
-    def __init__(self, cwd=None, create=False, reset_on_fork=False, **_):
-        super().__init__(reset_on_fork=reset_on_fork)
+    def __init__(self, cwd=None, create=False, **_):
+        super().__init__()
         self._fs = _create_fs()
         assert self._fs is not None
         self.username = self._get_principal_name()
@@ -238,12 +236,14 @@ class Hdfs(FS):
             else:
                 raise ValueError('{} must be a directory'.format(self.cwd))
 
-        if reset_on_fork and\
-           multiprocessing.get_start_method() != 'forkserver':
+        if multiprocessing.get_start_method() != 'forkserver':
             # See https://github.com/pfnet/pfio/pull/123 for detail
             warnings.warn('Non-forkserver start method under HDFS detected.')
 
     def _reset(self):
+        if multiprocessing.get_start_method() != 'forkserver':
+            raise ForkedError()
+
         self._fs = _create_fs()
 
     def __getstate__(self):

@@ -307,9 +307,8 @@ class S3(FS):
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
                  create=False,
-                 reset_on_fork=False,
                  **_):
-        super().__init__(reset_on_fork=reset_on_fork)
+        super().__init__()
         self.bucket = bucket
         self.create_bucket = create_bucket
         if prefix is not None:

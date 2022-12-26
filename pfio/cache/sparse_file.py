@@ -451,9 +451,7 @@ class MPCachedWrapper(CachedWrapper):
         import os
         from pfio.v2 import from_url
 
-        with from_url("s3://bucket/your.zip",
-                      local_cache=True, reset_on_fork=True) as fs:
-
+        with from_url("s3://bucket/your.zip", local_cache=True) as fs:
           pid = os.fork()
           if pid:
             os.wait()
