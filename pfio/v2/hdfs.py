@@ -182,7 +182,9 @@ class Hdfs(FS):
 
 
     .. warning:: It is strongly discouraged to use :class:`Hdfs` under
-          multiprocessing. If you do *need* forking, for example, PyTorch
+          multiprocessing. Once the object detects the process id changed
+          (which means it is forked), the object raises :class:`ForkedError`
+          before doing anything. If you do *need* forking, for example, PyTorch
           DataLoader with multiple workers for performance, it is strongly
           recommended not to instantiate :class:`Hdfs` before forking. Details
           are described in PFIO issue #123.  Simple workaround is to set
