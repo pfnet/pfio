@@ -11,7 +11,7 @@ from xml.etree import ElementTree
 import pyarrow
 from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
 
-from .fs import FS, FileStat
+from .fs import FS, FileStat, ForkedError
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -236,10 +236,13 @@ class Hdfs(FS):
             else:
                 raise ValueError('{} must be a directory'.format(self.cwd))
 
-    def _reset(self):
         if multiprocessing.get_start_method() != 'forkserver':
             # See https://github.com/pfnet/pfio/pull/123 for detail
             warnings.warn('Non-forkserver start method under HDFS detected.')
+
+    def _reset(self):
+        if multiprocessing.get_start_method() != 'forkserver':
+            raise ForkedError()
 
         self._fs = _create_fs()
 

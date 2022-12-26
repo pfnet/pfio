@@ -67,6 +67,18 @@ class FileStat(abc.ABC):
         return str(self.__str__())
 
 
+class ForkedError(RuntimeError):
+    '''An error class when PFIO found the process forked.
+
+    If an FS object is not "lazy", any object usage detects process
+    fork and raises this ``ForkedError`` as soon as possible at the
+    child process. The parent process may or may not run well,
+    depending on the ``FS`` implementation.
+
+    '''
+    pass
+
+
 class FS(abc.ABC):
     '''FS access abstraction
 
