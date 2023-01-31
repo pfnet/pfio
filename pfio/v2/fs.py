@@ -1,4 +1,5 @@
 import abc
+import configparser
 import contextlib
 import copy
 import os
@@ -13,6 +14,15 @@ from urllib.parse import urlparse
 from deprecation import deprecated
 
 from pfio.version import __version__  # NOQA
+
+
+def _default_config_file():
+    basedir = os.getenv('XDG_CONFIG_HOME')
+
+    if not basedir:
+        basedir = os.path.join(os.getenv('HOME'), ".config")
+
+    return os.path.join(basedir, "pfio.ini")
 
 
 class FileStat(abc.ABC):
@@ -395,6 +405,26 @@ def from_url(url: str, **kwargs) -> 'FS':
 
 
 def _from_scheme(scheme, dirname, kwargs, bucket=None):
+    known_scheme = ['file', 'hdfs', 's3']
+
+    # Custom scheme; using configparser for older Python. Will
+    # update to toml in Python 3.11 once 3.10 is in the end.
+    if scheme not in known_scheme:
+        # Custom scheme expected here
+        config = configparser.ConfigParser()
+        configfile = _default_config_file()
+        config.read(configfile)
+        if scheme in config:
+            config_dict = dict(config[scheme])
+            scheme = config_dict.pop('scheme')
+            if scheme not in known_scheme:
+                raise ValueError("Scheme {} in {} is not supported",
+                                 scheme, configfile)
+            for k in config_dict:
+                if k not in kwargs:
+                    # Don't overwrite with configuration value
+                    kwargs[k] = config_dict[k]
+
     if scheme == 'file':
         from .local import Local
         fs = Local(dirname, **kwargs)
@@ -405,7 +435,7 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
         from .s3 import S3
         fs = S3(bucket=bucket, prefix=dirname, **kwargs)
     else:
-        raise RuntimeError("Scheme {} is not supported", scheme)
+        raise RuntimeError("bug: scheme {} is not supported", scheme)
 
     return fs
 
