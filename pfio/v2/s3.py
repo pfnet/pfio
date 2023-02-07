@@ -307,6 +307,7 @@ class S3(FS):
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
                  create=False,
+                 _skip_connect=None,  # For test purpose
                  **_):
         super().__init__()
         self.bucket = bucket
@@ -355,7 +356,8 @@ class S3(FS):
             kwargs['endpoint_url'] = self.endpoint
 
         self.kwargs = kwargs
-        self._connect()
+        if not _skip_connect:
+            self._connect()
 
     def _reset(self):
         self._connect()
