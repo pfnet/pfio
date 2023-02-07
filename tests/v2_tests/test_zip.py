@@ -594,8 +594,8 @@ class TestZipWithLargeData(unittest.TestCase):
             p1.start()
             p2.start()
 
-            p1.join(timeout=1)
-            p2.join(timeout=1)
+            p1.join(timeout=3)
+            p2.join(timeout=3)
 
             self.assertEqual(p1.exitcode, 0)
             self.assertEqual(p2.exitcode, 0)

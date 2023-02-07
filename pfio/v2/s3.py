@@ -307,6 +307,7 @@ class S3(FS):
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
                  create=False,
+                 _skip_connect=None,  # For test purpose
                  **_):
         super().__init__()
         self.bucket = bucket
@@ -334,10 +335,11 @@ class S3(FS):
         # AWS_SECRET_ACCESS_KEY.
         self.aws_access_key_id = aws_access_key_id
         if aws_access_key_id is not None:
-            kwargs['aws_access_key_id'] = aws_access_key_id
+            kwargs['aws_access_key_id'] = os.path.expandvars(aws_access_key_id)
         self.aws_secret_access_key = aws_secret_access_key
         if aws_secret_access_key is not None:
-            kwargs['aws_secret_access_key'] = aws_secret_access_key
+            kwargs['aws_secret_access_key'] = os.path.expandvars(
+                aws_secret_access_key)
 
         # We won't expect any enviroment variable for S3 endpoints
         # supported by boto3. Instead, we take S3_ENDPOINT in case
@@ -354,7 +356,8 @@ class S3(FS):
             kwargs['endpoint_url'] = self.endpoint
 
         self.kwargs = kwargs
-        self._connect()
+        if not _skip_connect:
+            self._connect()
 
     def _reset(self):
         self._connect()

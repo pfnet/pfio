@@ -117,6 +117,60 @@ in ZIP. It supports:
             ...
 
 
+Custom Scheme
+'''''''''''''
+
+.. note:: This is an experimental feature.
+
+The format of URL is defined by `the URL standard in WhatWG
+<https://url.spec.whatwg.org/>`_ . Developers and users can configure
+a custom scheme with a predefined scheme handler. The primary use case
+is a private cloud environment that has an S3-compatible object
+storage. Reaching out with custom endpoint is supported by
+:py:class:`pfio.v2.S3`, but custom endpoints are only configurable
+with keyword arguments. With custom schemes, arbitrary configurations
+are injectable with configuration file and they're available with
+custom scheme name. For example, a config file like::
+
+  [foobar]
+  scheme = s3
+  endpoint = https://foobar.example.com/
+  aws access_key_id = $CUSTOM_ACCESS_KEY
+  aws_secret_access_key = $CUSTOM_ACCESS_SECRET
+
+
+will be available like this in Python::
+
+  fs = pfio.v2.from_url('foobar://path/to/a')
+  with fs.open('filename') as fp:
+      fp.read()
+
+
+It means you can open an object named ``/path/to/a/filename`` in an
+S3-compatible system with an endpoint ``foobar.example.com``, with
+:py:class:`pfio.v2.S3` and with the specified access key. Technically,
+except the ``scheme`` property, they are keyword arguments for
+:py:meth:`pfio.v2.from_url` . The above example code is equal to::
+
+  key_id = os.getenv("CUSTOM_ACCESS_KEY")
+  secret = os.getenv("CUSTOM_ACCESS_SECRET")
+
+  fs = pfio.v2.from_url('s3://path/to/a',
+                        endpoint="https://foobar.example.com",
+                        aws_access_key_id=key_id,
+                        aws_secret_access_key=secret)
+  with fs.open('filename') as fp:
+      fp.read()
+
+
+PFIO reads ``$PFIO_CONFIG_PATH`` for the first hand. If the
+environment variable is undefined, it tries to open and load located
+as ``$XDG_CONFIG_HOME/pfio.ini``.
+
+See also:
+
+- https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
+- https://www.ietf.org/rfc/rfc2718.txt
 
 File-like Objects
 ~~~~~~~~~~~~~~~~~

@@ -1,4 +1,5 @@
 import abc
+import configparser
 import contextlib
 import copy
 import os
@@ -394,7 +395,54 @@ def from_url(url: str, **kwargs) -> 'FS':
     return fs
 
 
+def _default_config_file():
+    path = os.getenv('PFIO_CONFIG_PATH')
+    if path:
+        return path
+
+    basedir = os.getenv('XDG_CONFIG_HOME')
+    if not basedir:
+        basedir = os.path.join(os.getenv('HOME'), ".config")
+
+    return os.path.join(basedir, "pfio.ini")
+
+
+class _CustomScheme:
+    conf = None
+
+    @staticmethod
+    def config(scheme):
+        if _CustomScheme.conf is None:
+            _CustomScheme.load_config()
+
+        if scheme in _CustomScheme.conf:
+            return dict(_CustomScheme.conf[scheme])
+
+    @staticmethod
+    def load_config():
+        config = configparser.ConfigParser()
+        configfile = _default_config_file()
+        config.read(configfile)
+        _CustomScheme.conf = config
+
+
 def _from_scheme(scheme, dirname, kwargs, bucket=None):
+    known_scheme = ['file', 'hdfs', 's3']
+
+    # Custom scheme; using configparser for older Python. Will
+    # update to toml in Python 3.11 once 3.10 is in the end.
+    if scheme not in known_scheme:
+        config_dict = _CustomScheme.config(scheme)
+        if config_dict is not None:
+            scheme = config_dict.pop('scheme')  # Get the real scheme
+            # Custom scheme expected here
+            if scheme not in known_scheme:
+                raise ValueError("Scheme {} is not supported", scheme)
+            for k in config_dict:
+                if k not in kwargs:
+                    # Don't overwrite with configuration value
+                    kwargs[k] = config_dict[k]
+
     if scheme == 'file':
         from .local import Local
         fs = Local(dirname, **kwargs)
@@ -405,7 +453,7 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
         from .s3 import S3
         fs = S3(bucket=bucket, prefix=dirname, **kwargs)
     else:
-        raise RuntimeError("Scheme {} is not supported", scheme)
+        raise RuntimeError("bug: scheme '{}' is not supported".format(scheme))
 
     return fs
 
