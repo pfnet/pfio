@@ -437,8 +437,7 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
             scheme = config_dict.pop('scheme')  # Get the real scheme
             # Custom scheme expected here
             if scheme not in known_scheme:
-                raise ValueError("Scheme {} in {} is not supported",
-                                 scheme, configfile)
+                raise ValueError("Scheme {} is not supported", scheme)
             for k in config_dict:
                 if k not in kwargs:
                     # Don't overwrite with configuration value
