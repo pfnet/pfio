@@ -143,7 +143,7 @@ repetitive access to the data collection.
    Therefore load the data from the storage only when necessary,
    which is at the first access to each data.
 
-PFIO cache API provides :class:`~NaiveCache`, :class:`~FileCache`and
+PFIO cache API provides :class:`~NaiveCache`, :class:`~FileCache` and
 :class:`~MultiprocessFileCache`.
 They all share the same core idea and interface.
 The difference is how to manage the cached data.
