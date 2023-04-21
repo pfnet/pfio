@@ -297,6 +297,12 @@ class FS(abc.ABC):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def normpath(self, file_path: str) -> str:
+        """Returns its normpath with protocol and endpoint
+        """
+        raise NotImplementedError
+
 
 @contextlib.contextmanager
 def open_url(url: str, mode: str = 'r', **kwargs) -> Iterator[IOBase]:

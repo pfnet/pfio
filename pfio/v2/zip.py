@@ -263,6 +263,13 @@ class Zip(FS):
     def remove(self, file_path, recursive=False):
         raise io.UnsupportedOperation
 
+    def normpath(self, file_path: str) -> str:
+        file_path = os.path.join(self.cwd, os.path.normpath(file_path))
+        return "{}/zipfile/{}".format(
+            self.backend.normpath(self.file_path),
+            file_path
+        )
+
 
 def _open_zip(fs, file_path, mode, **kwargs) -> Zip:
     return Zip(fs, file_path, mode, **kwargs)

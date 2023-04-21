@@ -158,3 +158,6 @@ class Local(FS):
         return [
             str(item.relative_to(self.cwd))
             for item in pathlib.Path(self.cwd).glob(pattern)]
+
+    def normpath(self, file_path: str) -> str:
+        return "local" + os.path.normpath(os.path.join(self.cwd, file_path))

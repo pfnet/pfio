@@ -171,7 +171,7 @@ def _create_fs():
         # amont multiple name services from single HADOOP_CONF_DIR
         # conf. Thus we ignore fs.defaultFS and just take the very
         # first name service that appeared in hdfs-site.xml.
-        return HadoopFileSystem(nameservice, 0)
+        return nameservice, HadoopFileSystem(nameservice, 0)
 
     else:
         RuntimeError("No nameservice found.")
@@ -221,7 +221,7 @@ class Hdfs(FS):
 
     def __init__(self, cwd=None, create=False, **_):
         super().__init__()
-        self._fs = _create_fs()
+        self._nameservice, self._fs = _create_fs()
         assert self._fs is not None
         self.username = self._get_principal_name()
 
@@ -249,7 +249,7 @@ class Hdfs(FS):
         if multiprocessing.get_start_method() != 'forkserver':
             raise ForkedError()
 
-        self._fs = _create_fs()
+        self._nameservice, self._fs = _create_fs()
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -376,3 +376,9 @@ class Hdfs(FS):
                 self._fs.delete_dir(delpath)
         else:
             self._fs.delete_file(delpath)
+
+    def normpath(self, file_path: str) -> str:
+        path = os.path.join(self.cwd, file_path)
+        norm_path = self._fs.normalize_path(path).rstrip('/')
+
+        return "hdfs({})/{}".format(self._nameservice, norm_path)

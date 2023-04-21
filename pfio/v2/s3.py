@@ -605,3 +605,13 @@ class S3(FS):
         key = _normalize_key(key)
         return self.client.delete_object(Bucket=self.bucket,
                                          Key=key)
+
+    def normpath(self, file_path: str) -> str:
+        path = os.path.join(self.cwd, file_path)
+        norm_path = _normalize_key(path)
+
+        return "s3(endpoint={})/{}/{}".format(
+            self.endpoint,
+            self.bucket,
+            norm_path
+        )
