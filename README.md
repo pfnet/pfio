@@ -12,7 +12,7 @@ learning training with batteries included. It supports
 ## Dependency
 
 - HDFS client and libhdfs for HDFS access
-- CPython >= 3.6
+- CPython >= 3.8
 
 ## Installation and Document build
 
@@ -31,13 +31,6 @@ $ make html
 $ open build/html/index.html
 ```
 
-Test
-```sh
-$ cd pfio
-$ pip install .[test]
-$ pytest tests/
-```
-
 ## How to use
 
 Please refer to the [official document](https://pfio.readthedocs.io) for more information about the usage.
@@ -49,8 +42,8 @@ Check [the official document](https://packaging.python.org/tutorials/packaging-p
 Run tests locally:
 
 ```sh
-$ pip install --user -e .[test]
-$ pytest
+$ pip install tox
+$ tox
 ```
 
 Bump version numbers in `pfio/version.py` .
