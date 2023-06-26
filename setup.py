@@ -39,7 +39,6 @@ setup(
         'Operating System :: POSIX',
         'Operating System :: POSIX :: Linux',
 
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
@@ -56,7 +55,6 @@ setup(
         'doc': ['sphinx', 'sphinx_rtd_theme'],
         'bench': ['numpy>=1.19.5', 'torch>=1.9.0', 'Pillow<=8.2.0'],
     },
-    python_requires=">=3.7",
     # When updating install requires, docs/requirements.txt should be updated too
     install_requires=['pyarrow>=6.0.0', 'boto3', 'deprecation', 'urllib3'],
     include_package_data=True,
