@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import warnings
+from typing import Optional
 from xml.etree import ElementTree
 
 try:
@@ -310,7 +311,7 @@ class Hdfs(FS):
     def close(self):
         pass
 
-    def list(self, path: str = "", recursive=False, detail=False):
+    def list(self, path: Optional[str] = "", recursive=False, detail=False):
         self._checkfork()
 
         if not self.isdir(path):
