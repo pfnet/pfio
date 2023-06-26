@@ -70,22 +70,22 @@ def test_multiprocess_consistency():
             cache.put(sample_idx, data)
 
     with tempfile.TemporaryDirectory() as d:
-        cache = MultiprocessFileCache(n_samples_per_worker * n_workers,
-                                      dir=d, do_pickle=True)
+        with MultiprocessFileCache(n_samples_per_worker * n_workers,
+                                   dir=d, do_pickle=True) as cache:
 
-        # Add tons of data into the cache in parallel
-        ps = [multiprocessing.Process(target=child, args=(cache, worker_idx))
-              for worker_idx in range(n_workers)]
-        for p in ps:
-            p.start()
-        for p in ps:
-            p.join()
+            # Add tons of data into the cache in parallel
+            ps = [multiprocessing.Process(target=child, args=(cache, worker_idx))  # NOQA
+                  for worker_idx in range(n_workers)]
+            for p in ps:
+                p.start()
+            for p in ps:
+                p.join()
 
-        # Get each sample from the cache and check the content
-        for sample_idx in range(n_workers * n_samples_per_worker):
-            data = cache.get(sample_idx)
-            expected = np.array([sample_idx] * sample_size, dtype=np.int32)
-            assert (data == expected).all()
+            # Get each sample from the cache and check the content
+            for sample_idx in range(n_workers * n_samples_per_worker):
+                data = cache.get(sample_idx)
+                expected = np.array([sample_idx] * sample_size, dtype=np.int32)
+                assert (data == expected).all()
 
 
 def test_preservation_interoperability():

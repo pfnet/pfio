@@ -22,7 +22,7 @@ def test_sparse_file_cache():
         size = stat.st_size
         with open(filepath, 'rb') as xfp:
 
-            with SparseFileCache(xfp, size) as fp:
+            with SparseFileCache(xfp, size, cachedir=tempdir) as fp:
 
                 fp.seek(26)
                 data = fp.read(17)
@@ -53,7 +53,8 @@ def test_sparse_file_cache2(pagesize):
         size = stat.st_size
         with open(filepath, 'rb') as xfp, open(filepath, 'rb') as yfp:
 
-            with SparseFileCache(xfp, size, pagesize=pagesize) as fp:
+            with SparseFileCache(xfp, size, cachedir=tempdir,
+                                 pagesize=pagesize) as fp:
 
                 fp.seek(26)
                 # print('seek done:', fp.pos, xfp.tell())
@@ -137,7 +138,7 @@ def test_sparse_file_cache_mp():
                 q.put((False, e))
 
         with open(filepath, 'rb') as xfp:
-            with MultiprocessSparseFileCache(xfp, size) as cfp0:
+            with MultiprocessSparseFileCache(xfp, size, cachedir=tempdir) as cfp0:  # NOQA
 
                 q = multiprocessing.Queue()
 
@@ -161,7 +162,7 @@ def test_sparse_cache_zip():
 
         size = stat.st_size
         with open(filepath, 'rb') as xfp:
-            with SparseFileCache(xfp, size) as cfp:
+            with SparseFileCache(xfp, size, cachedir=tempdir) as cfp:
                 with zipfile.ZipFile(cfp, 'r') as zfp:
 
                     assert zfp.testzip() is None
@@ -187,7 +188,8 @@ def test_cache(pagesize, klass):
             fp.write(data)
 
         with open(filepath, 'rb') as ofp:
-            with klass(ofp, len(data), pagesize=pagesize) as fp:
+            with klass(ofp, len(data), pagesize=pagesize,
+                       cachedir=tempdir) as fp:
                 for i in range(1024*16):
                     assert not fp._is_full()
                     assert pb*64 == fp.read(1024)
@@ -209,6 +211,7 @@ def test_cache_limit(pagesize, limit, klass):
         with open(filepath, 'rb', buffering=0) as ofp:
 
             with klass(ofp, len(data), pagesize=pagesize,
+                       cachedir=tempdir,
                        cache_size_limit=limit) as fp:
                 for i in range(1024*16):
                     assert not fp._is_full()
