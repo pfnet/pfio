@@ -8,8 +8,12 @@ import subprocess
 import warnings
 from xml.etree import ElementTree
 
-import pyarrow
-from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
+try:
+    import pyarrow
+    from pyarrow.fs import FileSelector, FileType, HadoopFileSystem
+    has_hdfs = True
+except ImportError:
+    has_hdfs = False
 
 from .fs import FS, FileStat, ForkedError
 
