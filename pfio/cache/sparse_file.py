@@ -496,8 +496,8 @@ class MPCachedWrapper(CachedWrapper):
         if self._closed:
             return
 
-        os.close(self.indexfd)
         os.close(self.cachefd)
+        os.close(self.indexfd)
         self.indexfp.close()
         self.cachefp.close()
         self._closed = True
