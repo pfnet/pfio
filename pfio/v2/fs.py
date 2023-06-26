@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 from deprecation import deprecated
 
 from pfio.version import __version__  # NOQA
+
 from .zip import _open_zip
 
 
