@@ -15,8 +15,6 @@ from deprecation import deprecated
 
 from pfio.version import __version__  # NOQA
 
-from .zip import _open_zip
-
 
 class FileStat(abc.ABC):
     """Detailed file or directory information abstraction
@@ -113,6 +111,7 @@ class FS(abc.ABC):
 
     def open_zip(self, file_path: str, mode='r', **kwargs):
         # Avoid circular import
+        from .zip import _open_zip
         return _open_zip(self, file_path, mode, **kwargs)
 
     # Self-typing needs Python 3.11, PEP-673
