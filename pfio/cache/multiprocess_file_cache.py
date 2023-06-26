@@ -298,9 +298,12 @@ class MultiprocessFileCache(cache.Cache):
     def close(self):
         pid = os.getpid()
 
+        fcntl.flock(self.cache_fd, fcntl.LOCK_EX)
         if pid == self._fd_pid:
             os.close(self.cache_fd)
             self._fd_pid = None
+
+        fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
 
         if not self.closed and pid == self._master_pid:
             self.cache_file.close()

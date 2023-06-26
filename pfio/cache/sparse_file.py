@@ -493,14 +493,17 @@ class MPCachedWrapper(CachedWrapper):
         self.pid = os.getpid()
 
     def close(self):
-        if self._closed:
-            return
+        with _exflock(self.indexfd), _exflock(self.cachefd):
+            if self._closed:
+                return
 
-        os.close(self.cachefd)
-        os.close(self.indexfd)
-        self.indexfp.close()
-        self.cachefp.close()
-        self._closed = True
+            os.close(self.indexfd)
+            self.indexfp.close()
+
+            os.close(self.cachefd)
+            self.cachefp.close()
+
+            self._closed = True
 
     def _open_fd(self, indexfile, cachefile):
         self.local_indexfile = indexfile

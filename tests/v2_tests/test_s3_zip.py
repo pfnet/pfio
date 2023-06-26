@@ -21,6 +21,7 @@ def test_s3_zip(local_cache):
         zipfilename = os.path.join(d, "test.zip")
         zft = ZipForTest(zipfilename)
         bucket = "test-dummy-bucket"
+        local_cachedir = d if local_cache else None
 
         with from_url('s3://{}/'.format(bucket),
                       create_bucket=True) as s3:
@@ -33,7 +34,8 @@ def test_s3_zip(local_cache):
                 assert zipfile.is_zipfile(fp)
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      local_cache=local_cache) as z:
+                      local_cache=local_cache,
+                      local_cachedir=local_cachedir) as z:
             assert isinstance(z, Zip)
             assert isinstance(z.fileobj, io.BufferedReader)
 
@@ -42,7 +44,8 @@ def test_s3_zip(local_cache):
                 assert zft.content('file') == fp.read()
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      buffering=0, local_cache=local_cache) as z:
+                      buffering=0, local_cache=local_cache,
+                      local_cachedir=local_cachedir) as z:
             assert isinstance(z, Zip)
             assert 'buffering' in z.kwargs
             if not local_cache:
@@ -102,7 +105,8 @@ def test_s3_zip_mp(mp_start_method):
                 assert zipfile.is_zipfile(fp)
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      local_cache=True, **kwargs) as fs:
+                      local_cache=True, local_cachedir=d,
+                      **kwargs) as fs:
 
             # Add tons of data into the cache in parallel
 
