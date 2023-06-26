@@ -9,7 +9,13 @@ import unittest
 from collections.abc import Iterable
 
 import pytest
-from pyarrow import hdfs
+
+try:
+    from pyarrow import hdfs
+    has_hdfs = True
+except ImportError:
+    has_hdfs = False
+
 
 from pfio.testing import randstring
 from pfio.v2 import from_url, open_url

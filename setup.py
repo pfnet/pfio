@@ -54,9 +54,10 @@ setup(
         # When updating doc deps, docs/requirements.txt should be updated too
         'doc': ['sphinx', 'sphinx_rtd_theme'],
         'bench': ['numpy>=1.19.5', 'torch>=1.9.0', 'Pillow<=8.2.0'],
+        'hdfs': ['pyarrow>=6.0.0'],
     },
     # When updating install requires, docs/requirements.txt should be updated too
-    install_requires=['pyarrow>=6.0.0', 'boto3', 'deprecation', 'urllib3'],
+    install_requires=['boto3', 'deprecation', 'urllib3'],
     include_package_data=True,
     zip_safe=False,
 
