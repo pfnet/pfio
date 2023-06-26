@@ -15,6 +15,8 @@ from deprecation import deprecated
 
 from pfio.version import __version__  # NOQA
 
+from .zip import Zip
+
 
 class FileStat(abc.ABC):
     """Detailed file or directory information abstraction
@@ -106,14 +108,14 @@ class FS(abc.ABC):
              newline: Optional[str] = None,
              closefd: bool = True,
              opener: Optional[Callable[
-                 [str, int], Any]] = None) -> Type["IOBase"]:
+                 [str, int], Any]] = None) -> IOBase:
         raise NotImplementedError()
 
-    def open_zip(self, file_path: str, mode='r', **kwargs) -> Type["Zip"]:  # NOQA
-        from .zip import Zip
+    def open_zip(self, file_path: str, mode='r', **kwargs) -> Zip:  # NOQA
         return Zip(self, file_path, mode, **kwargs)
 
-    def subfs(self, rel_path: str) -> Type["FS"]:
+    # Self-typing needs Python 3.11, PEP-673
+    def subfs(self, rel_path: str) -> 'FS':
         '''Virtually changes the working directory
 
         By default it performs shallow copy. If any resource that as
@@ -199,7 +201,7 @@ class FS(abc.ABC):
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
+                 traceback: Optional[TracebackType]):
         self.close()
 
     @abstractmethod
@@ -290,7 +292,7 @@ class FS(abc.ABC):
 
 
 @contextlib.contextmanager
-def open_url(url: str, mode: str = 'r', **kwargs) -> 'IOBase':
+def open_url(url: str, mode: str = 'r', **kwargs) -> Iterator[IOBase]:
     '''Opens a file regardless of the backend FS type
 
     ``url`` must be compliant with URL standard in
@@ -460,30 +462,8 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
 
 @deprecated(deprecated_in='2.2.0', removed_in='2.3.0',
             current_version=__version__)
-def lazify(init_func, lazy_init=True, recreate_on_fork=True) -> "FS":
+def lazify(init_func, lazy_init=True, recreate_on_fork=True):
     '''Make FS init lazy and recreate on fork
 
     '''
-    return _LazyFS(init_func, lazy_init, recreate_on_fork)
-
-
-class _LazyFS:
-    def __init__(self, func, lazy_init, recreate_on_fork):
-        if not lazy_init:
-            self.mixin = func()
-        else:
-            self.mixin = None
-        self.func = func
-
-    def __getattr__(self, attr):
-        if self.mixin is None or self.mixin.is_forked:
-            self.mixin = self.func()
-        return getattr(self.mixin, attr)
-
-    def __enter__(self) -> 'FS':
-        return self
-
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
-        self.close()
+    pass

@@ -98,7 +98,7 @@ class _ObjectReader(io.RawIOBase):
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
+                 traceback: Optional[TracebackType]):
         self.close()
 
     def flush(self):
@@ -261,7 +261,7 @@ class _ObjectWriter:
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
+                 traceback: Optional[TracebackType]):
         self.close()
 
     @property
@@ -433,7 +433,7 @@ class S3(FS):
 
         return obj
 
-    def list(self, prefix: str = "", recursive=False, detail=False):
+    def list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         '''List all objects (and prefixes)
 
         Although there is not concept of directory in AWS S3 API,
@@ -441,7 +441,7 @@ class S3(FS):
 
         '''
         self._checkfork()
-        key = os.path.join(self.cwd, prefix)
+        key = os.path.join(self.cwd, "" if prefix is None else prefix)
         key = _normalize_key(key)
         if key == '.':
             key = ''

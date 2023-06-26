@@ -13,7 +13,7 @@ from pfio import cache
 # Deprecated, but leaving for backward compatibility just in case any
 # system directly using this value
 _DEFAULT_CACHE_PATH = os.path.join(
-    os.getenv('HOME'), ".pfio", "cache")
+    os.getenv('HOME', ""), ".pfio", "cache")
 
 _FORCE_LOCAL = True
 
