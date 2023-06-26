@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import warnings
+from typing import Optional
 from xml.etree import ElementTree
 
 try:
@@ -310,13 +311,13 @@ class Hdfs(FS):
     def close(self):
         pass
 
-    def list(self, path: str = "", recursive=False, detail=False):
+    def list(self, path: Optional[str] = "", recursive=False, detail=False):
         self._checkfork()
 
         if not self.isdir(path):
             raise NotADirectoryError(path)
 
-        path = os.path.join(self.cwd, path)
+        path = os.path.join(self.cwd, "" if path is None else path)
         norm_path = self._fs.normalize_path(path).rstrip('/')
 
         infos = self._fs.get_file_info(FileSelector(path, recursive=recursive))
@@ -335,9 +336,9 @@ class Hdfs(FS):
         else:
             return HdfsFileStat(info)
 
-    def isdir(self, path: str):
+    def isdir(self, path: Optional[str]):
         self._checkfork()
-        path = os.path.join(self.cwd, path)
+        path = os.path.join(self.cwd, "" if path is None else path)
         info = self._fs.get_file_info(path)
         return info.type == FileType.Directory
 

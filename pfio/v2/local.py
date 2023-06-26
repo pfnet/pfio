@@ -1,6 +1,7 @@
 import io
 import os
 import shutil
+from typing import Optional
 
 from .fs import FS, FileStat
 
@@ -66,6 +67,10 @@ class Local(FS):
 
         return os.getcwd()
 
+    @cwd.setter
+    def cwd(self, value: str):
+        self._cwd = value
+
     def _reset(self):
         pass
 
@@ -78,9 +83,10 @@ class Local(FS):
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
-    def list(self, path_or_prefix: str = '', recursive=False,
+    def list(self, path: Optional[str] = '', recursive=False,
              detail=False):
-        path_or_prefix = os.path.join(self.cwd, path_or_prefix)
+        path_or_prefix = os.path.join(self.cwd,
+                                      "" if path is None else path)
 
         if recursive:
             path_or_prefix = path_or_prefix.rstrip("/")

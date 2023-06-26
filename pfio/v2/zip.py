@@ -3,6 +3,7 @@ import logging
 import os
 import zipfile
 from datetime import datetime
+from typing import Optional
 
 from pfio.cache.sparse_file import MPCachedWrapper
 
@@ -166,7 +167,7 @@ class Zip(FS):
 
         return ZipFileStat(self.zipobj.getinfo(actual_path))
 
-    def list(self, path_or_prefix: str = "", recursive=False,
+    def list(self, path_or_prefix: Optional[str] = "", recursive=False,
              detail=False):
         self._checkfork()
 
@@ -196,6 +197,7 @@ class Zip(FS):
         if recursive:
             for info in self.zipobj.infolist():
                 name = info.filename
+                assert path_or_prefix is not None
                 if name.startswith(path_or_prefix):
                     name = name[len(path_or_prefix):].strip("/")
                     if name:
@@ -260,3 +262,7 @@ class Zip(FS):
 
     def remove(self, file_path, recursive=False):
         raise io.UnsupportedOperation
+
+
+def _open_zip(fs, file_path, mode, **kwargs) -> Zip:
+    return Zip(fs, file_path, mode, **kwargs)

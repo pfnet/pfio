@@ -13,7 +13,7 @@ import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Optional
+from typing import Optional, Tuple
 
 from .file_cache import DummyLock, RWLock
 
@@ -125,7 +125,7 @@ class _CachedWrapperBase:
 
     def __exit__(self, exc_type: Optional[BaseException],
                  exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> bool:
+                 traceback: Optional[TracebackType]):
         self.close()
 
     def flush(self):
@@ -284,7 +284,7 @@ class DynamicCachedWrapper(_CachedWrapperBase):
 
             r0 = _Range(r1.right, r0.right - r1.right)
 
-    def _get_range(self, r) -> (bytearray, _Range):
+    def _get_range(self, r: _Range) -> Tuple[bytes, _Range]:
         # print('get range:', r)
         if r.cached:
             return os.pread(self.cachefp.fileno(), r.length, r.start), r

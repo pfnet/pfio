@@ -5,6 +5,7 @@ import string
 import subprocess
 from contextlib import contextmanager
 from threading import Thread
+from typing import Dict
 from unittest import mock
 from zipfile import ZipFile
 
@@ -92,7 +93,7 @@ def patch_subprocess(stdout, stderr=b''):
 
 
 class OnMemoryHTTPServerForTest(http.server.BaseHTTPRequestHandler):
-    files = {}
+    files: Dict[str, str] = {}
 
     def do_GET(self):
         content = OnMemoryHTTPServerForTest.files.get(self.path)
