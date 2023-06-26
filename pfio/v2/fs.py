@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 from deprecation import deprecated
 
 from pfio.version import __version__  # NOQA
+from .zip import _open_zip
 
 
 class FileStat(abc.ABC):
@@ -109,10 +110,9 @@ class FS(abc.ABC):
                  [str, int], Any]] = None) -> IOBase:
         raise NotImplementedError()
 
-    def open_zip(self, file_path: str, mode='r', **kwargs) -> "Zip":  # NOQA type: ignore
+    def open_zip(self, file_path: str, mode='r', **kwargs):
         # Avoid circular import
-        from .zip import Zip
-        return Zip(self, file_path, mode, **kwargs)
+        return _open_zip(self, file_path, mode, **kwargs)
 
     # Self-typing needs Python 3.11, PEP-673
     def subfs(self, rel_path: str) -> 'FS':

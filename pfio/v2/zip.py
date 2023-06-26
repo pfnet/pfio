@@ -262,3 +262,7 @@ class Zip(FS):
 
     def remove(self, file_path, recursive=False):
         raise io.UnsupportedOperation
+
+
+def _open_zip(fs, file_path, mode, **kwargs) -> Zip:
+    return Zip(fs, file_path, mode, **kwargs)
