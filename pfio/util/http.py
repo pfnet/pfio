@@ -37,6 +37,7 @@ class _ConnectionPool(object):
                 timeout=self.timeout
             )
             self.pid = os.getpid()
+            print("CONSTRUCTED: {}".format(self.conn))
         return self.conn.urlopen(method, url, redirect, **kw)
 
 
