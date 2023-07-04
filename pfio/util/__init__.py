@@ -1,1 +1,1 @@
-from .http import HTTPConnector
+from .http import HTTPConnector  # NOQA

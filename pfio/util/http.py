@@ -1,7 +1,6 @@
 import logging
 import os
 import time
-
 from typing import Optional
 
 import urllib3
@@ -33,7 +32,10 @@ class _ConnectionPool(object):
 
     def urlopen(self, method, url, redirect=True, **kw):
         if self.is_forked or self.conn is None:
-            self.conn = urllib3.poolmanager.PoolManager(retries=self.retries, timeout=self.timeout)
+            self.conn = urllib3.poolmanager.PoolManager(
+                retries=self.retries,
+                timeout=self.timeout
+            )
             self.pid = os.getpid()
         return self.conn.urlopen(method, url, redirect, **kw)
 
@@ -49,7 +51,11 @@ def _get_connection_pool(retries: int, timeout: int) -> _ConnectionPool:
 
 
 class HTTPConnector(object):
-    def __init__(self, url: str, bearer_token_path: Optional[str] = None, retries: int = 1, timeout: int = 3):
+    def __init__(self,
+                 url: str,
+                 bearer_token_path: Optional[str] = None,
+                 retries: int = 1,
+                 timeout: int = 3):
         if url.endswith("/"):
             self.url = url
         else:
