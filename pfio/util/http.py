@@ -11,38 +11,13 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
-class HTTPConnector(object):
-    def __init__(self, url: str, bearer_token_path: Optional[str] = None):
-        if url.endswith("/"):
-            self.url = url
-        else:
-            self.url = url + "/"
+class _ConnectionPool(object):
+    def __init__(self, retries: int, timeout: int):
+        self.retries = retries
+        self.timeout = timeout
 
-        if bearer_token_path is not None:
-            self.bearer_token_path = bearer_token_path
-        else:
-            self.bearer_token_path = os.getenv("PFIO_HTTP_BEARER_TOKEN_PATH")
-
-        if self.bearer_token_path is not None:
-            self._token_read_now()
-
-        self.conn = None
-        self._prepare_conn()
-
-        self.pid = os.getpid()
-
-    @property
-    def is_forked(self):
-        return self.pid != os.getpid()
-
-    def _checkconn(self):
-        if self.is_forked or self.conn is None:
-            self._prepare_conn()
-            self.pid = os.getpid()
-
-    def _prepare_conn(self):
-        # Allow redirect or retry once
-        self.conn = urllib3.poolmanager.PoolManager(retries=1, timeout=3)
+        self.conn: Optional[urllib3.poolmanager.PoolManager] = None
+        self.pid: Optional[int] = None
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -52,9 +27,47 @@ class HTTPConnector(object):
     def __setstate__(self, state):
         self.__dict__ = state
 
-    def put(self, suffix: str, data: bytes) -> bool:
-        self._checkconn()
+    @property
+    def is_forked(self):
+        return self.pid != os.getpid()
 
+    def urlopen(self, method, url, redirect=True, **kw):
+        if self.is_forked or self.conn is None:
+            self.conn = urllib3.poolmanager.PoolManager(retries=self.retries, timeout=self.timeout)
+            self.pid = os.getpid()
+        return self.conn.urlopen(method, url, redirect, **kw)
+
+
+CONNECTION_POOL: Optional[_ConnectionPool] = None
+
+
+def _get_connection_pool(retries: int, timeout: int) -> _ConnectionPool:
+    global CONNECTION_POOL
+    if CONNECTION_POOL is None:
+        CONNECTION_POOL = _ConnectionPool(retries, timeout)
+    return CONNECTION_POOL
+
+
+class HTTPConnector(object):
+    def __init__(self, url: str, bearer_token_path: Optional[str] = None, retries: int = 1, timeout: int = 3):
+        if url.endswith("/"):
+            self.url = url
+        else:
+            self.url = url + "/"
+
+        self.bearer_token_path: Optional[str] = None
+        if bearer_token_path is not None:
+            self.bearer_token_path = bearer_token_path
+        else:
+            self.bearer_token_path = os.getenv("PFIO_HTTP_BEARER_TOKEN_PATH")
+
+        if self.bearer_token_path is not None:
+            self._token_read_now()
+
+        # Allow redirect or retry once by default
+        self.conn = _get_connection_pool(retries, timeout)
+
+    def put(self, suffix: str, data: bytes) -> bool:
         try:
             res = self.conn.urlopen("PUT",
                                     url=self.url + suffix,
@@ -71,8 +84,6 @@ class HTTPConnector(object):
             return False
 
     def get(self, suffix: str) -> Optional[bytes]:
-        self._checkconn()
-
         try:
             res = self.conn.urlopen("GET",
                                     url=self.url + suffix,
