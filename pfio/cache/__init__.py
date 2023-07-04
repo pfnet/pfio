@@ -57,7 +57,7 @@ class Cache(abc.ABC):
 
 
 from pfio.cache.file_cache import FileCache  # NOQA
-from pfio.cache.http_cache import HTTPCache  # NOQA
+from pfio.cache.http_cache import HTTPCache, HTTPConnector  # NOQA
 from pfio.cache.mmap_file_cache import ReadOnlyFileCache  # NOQA
 from pfio.cache.multiprocess_file_cache import MultiprocessFileCache  # NOQA
 from pfio.cache.naive import NaiveCache  # NOQA
