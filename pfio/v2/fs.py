@@ -129,11 +129,13 @@ class FS(abc.ABC):
         elif '..' in rel_path.split(os.path.sep):
             raise RuntimeError("Only subtree is supported")
 
-        sub = copy.copy(self)
+        return self._newfs(os.path.join(self.cwd, rel_path))
 
-        sub._cwd = os.path.join(self.cwd, rel_path)
-        sub._reset()
-        return sub
+    def _newfs(self, path: str) -> 'FS':
+        fs = copy.copy(self)
+        fs._cwd = path
+        fs._reset()
+        return fs
 
     def _checkfork(self):
         if not self.is_forked:
@@ -287,6 +289,11 @@ class FS(abc.ABC):
                    all the files and directories under it will be removed.
                    When the path is a file, this option is ignored.
 
+        """
+        raise NotImplementedError()
+
+    def glob(self, pattern: str) -> Iterator[Union[FileStat, str]]:
+        """Returns the files and dictories that match the glob pattern.
         """
         raise NotImplementedError()
 

@@ -1,6 +1,10 @@
+import contextlib
+import tempfile
+
+import pytest
 from moto import mock_s3
 
-from pfio.v2 import S3, from_url, pathlib
+from pfio.v2 import S3, Local, from_url, pathlib
 
 
 def test_name():
@@ -35,6 +39,33 @@ def test_parent():
 def test_resolve():
     p = pathlib.Path('/')
     assert '/' == str(p.resolve())
+
+
+def test_parts():
+    assert pathlib.Path().parts == ()
+    assert pathlib.Path('').parts == ()
+    assert pathlib.Path('.').parts == ()
+    assert pathlib.Path('/').parts == ('/',)
+    assert pathlib.Path('./').parts == ()
+    assert pathlib.Path('.//.').parts == ()
+    assert pathlib.Path('a').parts == ('a',)
+    assert pathlib.Path('/a').parts == ('/', 'a')
+    assert pathlib.Path('/a', 'bb/cc', 'dd').parts == (
+        '/', 'a', 'bb', 'cc', 'dd')
+    assert pathlib.Path('a', '/b', 'c').parts == ('/', 'b', 'c')
+
+
+def test_root():
+    assert pathlib.Path().root == ''
+    assert pathlib.Path('').root == ''
+    assert pathlib.Path('.').root == ''
+    assert pathlib.Path('/').root == '/'
+    assert pathlib.Path('./').root == ''
+    assert pathlib.Path('.//.').root == ''
+    assert pathlib.Path('a').root == ''
+    assert pathlib.Path('/a').root == '/'
+    assert pathlib.Path('/a', 'bb/cc', 'dd').root == '/'
+    assert pathlib.Path('a', '/b', 'c').root == '/'
 
 
 @mock_s3
@@ -84,8 +115,19 @@ def test_s3():
             assert not p5.is_dir()
 
 
-@mock_s3
-def test_s3_glob():
+def _setup_fs_fixture(fs):
+    # /base/0 ... /base/9
+    for i in range(3):
+        p = pathlib.Path(str(i), fs=fs)
+        p.touch()
+        assert p.exists()
+    # /0
+    pathlib.Path("dir", fs=fs).mkdir()
+    pathlib.Path("dir/0", fs=fs).touch()
+
+
+@contextlib.contextmanager
+def s3_fs():
     bucket = "test-dummy-bucket"
     key = "it's me!deadbeef"
     secret = "asedf;lkjdf;a'lksjd"
@@ -93,33 +135,87 @@ def test_s3_glob():
         with from_url('s3://test-dummy-bucket/base',
                       aws_access_key_id=key,
                       aws_secret_access_key=secret) as s3:
+            _setup_fs_fixture(s3)
+            yield s3
 
-            for i in range(10):
-                p = pathlib.Path(str(i), fs=s3)
-                assert '/base/{}'.format(i) == str(p.resolve())
-                p.touch()
-                assert p.exists()
 
-            # glob test
-            d = pathlib.Path(fs=s3)
-            files = list(d.glob("*"))
-            assert 10 == len(files)
-            assert [str(i) for i in range(10)] == sorted(str(f) for f in files)
+@contextlib.contextmanager
+def local_fs():
+    with tempfile.TemporaryDirectory() as tempd:
+        with from_url(tempd) as local:
+            _setup_fs_fixture(local)
+            yield local
 
-            d2 = pathlib.Path('/', fs=s3)
-            files = list(d2.glob("*"))
-            assert 10 == len(files)
-            for f in files:
-                assert f.name.startswith('base/')
 
-            files = list(d2.glob("*/0"))
-            assert ['base/0'] == [f.name for f in files]
-            for f in files:
-                assert f.name.startswith('base/')
+parameterize_fs = pytest.mark.parametrize(
+    'fs_fixture',
+    [s3_fs, local_fs]
+)
 
-            paths = ['foo', 'bar', 'baz/foo', 'baz/hoge/boom/huga']
-            for p in paths:
-                pathlib.Path(p, fs=s3).touch()
 
-            d3 = pathlib.Path('baz', fs=s3)
-            assert ['hoge/boom/huga'] == [f.name for f in d3.glob('**/huga')]
+@parameterize_fs
+@mock_s3
+def test_s3_iterdir(fs_fixture):
+    with fs_fixture() as fs:
+        d = pathlib.Path(fs=fs)
+        files = list(d.iterdir())
+        assert 4 == len(files)
+        assert all([isinstance(f, pathlib.Path) for f in files])
+        assert all([f._fs is fs for f in files])
+        assert sorted(str(f) for f in files) == ["0", "1", "2", "dir"]
+
+
+@parameterize_fs
+@mock_s3
+def test_s3_glob1(fs_fixture):
+    with fs_fixture() as fs:
+        d = pathlib.Path(fs=fs)
+        files = list(d.glob("*"))
+        assert 4 == len(files)
+        assert all([isinstance(f, pathlib.Path) for f in files])
+        assert all([f._fs is fs for f in files])
+        assert sorted(str(f) for f in files) == ["0", "1", "2", "dir"]
+
+
+@parameterize_fs
+@mock_s3
+def test_s3_glob2(fs_fixture):
+    with fs_fixture() as fs:
+        if isinstance(fs, Local):
+            pytest.skip("Can't test absolute path for local FS")
+
+        d2 = pathlib.Path('/', fs=fs)
+        files = list(d2.glob("*"))
+        assert 1 == len(files)
+        assert all([isinstance(f, pathlib.Path) for f in files])
+        assert all([f._fs is fs for f in files])
+        assert sorted(str(f) for f in files) == ["/base"]
+
+
+@parameterize_fs
+@mock_s3
+def test_s3_glob3(fs_fixture):
+    with fs_fixture() as fs:
+        d2 = pathlib.Path(fs=fs)
+        files = list(d2.glob("*/0"))
+        assert 1 == len(files)
+        assert all([isinstance(f, pathlib.Path) for f in files])
+        assert all([f._fs is fs for f in files])
+        assert sorted(str(f) for f in files) == ["dir/0"]
+
+
+@parameterize_fs
+@mock_s3
+def test_s3_glob4(fs_fixture):
+    with fs_fixture() as fs:
+        paths = ['foo', 'bar', 'baz/foo', 'baz/hoge/boom/huga']
+        for p in paths:
+            pathlib.Path(p, fs=fs).parent.mkdir(parents=True, exist_ok=True)
+            pathlib.Path(p, fs=fs).touch()
+
+        d3 = pathlib.Path('baz', fs=fs)
+        files = list(d3.glob('**/huga'))
+        assert 1 == len(files)
+        assert all([isinstance(f, pathlib.Path) for f in files])
+        assert all([f._fs is fs for f in files])
+        assert ['baz/hoge/boom/huga'] == [str(f) for f in files]

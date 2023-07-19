@@ -18,26 +18,41 @@ class Path:
         self._fs = fs if fs else Local()
         assert isinstance(self._fs, FS)
 
-        self._root = root
+        sep = self.sep
+        if root:
+            if not root.startswith(self.sep):
+                raise ValueError("root must start with a separator.")
+            if root == self.sep:
+                args = [self.sep] + args
+            else:
+                args = [self.sep, root[len(self.sep):]] + args
 
+        # Construct parts
         parts = []
         for argv in args:
-            if argv.startswith(self.sep):
-                parts = []
-            parts.append(argv)
-        if len(parts) == 0 and root is None:
-            parts = [self._fs.cwd]
+            p = argv
+            if p.startswith(sep):
+                parts = [sep]
+                p = p[len(sep):]
+            if len(p) > 0:
+                parts += [q for q in p.split(sep) if q not in ("", ".")]
+
+        # Check
+        assert "" not in parts
+        if parts and parts[0] == self.sep:
+            assert all(self.sep not in p for p in parts[1:])
+        else:
+            assert all(self.sep not in p for p in parts)
 
         self._parts = parts
 
-        if self._parts and self._parts[0] == self.sep and self._root is None:
-            self._parts = self._parts[1:]
-            self._root = self.sep
-
     @property
     def name(self):
-        filename = self._root if not self._parts else self._parts[-1]
-        return os.path.normpath(filename)
+        if not self._parts:
+            return ""
+        if len(self._parts) == 1 and self._parts[0] == self.sep:
+            return ""
+        return os.path.normpath(self._parts[-1])
 
     @property
     def suffix(self):
@@ -45,27 +60,35 @@ class Path:
 
     def with_suffix(self, ext):
         assert ext.startswith('.')
-        parts = self._parts[:]
-        if parts:
-            base = os.path.splitext(parts[-1])[0]
-            parts[-1] = '{}{}'.format(base, ext)
-            p = Path(*parts, fs=self._fs, root=self._root)
-            return p
-
-        base = os.path.splitext(self._root)[0]
-        root = '{}{}'.format(base, ext)
-        p = Path(*parts, fs=self._fs, root=root)
-        return p
+        name = self.name
+        if name == "":
+            raise ValueError(f"{self} has an empty name")
+        base, _ = os.path.splitext(name)
+        return self.parent / f"{base}{ext}"
 
     @property
     def parent(self):
-        path = str(self)
-        parent = os.path.split(path)[0]
-        return Path(parent, fs=self._fs, root=self._root)
+        if not self._parts:
+            return self
+
+        if self._parts[0] == self.sep and len(self._parts) == 1:
+            return self
+
+        return Path(*(self._parts[:-1]), fs=self._fs)
+
+    @property
+    def parts(self):
+        return tuple(self._parts)
+
+    @property
+    def root(self):
+        if self._parts and self._parts[0] == self.sep:
+            return self.sep
+        return ""
 
     def __rtruediv__(self, a):
         if isinstance(a, str):
-            lhs = Path(a, fs=self._fs, root=self._root)
+            lhs = Path(a, fs=self._fs)
         else:
             lhs = a
         return lhs / self
@@ -79,7 +102,7 @@ class Path:
         else:
             parts.append(str(a))
 
-        p = Path(*parts, fs=self._fs, root=self._root)
+        p = Path(*parts, fs=self._fs)
         return p
 
     @classmethod
@@ -91,10 +114,10 @@ class Path:
         raise NotImplementedError("home() is unsupported on this system")
 
     def exists(self):
-        return self._fs.exists(self.resolve())
+        return self._fs.exists(str(self.resolve()))
 
     def is_absolute(self):
-        return self._root is not None
+        return self._parts and self._parts[0] == self.sep
 
     def __repr__(self):
         return "{}[{}:{}]".format(self.__class__.__name__,
@@ -102,11 +125,11 @@ class Path:
                                   str(self))
 
     def __str__(self):
-
-        if self._root:
-            return os.path.join(self._root, *self._parts)
-
-        return os.path.join(*self._parts)
+        if not self._parts:
+            return "."
+        if self._parts[0] == self.sep:
+            return self.sep + self.sep.join(self._parts[1:])
+        return self.sep.join(self._parts)
 
     def __fspath__(self):
         return str(self)
@@ -115,13 +138,12 @@ class Path:
         return str(self) < str(other)
 
     def resolve(self, strict=True):
-        base = self._root if self._root else self._fs.cwd
         if '..' in self._parts or '.' in self._parts:
             raise RuntimeError("TODO")
-        parts = self._parts[:]
-        return Path(*parts, fs=self._fs, root=base)
+        return Path(*(self._fs.cwd, *self._parts), fs=self._fs)
 
     def samefile(self, other):
+        # TODO: Compare self._fs
         return str(self.resolve()) == str(other.resolve())
 
     def touch(self):
@@ -151,22 +173,51 @@ class Path:
     def is_file(self):
         return not self._fs.isdir(self.resolve())
 
+    def iterdir(self):
+        return self.glob("*")
+
     def glob(self, pattern):
         '''glob
 
-        TODO: this implemention is not smart enough in case of large
-        subdicrectories as they won't be skipped regarding the input
-        pattern.
-
-        Should return ``Path`` class as well.
-
+        It may be slow depending on the filesystem type.
         '''
-        base = self.resolve()
-        pattern1 = os.path.join(base, pattern)
+        # Try specialized implementation
+        with self._as_fs() as fs:
+            try:
+                generator = fs.glob(pattern)
+            except NotImplementedError:
+                pass
+            else:
+                return (self / f for f in generator)
 
+        # Fall back to slower generic implementation
+        return self._glob_generic(pattern)
+
+    def _glob_generic(self, pattern):
+        '''Slow and generic implementation of glob.'''
+        base = self.resolve()
+        base_parts = base._parts
+        pattern_parts = (base / pattern)._parts
+
+        visited_prefixes = set()
         for p in self._fs.list(base, recursive=True):
-            if fnmatch.fnmatch(os.path.join(base, p), pattern1):
-                yield Path(p, fs=self._fs, root=self._root)
+            parent = p
+
+            while (i := parent.rfind(self.sep)) != -1:
+                parent = parent[:i]
+                if parent in visited_prefixes:
+                    continue
+                visited_prefixes.add(parent)
+
+                target_parts = (base / parent)._parts
+
+                if _test_glob_by_parts(target_parts, pattern_parts):
+                    yield self / parent
+
+            target_parts = base_parts + p.split("/")
+
+            if _test_glob_by_parts(target_parts, pattern_parts):
+                yield self / p
 
     def stat(self):
         return self._fs.stat(self.resolve())
@@ -193,3 +244,28 @@ class Path:
         view = memoryview(data)
         with self.open(mode='wb') as fp:
             return fp.write(view)
+
+    def _as_fs(self):
+        return self._fs._newfs(str(self.resolve()))
+
+
+def _test_glob_by_parts(target_parts, pattern_parts):
+    target_parts = target_parts[:]
+    pattern_parts = pattern_parts[:]
+    while True:
+        if len(target_parts) == 0 and len(pattern_parts) == 0:
+            return True
+
+        if len(target_parts) == 0 or len(pattern_parts) == 0:
+            return False
+
+        p = pattern_parts.pop(0)
+        if p == "**":
+            for i in range(0, len(target_parts)):
+                if _test_glob_by_parts(target_parts[i:], pattern_parts):
+                    return True
+            return False
+
+        t = target_parts.pop(0)
+        if not fnmatch.fnmatch(t, p):
+            return False

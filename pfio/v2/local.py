@@ -1,5 +1,6 @@
 import io
 import os
+import pathlib
 import shutil
 from typing import Optional
 
@@ -152,3 +153,8 @@ class Local(FS):
             return os.rmdir(file_path)
 
         return os.remove(file_path)
+
+    def glob(self, pattern: str):
+        return [
+            str(item.relative_to(self.cwd))
+            for item in pathlib.Path(self.cwd).glob(pattern)]
