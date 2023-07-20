@@ -37,7 +37,7 @@ class Path:
     @property
     def name(self):
         filename = self._root if not self._parts else self._parts[-1]
-        return os.path.basename(os.path.normpath(filename))
+        return os.path.normpath(filename)
 
     @property
     def suffix(self):
