@@ -5,7 +5,10 @@ from pfio.v2 import S3, from_url, pathlib
 import pathlib as python_pathlib
 
 
-@pytest.mark.parametrize("test_path", ["foo.txt", "foo/", "dir/foo/", "dir/foo.txt" "/foo"])
+@pytest.mark.parametrize(
+    "test_path",
+    ["foo.txt", "foo/", "dir/foo/", "dir/foo.txt" "/foo"]
+)
 def test_name(test_path):
     pfio_path = pathlib.Path(test_path)
     python_path = python_pathlib.Path(test_path)
