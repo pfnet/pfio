@@ -1,8 +1,9 @@
+import pathlib as python_pathlib
+
 import pytest
 from moto import mock_s3
 
 from pfio.v2 import S3, from_url, pathlib
-import pathlib as python_pathlib
 
 
 @pytest.mark.parametrize(
