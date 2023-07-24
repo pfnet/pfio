@@ -26,6 +26,12 @@ def test_normpath_local():
                         d, zipfilename
                     ) == zipfs.normpath("hoge//fuga")
 
+            foldername = "somefolder"
+            with fs.subfs(foldername) as subfs:
+                assert \
+                    "local{}/{}/{}".format(d, foldername, filename) \
+                    == subfs.normpath(filename)
+
 
 @mock_s3
 def test_normpath_s3():
@@ -44,6 +50,15 @@ def test_normpath_s3():
                     bucket,
                     zipfilename
                 ) == zipfs.normpath("hoge//fuga")
+
+        prefixname = "someprefix"
+        with fs.subfs(prefixname) as subfs:
+            assert \
+                "s3(endpoint=None)/{}/{}/{}".format(
+                    bucket,
+                    prefixname,
+                    filename
+                ) == subfs.normpath(filename)
 
 
 @parameterized.expand(["s3", "local"])
