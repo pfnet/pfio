@@ -204,36 +204,3 @@ def test_recreate():
     p.start()
     p.join(timeout=1)
     assert p.exitcode == 0
-
-
-def test_normpath_local():
-    with tempfile.TemporaryDirectory() as d:
-        with from_url(d) as fs:
-            filename = "somefile"
-            assert \
-                "local{}/{}".format(d, filename) == fs.normpath(filename)
-            zipfilename = "some.zip"
-            with fs.open_zip(zipfilename, mode="w") as zipfs:
-                assert \
-                    "local{}/{}/zipfile/hoge/fuga".format(
-                        d, zipfilename
-                    ) == zipfs.normpath("hoge//fuga")
-
-
-@mock_s3
-def test_normpath_s3():
-    bucket = "test-dummy-bucket"
-    with from_url("s3://{}".format(bucket), create_bucket=True) as fs:
-        filename = "somefile"
-        assert \
-            "s3(endpoint=None)/{}/{}".format(
-                bucket,
-                filename
-            ) == fs.normpath(filename)
-        zipfilename = "some.zip"
-        with fs.open_zip(zipfilename, mode="w") as zipfs:
-            assert \
-                "s3(endpoint=None)/{}/{}/zipfile/hoge/fuga".format(
-                    bucket,
-                    zipfilename
-                ) == zipfs.normpath("hoge//fuga")

@@ -315,7 +315,7 @@ def open_url(url: str, mode: str = 'r', **kwargs) -> Iterator[IOBase]:
        with open_url("s3://bucket.example.com/path/your-file.txt", 'r') as f:
            f.read()
 
-    .. note:: Some FS resouces won't be closed when using this
+    .. note:: Some FS resources won't be closed when using this
         functionality. See ``from_url`` for keyword arguments.
 
     Returns:
@@ -351,7 +351,11 @@ def from_url(url: str, **kwargs) -> 'FS':
 
         create (bool): Create the specified path doesn't exist.
 
-    .. note:: Some FS resouces won't be closed when using this
+        http_cache (str): Prefix url of http cached entries.
+            For details, please refer to ``HTTPCachedFS``.
+            (experimental feature)
+
+    .. note:: Some FS resources won't be closed when using this
         functionality.
 
     .. note:: Pickling the FS object may or may not work correctly
@@ -376,6 +380,8 @@ def from_url(url: str, **kwargs) -> 'FS':
     if force_type is not None and force_type != "zip":
         if force_type != scheme:
             raise ValueError("URL scheme mismatch with forced type")
+
+    http_cache_prefix = kwargs.pop("http_cache", None)
 
     def _zip_check_create_not_supported():
         if kwargs.get('create', False):
@@ -406,6 +412,10 @@ def from_url(url: str, **kwargs) -> 'FS':
     else:
         dirname = parsed.path
         fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
+
+    if http_cache_prefix is not None:
+        from .http_cache import HTTPCachedFS
+        fs = HTTPCachedFS(http_cache_prefix, fs)
 
     return fs
 
