@@ -29,7 +29,7 @@ Or::
 '''
 from . import config  # NOQA
 from .fs import from_url, lazify, open_url  # NOQA
-from .gcs import GoogleCloudStorage, GoogleCloudStorageFileStat  # NOQA
+from .gcs import GoogleCloudStorage  # NOQA
 from .hdfs import Hdfs, HdfsFileStat  # NOQA
 from .http_cache import HTTPCachedFS  # NOQA
 from .local import Local, LocalFileStat  # NOQA
