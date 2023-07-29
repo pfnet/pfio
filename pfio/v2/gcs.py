@@ -1,8 +1,9 @@
 import base64
 import json
+import os
 
 from google.cloud import storage
-from google.cloud.storage.fileio import BlobReader, BlobWriter
+from google.cloud.storage.fileio import BlobReader  # , BlobWriter
 from google.oauth2 import service_account
 
 from .fs import FS, FileStat
@@ -30,32 +31,40 @@ class GoogleCloudStorage(FS):
         else:
             with open(self.key_path) as kp:
                 service_account_info = json.load(kp)
-                credentials = service_account.Credentials.from_service_account_info(service_account_info)
+                credentials = service_account.Credentials.\
+                    from_service_account_info(service_account_info)
             self.client = storage.Client(credentials=credentials,
                                          project=credentials.project_id)
 
-        # Caveat: You'll need ``roles/storage.insightsCollectorService`` role for the accessor instead.
-        # This is because ``roles/storage.objectViewer`` does not have ``storage.buckets.get``
-        # which is needed to call ``get_bucket()``.
+        # Caveat: You'll need
+        # ``roles/storage.insightsCollectorService`` role for the
+        # accessor instead.  This is because
+        # ``roles/storage.objectViewer`` does not have
+        # ``storage.buckets.get`` which is needed to call
+        # ``get_bucket()``.
         #
-        # See also: https://cloud.google.com/storage/docs/access-control/iam-roles
+        # See also:
+        # https://cloud.google.com/storage/docs/access-control/iam-roles
         self.bucket = self.client.get_bucket(self.bucket_name)
         self.bucket_name = self.bucket
-            
+
     def open(self, path, mode='r', **kwargs):
         blob = self.bucket.blob(os.path.join(self.prefix, path))
 
         if 'r' in mode:
-            return BlobReader(blob, chunk_size=1024*1024, text_mode=(not 'b' in mode))
+            return BlobReader(blob, chunk_size=1024*1024,
+                              text_mode=('b' not in mode))
 
         elif 'w' in mode:
-            return BlobReader(blob, chunk_size=1024*1024, text_mode=(not 'b' in mode))
+            return BlobReader(blob, chunk_size=1024*1024,
+                              text_mode=('b' not in mode))
 
         raise RuntimeError("Invalid mode")
 
     def list(self, prefix, recursive=False, detail=False):
-        # TODO: recursive
-        for blob in self.client.list_blobs(self.bucket_name, prefix=self.prefix):
+        #  TODO: recursive
+        for blob in self.client.list_blobs(self.bucket_name,
+                                           prefix=self.prefix):
             if detail:
                 yield ObjectStat(blob)
             else:
@@ -77,12 +86,13 @@ class GoogleCloudStorage(FS):
         return self.bucket.blob(path).exists()
 
     def rename(self, src, dst):
-        source_blob = self.bucket.blob(src)
-        destination_bucket = storage_client.bucket(destination_bucket_name)
+        # source_blob = self.bucket.blob(src)
+        # dest = self.client.bucket(dst)
 
         # Returns Blob destination
-        self.bucket.copy_blob(source_blob, self.bucket, dst)
-        self.bucket.delete_blob(blob_name)
+        # self.bucket.copy_blob(source_blob, self.bucket, dst)
+        # self.bucket.delete_blob(src)
+        pass
 
     def remove(self, path, recursive=False):
         self.bucket.delete_blob(path)
