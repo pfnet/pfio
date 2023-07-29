@@ -19,6 +19,17 @@ class ObjectStat(FileStat):
 
 
 class GoogleCloudStorage(FS):
+    '''Google Cloud Storage wrapper
+
+    ``key_path`` argument is a path to credential files of
+    IAM service account. The path to the file can be set to
+    the environmental variable``GOOGLE_APPLICATION_CREDENTIALS``
+    instead.
+
+    .. note:: This is an experimental implmentation.
+
+    '''
+
     def __init__(self, bucket: str, prefix=None, key_path=None):
         self.bucket_name = bucket
         self.prefix = prefix
