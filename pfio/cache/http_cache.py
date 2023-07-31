@@ -39,6 +39,7 @@ class _ConnectionPool(object):
             Generator[http.client.HTTPConnection, None, None]:
         if self.is_forked:
             self.conn = collections.defaultdict(list)
+            self.pid = os.getpid()
 
         conn: http.client.HTTPConnection
         try:
