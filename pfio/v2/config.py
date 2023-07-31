@@ -23,7 +23,11 @@ def _reload_config():
     _config = config
 
 
-def add_custom_scheme(name: str, scheme: str, data: Optional[Dict[str, str]] = None):
+def add_custom_scheme(
+    name: str,
+    scheme: str,
+    data: Optional[Dict[str, str]] = None,
+) -> None:
     if data is None:
         data = {}
     else:
