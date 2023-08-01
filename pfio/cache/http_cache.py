@@ -1,11 +1,12 @@
+import collections
+import contextlib
+import http.client
 import logging
 import os
 import pickle
 import time
-from typing import Any, Optional
-
-import urllib3
-import urllib3.exceptions
+import urllib.parse
+from typing import Any, Dict, Generator, List, Optional
 
 from pfio.cache import Cache
 
@@ -14,16 +15,16 @@ logger.addHandler(logging.StreamHandler())
 
 
 class _ConnectionPool(object):
-    def __init__(self, retries: int, timeout: int):
-        self.retries = retries
+    def __init__(self, timeout: int):
         self.timeout = timeout
-
-        self.conn: Optional[urllib3.poolmanager.PoolManager] = None
-        self.pid: Optional[int] = None
+        self.conn: \
+            Dict[str, List[http.client.HTTPConnection]] = \
+            collections.defaultdict(list)
+        self.pid = os.getpid()
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state['conn'] = None
+        state['conn'] = collections.defaultdict(list)
         return state
 
     def __setstate__(self, state):
@@ -33,23 +34,38 @@ class _ConnectionPool(object):
     def is_forked(self):
         return self.pid != os.getpid()
 
-    def urlopen(self, method, url, redirect=True, **kw):
-        if self.is_forked or self.conn is None:
-            self.conn = urllib3.poolmanager.PoolManager(
-                retries=self.retries,
-                timeout=self.timeout
-            )
+    @contextlib.contextmanager
+    def get(self, host: str) -> \
+            Generator[http.client.HTTPConnection, None, None]:
+        if self.is_forked:
+            self.conn = collections.defaultdict(list)
             self.pid = os.getpid()
-        return self.conn.urlopen(method, url, redirect, **kw)
+
+        conn: http.client.HTTPConnection
+        try:
+            conn = self.conn[host].pop()
+        except (IndexError, AssertionError):
+            conn = self._new_connection(host)
+
+        try:
+            yield conn
+        finally:
+            self.conn[host].append(conn)
+
+    def _new_connection(self, host: str) -> http.client.HTTPConnection:
+        return http.client.HTTPConnection(
+            host,
+            timeout=self.timeout
+        )
 
 
 CONNECTION_POOL: Optional[_ConnectionPool] = None
 
 
-def _get_connection_pool(retries: int, timeout: int) -> _ConnectionPool:
+def _get_connection_pool(timeout: int) -> _ConnectionPool:
     global CONNECTION_POOL
     if CONNECTION_POOL is None:
-        CONNECTION_POOL = _ConnectionPool(retries, timeout)
+        CONNECTION_POOL = _ConnectionPool(timeout)
     return CONNECTION_POOL
 
 
@@ -57,12 +73,28 @@ class HTTPConnector(object):
     def __init__(self,
                  url: str,
                  bearer_token_path: Optional[str] = None,
-                 retries: int = 1,
                  timeout: int = 3):
-        if url.endswith("/"):
-            self.url = url
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme == "":
+            url = "http://" + url
+            parsed = urllib.parse.urlparse(url)
+        if parsed.scheme != "http":
+            raise ValueError("HTTPConnector: url should start with http://")
+        if (
+            parsed.params != "" or
+            parsed.query != "" or
+            parsed.fragment != "" or
+            parsed.username is not None or
+            parsed.password is not None
+        ):
+            raise ValueError("HTTPConnector: unexpected url {}".format(parsed))
+
+        self.host = parsed.netloc
+        if parsed.path.endswith("/"):
+            self.path = parsed.path
         else:
-            self.url = url + "/"
+            self.path = parsed.path + "/"
+        self.conn = _get_connection_pool(timeout)
 
         self.bearer_token_path: Optional[str] = None
         if bearer_token_path is not None:
@@ -73,41 +105,57 @@ class HTTPConnector(object):
         if self.bearer_token_path is not None:
             self._token_read_now()
 
-        # Allow redirect or retry once by default
-        self.conn = _get_connection_pool(retries, timeout)
-
     def put(self, suffix: str, data: bytes) -> bool:
-        try:
-            res = self.conn.urlopen("PUT",
-                                    url=self.url + suffix,
-                                    headers=self._header_with_token(),
-                                    body=data)
-        except urllib3.exceptions.RequestError as e:
-            logger.warning("put: {}".format(e))
-            return False
+        conn: http.client.HTTPConnection
+        with self.conn.get(self.host) as conn:
+            try:
+                conn.request(
+                    "PUT",
+                    url=self.path + suffix,
+                    body=data,
+                    headers=self._header_with_token()
+                )
+                res = conn.getresponse()
+                res.read()
 
-        if res.status == 201:
-            return True
-        else:
-            logger.warning("put: unexpected status code {}".format(res.status))
-            return False
+                if res.status == 201:
+                    return True
+                else:
+                    logger.warning(
+                        "put: unexpected status code {}".format(res.status)
+                    )
+                    return False
+
+            except (http.client.HTTPException, OSError) as e:
+                logger.warning("put: {} {}".format(e, type(e)))
+                conn.close()  # fix error state
+                return False
 
     def get(self, suffix: str) -> Optional[bytes]:
-        try:
-            res = self.conn.urlopen("GET",
-                                    url=self.url + suffix,
-                                    headers=self._header_with_token())
-        except urllib3.exceptions.RequestError as e:
-            logger.warning("get: {}".format(e))
-            return None
+        conn: http.client.HTTPConnection
+        with self.conn.get(self.host) as conn:
+            try:
+                conn.request(
+                    "GET",
+                    url=self.path + suffix,
+                    headers=self._header_with_token()
+                )
+                res = conn.getresponse()
+                data = res.read()
 
-        if res.status == 200:
-            return res.data
-        elif res.status == 404:
-            return None
-        else:
-            logger.warning("get: unexpected status code {}".format(res.status))
-            return None
+                if res.status == 200:
+                    return data
+                elif res.status == 404:
+                    return None
+                else:
+                    logger.warning(
+                        "get: unexpected status code {}".format(res.status)
+                    )
+                    return None
+            except (http.client.HTTPException, OSError) as e:
+                logger.warning("get: {} {}".format(e, type(e)))
+                conn.close()  # fix error state
+                return None
 
     def _header_with_token(self) -> dict:
         if self.bearer_token_path is None:
