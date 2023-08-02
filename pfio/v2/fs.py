@@ -352,7 +352,7 @@ def from_url(url: str, **kwargs) -> 'FS':
         create (bool): Create the specified path doesn't exist.
 
         http_cache (str): Prefix url of http cached entries.
-            For details, please refer to ``HTTPCachedFS``.
+            For details, please refer to :py:class:`pfio.v2.HTTPCachedFS`.
             (experimental feature)
 
     .. note:: Some FS resources won't be closed when using this
