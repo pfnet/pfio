@@ -11,7 +11,8 @@ class HTTPCachedFS(FS):
     """HTTP-based cache system
 
     Stores cache data in an HTTP server with ``PUT`` and ``GET`` methods. Each
-    cache entry corresponds to url suffixed by normalized paths (``normpath``).
+    cache entry corresponds to url suffixed by _canonical_name in
+    :py:class:`pfio.v2.fs.FS`.
 
     Arguments:
         url (string):
@@ -100,9 +101,9 @@ class HTTPCachedFS(FS):
     def glob(self, pattern: str) -> Iterator[Union[FileStat, str]]:
         return self.fs.glob(pattern)
 
-    def normpath(self, file_path: str) -> str:
+    def _canonical_name(self, file_path: str) -> str:
         # Don't add httpcache in normpath
-        return self.fs.normpath(file_path)
+        return self.fs._canonical_name(file_path)
 
 
 class _HTTPCacheIOBase(io.RawIOBase):
@@ -121,7 +122,7 @@ class _HTTPCacheIOBase(io.RawIOBase):
         self.open_args = open_args
         self.open_kwargs = open_kwargs
 
-        self.cache_path = self.fs.normpath(self.file_path)
+        self.cache_path = self.fs._canonical_name(self.file_path)
         self.whole_file: Optional[bytes] = None
         self.pos: Optional[int] = None
         self.fp: Optional[io.RawIOBase] = None

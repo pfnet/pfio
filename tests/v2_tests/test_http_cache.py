@@ -18,19 +18,20 @@ def test_normpath_local():
         with from_url(d) as fs:
             filename = "somefile"
             assert \
-                "local{}/{}".format(d, filename) == fs.normpath(filename)
+                f"local:/{d}/{filename}" == fs._canonical_name(filename)
             zipfilename = "some.zip"
             with fs.open_zip(zipfilename, mode="w") as zipfs:
-                assert \
-                    "local{}/{}/zipfile/hoge/fuga".format(
-                        d, zipfilename
-                    ) == zipfs.normpath("hoge//fuga")
+                assert (
+                    f"local:/{d}/{zipfilename}/pfio-zipfs/hoge/fuga" ==
+                    zipfs._canonical_name("hoge//fuga")
+                )
 
             foldername = "somefolder"
             with fs.subfs(foldername) as subfs:
-                assert \
-                    "local{}/{}/{}".format(d, foldername, filename) \
-                    == subfs.normpath(filename)
+                assert (
+                    f"local:/{d}/{foldername}/{filename}" ==
+                    subfs._canonical_name(filename)
+                )
 
 
 @mock_s3
@@ -38,27 +39,24 @@ def test_normpath_s3():
     bucket = "test-dummy-bucket"
     with from_url("s3://{}".format(bucket), create_bucket=True) as fs:
         filename = "somefile"
-        assert \
-            "s3(endpoint=None)/{}/{}".format(
-                bucket,
-                filename
-            ) == fs.normpath(filename)
+        assert (
+            f"s3://undefined/{bucket}/{filename}" ==
+            fs._canonical_name(filename)
+        )
         zipfilename = "some.zip"
         with fs.open_zip(zipfilename, mode="w") as zipfs:
-            assert \
-                "s3(endpoint=None)/{}/{}/zipfile/hoge/fuga".format(
-                    bucket,
-                    zipfilename
-                ) == zipfs.normpath("hoge//fuga")
+            assert (
+                f"s3://undefined/{bucket}/{zipfilename}/pfio-zipfs/hoge/fuga"
+                ==
+                zipfs._canonical_name("hoge//fuga")
+            )
 
         prefixname = "someprefix"
         with fs.subfs(prefixname) as subfs:
-            assert \
-                "s3(endpoint=None)/{}/{}/{}".format(
-                    bucket,
-                    prefixname,
-                    filename
-                ) == subfs.normpath(filename)
+            assert (
+                f"s3://undefined/{bucket}/{prefixname}/{filename}" ==
+                subfs._canonical_name(filename)
+            )
 
 
 @parameterized.expand(["s3", "local"])
@@ -77,9 +75,9 @@ def test_httpcache_simple(target):
                 fp.write(content)
             with fs.open(filename, mode="rb") as fp:
                 assert fp.read(-1) == content
-            normpath = fs.normpath(filename)
+            canonical_name = fs._canonical_name(filename)
 
-        assert cache_content["/" + normpath] == content
+        assert cache_content["/" + canonical_name] == content
 
 
 def test_httpcache_too_large():
@@ -153,8 +151,14 @@ def test_httpcache_zipfile_flat(target):
 
                 assert len(cache_content) == 2
 
-        assert cache_content["/" + fs.normpath(filename1)] == filecontent1
-        assert cache_content["/" + fs.normpath(filename2)] == filecontent2
+        assert (
+            cache_content["/" + fs._canonical_name(filename1)] ==
+            filecontent1
+        )
+        assert (
+            cache_content["/" + fs._canonical_name(filename2)] ==
+            filecontent2
+        )
 
 
 @parameterized.expand(["s3", "local"])
@@ -189,7 +193,8 @@ def test_httpcache_zipfile_archived(target):
 
                 assert len(cache_content) == 1
 
-        archive_bytes = cache_content["/" + cached_fs.normpath(zipfilename)]
+        archive_bytes = cache_content["/" +
+                                      cached_fs._canonical_name(zipfilename)]
         with io.BytesIO(archive_bytes) as bytesio:
             with zipfile.ZipFile(bytesio) as archive:
                 with archive.open(filename1) as fp:

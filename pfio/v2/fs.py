@@ -298,8 +298,10 @@ class FS(abc.ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def normpath(self, file_path: str) -> str:
-        """Returns its normpath with protocol and endpoint
+    def _canonical_name(self, file_path: str) -> str:
+        """Returns its canonical name. Canonical name includes its filesystem
+        name, endpoint of filesystem, and file_path to represent its consistent
+        naming. Designed to be used in :py:class:`pfio.v2.HTTPCachedFS`.
         """
         raise NotImplementedError
 

@@ -381,4 +381,4 @@ class Hdfs(FS):
         path = os.path.join(self.cwd, file_path)
         norm_path = self._fs.normalize_path(path).rstrip('/')
 
-        return "hdfs({})/{}".format(self._nameservice, norm_path)
+        return f"hdfs://{self._nameservice}/{norm_path}"

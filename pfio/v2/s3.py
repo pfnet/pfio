@@ -1,6 +1,7 @@
 import hashlib
 import io
 import os
+import urllib.parse
 from types import TracebackType
 from typing import Optional, Type
 
@@ -606,12 +607,18 @@ class S3(FS):
         return self.client.delete_object(Bucket=self.bucket,
                                          Key=key)
 
-    def normpath(self, file_path: str) -> str:
+    def _canonical_name(self, file_path: str) -> str:
+        if self.endpoint is not None:
+            parsed = urllib.parse.urlparse(self.endpoint)
+            if parsed.scheme == "":
+                parsed = urllib.parse.urlparse(f"http://{self.endpoint}")
+            hostname = parsed.hostname
+        else:
+            # self.endpoint is not defined in moto3 environment
+            hostname = "undefined"
+            print("S3 endpoint is not defined")
+
         path = os.path.join(self.cwd, file_path)
         norm_path = _normalize_key(path)
 
-        return "s3(endpoint={})/{}/{}".format(
-            self.endpoint,
-            self.bucket,
-            norm_path
-        )
+        return f"s3://{hostname}/{self.bucket}/{norm_path}"
