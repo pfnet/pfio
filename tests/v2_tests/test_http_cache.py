@@ -82,6 +82,45 @@ def test_httpcache_simple(target):
         assert cache_content["/" + normpath] == content
 
 
+def test_httpcache_too_large():
+    from pfio.v2.http_cache import _HTTPCacheIOBase
+
+    filename = "testfile"
+
+    one_mb = 1024 * 1024
+    one_mb_array = bytearray(one_mb)
+
+    with make_http_server() as (httpd, port):
+        http_cache = f"http://localhost:{port}/"
+        cache_content = httpd.RequestHandlerClass.files
+
+        with gen_fs("local") as underlay:
+            fs = HTTPCachedFS(http_cache, underlay)
+            with fs.open(filename, mode="wb") as fp:
+                for _ in range(1024 + 1):  # 1 MB exceeds
+                    fp.write(one_mb_array)
+
+            with fs.open(filename, mode="rb") as fp:
+                for _ in range(1024 + 1):
+                    assert fp.read(one_mb) == one_mb_array
+                assert isinstance(fp, _HTTPCacheIOBase)
+                assert fp.whole_file is None
+                assert fp.tell() == fp.seek(0, io.SEEK_END)
+
+            with fs.open(filename, mode="rb") as fp:
+                assert fp.tell() == 0
+                fp.seek(one_mb)
+                assert fp.tell() == one_mb
+
+                for _ in range(1024):
+                    assert fp.read(one_mb) == one_mb_array
+                assert isinstance(fp, _HTTPCacheIOBase)
+                assert fp.whole_file is None
+                assert fp.tell() == fp.seek(0, io.SEEK_END)
+
+        assert len(cache_content) == 0
+
+
 @parameterized.expand(["s3", "local"])
 @mock_s3
 def test_httpcache_zipfile_flat(target):

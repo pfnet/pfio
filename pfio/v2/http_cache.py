@@ -30,6 +30,10 @@ class HTTPCachedFS(FS):
             Other operations including write will not be hooked. It will be
             transferred to underlying filesystem immediately.
 
+        max_cache_size (int):
+            Files larger than max_cache_size will not be cached.
+            max_cache_size is 1 GiB by default.
+
         bearer_token_path (string):
             Path to HTTP bearer token if authorization required.
             ``HTTPCachedFS`` supports refresh of bearer token by periodical
@@ -42,9 +46,11 @@ class HTTPCachedFS(FS):
     def __init__(self,
                  url: str,
                  fs: FS,
+                 max_cache_size: int = 1024 * 1024 * 1024,
                  bearer_token_path: Optional[str] = None):
         super().__init__()
         self.fs = fs
+        self.max_cache_size = max_cache_size
         self.conn = HTTPConnector(url, bearer_token_path)
         if url.endswith("/"):
             self.url = url
@@ -58,7 +64,7 @@ class HTTPCachedFS(FS):
         if 'r' in mode:
             kwargs['mode'] = mode
             return _HTTPCacheIOBase(file_path, self.conn, self.fs,
-                                    args, kwargs)
+                                    self.max_cache_size, args, kwargs)
         else:
             return self.fs.open(file_path, mode, *args, **kwargs)
 
@@ -102,65 +108,93 @@ class _HTTPCacheIOBase(io.RawIOBase):
                  file_path: str,
                  conn: HTTPConnector,
                  fs: FS,
+                 max_cache_size: int,
                  open_args: Any, open_kwargs: dict):
         super(_HTTPCacheIOBase, self).__init__()
 
         self.file_path = file_path
         self.conn = conn
         self.fs = fs
+        self.max_cache_size = max_cache_size
         self.open_args = open_args
         self.open_kwargs = open_kwargs
 
         self.cache_path = self.fs.normpath(self.file_path)
         self.whole_file: Optional[bytes] = None
-        self.pos = 0
+        self.pos: Optional[int] = None
+        self.fp: Optional[io.RawIOBase] = None
+
         self._closed = False
 
     def _load_file(self):
         if self.whole_file is not None:
             return
 
+        if self.fp is not None:
+            return
+
+        # Try HTTPCache.
         data = self.conn.get(self.cache_path)
         if data is not None:
             self.whole_file = data
+            self.pos = 0
             return
 
-        with self.fs.open(self.file_path,
-                          *self.open_args, **self.open_kwargs) as f:
-            self.whole_file = f.read(-1)
+        # Check size in underlying fs.
+        stat = self.fs.stat(self.file_path)
+        if stat.size < self.max_cache_size:
+            # The filesize is smaller than max_cache_size so let's cache it
 
-        if 1024 * 1024 * 1024 <= len(self.whole_file):
+            # Read whole file
+            with self.fs.open(self.file_path,
+                              *self.open_args, **self.open_kwargs) as fp:
+                self.whole_file = fp.read(-1)
+            self.pos = 0
+
+            # Put it to HTTPCache.
+            self.conn.put(self.cache_path, self.whole_file)
+        else:
+            # The file is larger than max_cache_size
             print(
-                "HTTPCachedFS: Too big data ({} bytes)".format(
-                    len(self.whole_file)
+                "HTTPCachedFS: Too big data ({} bytes), skipping cache".format(
+                    stat.size
                 )
             )
-            return
 
-        self.conn.put(self.cache_path, self.whole_file)
+            # Access through underlying filesystem
+            self.fp = self.fs.open(self.file_path,
+                                   *self.open_args, **self.open_kwargs)
 
     def read(self, size=-1) -> bytes:
         self._load_file()
-        if self.whole_file is None:
-            print("HTTPCachedFS: failed to read from backend fs")
-            return b''
+        if self.whole_file is not None:
+            assert self.pos is not None
 
-        if len(self.whole_file) <= self.pos:
-            return b''
-        elif size <= 0:
-            data = self.whole_file[self.pos:]
-        else:
-            end = min(self.pos + size, len(self.whole_file))
-            data = self.whole_file[self.pos:end]
+            if len(self.whole_file) <= self.pos:
+                return b''
+            elif size <= 0:
+                data = self.whole_file[self.pos:]
+            else:
+                end = min(self.pos + size, len(self.whole_file))
+                data = self.whole_file[self.pos:end]
 
-        self.pos += len(data)
-        return data
+            self.pos += len(data)
+            return data
+        elif self.fp is not None:
+            data_from_fp = self.fp.read(size)
+            if data_from_fp is not None:
+                return data_from_fp
+
+        print("HTTPCachedFS: failed to read from backend fs")
+        return b''
 
     def readline(self):
         raise NotImplementedError()
 
     def close(self):
         self._closed = True
+        if self.fp is not None:
+            self.fp.close()
 
     def __enter__(self):
         return self
@@ -187,27 +221,38 @@ class _HTTPCacheIOBase(io.RawIOBase):
         return True
 
     def tell(self):
-        return self.pos
+        self._load_file()
+
+        if self.pos is not None:
+            return self.pos
+        else:
+            assert self.fp is not None
+            return self.fp.tell()
 
     def truncate(self, size=None):
         raise io.UnsupportedOperation('truncate')
 
     def seek(self, pos, whence=io.SEEK_SET):
-        if whence in [0, io.SEEK_SET]:
+        self._load_file()
+
+        if self.pos is not None:
+            if whence in [0, io.SEEK_SET]:
+                pass
+            elif whence in [1, io.SEEK_CUR]:
+                pos += self.pos
+            elif whence in [2, io.SEEK_END]:
+                pos += len(self.whole_file)
+            else:
+                raise ValueError('Wrong whence value: {}'.format(whence))
+
             if pos < 0:
                 raise OSError(22, "[Errno 22] Invalid argument")
-        elif whence in [1, io.SEEK_CUR]:
-            pos += self.pos
-        elif whence in [2, io.SEEK_END]:
-            self._load_file()
-            pos += len(self.whole_file)
-        else:
-            raise ValueError('Wrong whence value: {}'.format(whence))
 
-        if pos < 0:
-            raise OSError(22, "[Errno 22] Invalid argument")
-        self.pos = pos
-        return self.pos
+            self.pos = pos
+            return self.pos
+        else:
+            assert self.fp is not None
+            return self.fp.seek(pos, whence)
 
     def writable(self):
         return False
