@@ -48,7 +48,9 @@ class HTTPCachedFS(FS):
                  fs: FS,
                  max_cache_size: int = 1024 * 1024 * 1024,
                  bearer_token_path: Optional[str] = None):
+        assert not isinstance(fs, HTTPCachedFS)
         super().__init__()
+
         self.fs = fs
         self.max_cache_size = max_cache_size
         self.conn = HTTPConnector(url, bearer_token_path)
