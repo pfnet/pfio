@@ -431,7 +431,7 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
         from .s3 import S3
         fs = S3(bucket=bucket, prefix=dirname, **kwargs)
     else:
-        raise RuntimeError("scheme '{}' is not supported".format(scheme))
+        raise RuntimeError("scheme '{}' is not defined".format(scheme))
 
     return fs
 
