@@ -26,7 +26,7 @@ def test_s3_zip(local_cache):
         with from_url('s3://{}/'.format(bucket),
                       create_bucket=True) as s3:
             assert isinstance(s3, S3)
-            with open(zipfilename, 'rb') as src,\
+            with open(zipfilename, 'rb') as src, \
                     s3.open('test.zip', 'wb') as dst:
                 shutil.copyfileobj(src, dst)
 
@@ -157,7 +157,7 @@ def test_force_type2():
         with from_url('s3://{}/'.format(bucket),
                       create_bucket=True) as s3:
             assert isinstance(s3, S3)
-            with open(zipfilename, 'rb') as src,\
+            with open(zipfilename, 'rb') as src, \
                     s3.open('test.zip', 'wb') as dst:
                 shutil.copyfileobj(src, dst)
 

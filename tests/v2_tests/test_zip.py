@@ -132,10 +132,14 @@ class TestZip(unittest.TestCase):
         with local.open_zip(os.path.abspath(self.zip_file_path), 'w') as z:
             with z.open(testfile_name, "wb") as zipped_file:
                 zipped_file.write(test_string_b)
+            stat = z.stat(testfile_name)
+            assert stat.size == len(test_string_b)
 
         with local.open_zip(os.path.abspath(self.zip_file_path)) as z:
             with z.open(testfile_name, "rb") as zipped_file:
                 self.assertEqual(test_string_b, zipped_file.readline())
+            stat = z.stat(testfile_name)
+            assert stat.size == len(test_string_b)
 
     def test_write_string(self):
         testfile_name = "testfile3"
