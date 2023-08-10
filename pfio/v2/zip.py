@@ -3,7 +3,7 @@ import logging
 import os
 import zipfile
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Set
 
 from pfio.cache.sparse_file import MPCachedWrapper
 
@@ -119,11 +119,15 @@ class Zip(FS):
 
         assert self.fileobj is not None
         self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
+        self.name_cache: Optional[Set[str]] = None
+        if self._readonly:
+            self.name_cache = self._names()
 
     def __getstate__(self):
         state = self.__dict__.copy()
         state['fileobj'] = None
         state['zipobj'] = None
+        state['name_cache'] = None
         return state
 
     def __setstate__(self, state):
@@ -153,11 +157,11 @@ class Zip(FS):
 
     def stat(self, path):
         self._checkfork()
+        names = self._names()
         path = os.path.join(self.cwd, os.path.normpath(path))
-        if path in self.zipobj.namelist():
+        if path in names:
             actual_path = path
-        elif (not path.endswith('/')
-              and path + '/' in self.zipobj.namelist()):
+        elif not path.endswith('/') and path + '/' in names:
             # handles cases when path is a directory but without trailing slash
             # see issue $67
             actual_path = path + '/'
@@ -188,7 +192,7 @@ class Zip(FS):
                 raise NotADirectoryError(
                     "{} is not a directory".format(path_or_prefix))
             elif not any(name.startswith(path_or_prefix + "/")
-                         for name in self.zipobj.namelist()):
+                         for name in self._names()):
                 # check if directories are NOT included in the zip
                 # such kind of zip can be made with "zip -D"
                 raise FileNotFoundError(
@@ -239,7 +243,7 @@ class Zip(FS):
             file_path = os.path.normpath(file_path)
             # check if directories are NOT included in the zip
             if any(name.startswith(file_path + "/")
-                   for name in self.zipobj.namelist()):
+                   for name in self._names()):
                 return True
 
             return False
@@ -262,6 +266,14 @@ class Zip(FS):
 
     def remove(self, file_path, recursive=False):
         raise io.UnsupportedOperation
+
+    def _names(self) -> Set[str]:
+        if self.name_cache is not None:
+            return self.name_cache
+        else:
+            return set(
+                data.filename for data in self.zipobj.infolist()
+            )
 
 
 def _open_zip(fs, file_path, mode, **kwargs) -> Zip:
