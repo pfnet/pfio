@@ -38,10 +38,9 @@ def add_custom_scheme(
 
 
 def get_custom_scheme(name: str) -> Optional[Dict[str, str]]:
-    try:
-        return dict(_config[name])
-    except KeyError:
+    if name not in _config:
         return None
+    return dict(_config[name])
 
 
 _config = None
