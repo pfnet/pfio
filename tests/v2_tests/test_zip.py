@@ -114,6 +114,11 @@ class TestZip(unittest.TestCase):
         self.tmpdir.cleanup()
         local.remove(self.zip_file_path)
 
+    def test_repr_str(self):
+        with local.open_zip(self.zip_file_path) as z:
+            repr(z)
+            str(z)
+
     def test_read_bytes(self):
         with local.open_zip(os.path.abspath(self.zip_file_path)) as z:
             with z.open(self.zipped_file_path, "rb") as zipped_file:

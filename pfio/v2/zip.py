@@ -7,6 +7,7 @@ from typing import Optional, Set
 
 from pfio.cache.sparse_file import MPCachedWrapper
 
+from . import _utils
 from .fs import FS, FileStat
 
 logger = logging.getLogger(__name__)
@@ -132,6 +133,16 @@ class Zip(FS):
 
     def __setstate__(self, state):
         self.__dict__ = state
+
+    def __repr__(self):
+        return _utils.format_repr(
+            Zip,
+            {
+                "file_path": self.file_path,
+                "mode": self.mode,
+                "backend": self.backend,
+            },
+        )
 
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,

@@ -16,6 +16,7 @@ try:
 except ImportError:
     has_hdfs = False
 
+from . import _utils
 from .fs import FS, FileStat, ForkedError
 
 logger = logging.getLogger(__name__)
@@ -258,6 +259,14 @@ class Hdfs(FS):
 
     def __setstate__(self, state):
         self.__dict__ = state
+
+    def __repr__(self):
+        return _utils.format_repr(
+            Hdfs,
+            {
+                "cwd": self._cwd,
+            },
+        )
 
     def _get_principal_name(self):
         # get the default principal name from `klist` cache
