@@ -57,7 +57,8 @@ def get_custom_scheme(name: str) -> Optional[Dict[str, str]]:
         name (str): Name of the custom scheme.
 
     Returns:
-        dict: Custom scheme data. ``None`` if the custom scheme is not registered.
+        dict: Custom scheme data. ``None`` if the custom scheme is not
+              registered.
 
     .. note:: This feature is experimental.
     """
