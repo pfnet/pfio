@@ -11,7 +11,7 @@ def test_ini():
         prev = os.getenv('PFIO_CONFIG_PATH')
         os.environ['PFIO_CONFIG_PATH'] = './example.pfio.ini'
 
-        pfio.v2.config._reload_config()
+        pfio.v2.config._load_config()
 
         with pfio.v2.from_url('foobar://pfio/') as fs:
             assert isinstance(fs, pfio.v2.Local)
@@ -33,7 +33,7 @@ def test_ini():
 
 @mock_s3
 def test_add_custom_scheme():
-    pfio.v2.config._reload_config()
+    pfio.v2.config._load_config()
 
     pfio.v2.config.add_custom_scheme("foobar2", "file")
     pfio.v2.config.add_custom_scheme(

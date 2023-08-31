@@ -15,7 +15,7 @@ def _default_config_file():
     return os.path.join(basedir, "pfio.ini")
 
 
-def _reload_config():
+def _load_config():
     global _config
     config = configparser.ConfigParser()
     configfile = _default_config_file()
@@ -39,6 +39,8 @@ def add_custom_scheme(
 
     .. note:: This feature is experimental.
     """
+    if _config is None:
+        _load_config()
     if data is None:
         data = {}
     else:
@@ -59,12 +61,11 @@ def get_custom_scheme(name: str) -> Optional[Dict[str, str]]:
 
     .. note:: This feature is experimental.
     """
+    if _config is None:
+        _load_config()
     if name not in _config:
         return None
     return dict(_config[name])
 
 
 _config = None
-
-
-_reload_config()
