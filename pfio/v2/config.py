@@ -28,6 +28,17 @@ def add_custom_scheme(
     scheme: str,
     data: Optional[Dict[str, str]] = None,
 ) -> None:
+    """Adds a custom scheme.
+
+    Args:
+        name (str): Name of the custom scheme.
+
+        scheme (str): Name of the base scheme.
+
+        data (dict, optional): Additional data required for the scheme.
+
+    .. note:: This feature is experimental.
+    """
     if data is None:
         data = {}
     else:
@@ -38,6 +49,16 @@ def add_custom_scheme(
 
 
 def get_custom_scheme(name: str) -> Optional[Dict[str, str]]:
+    """Returns a custom scheme.
+
+    Args:
+        name (str): Name of the custom scheme.
+
+    Returns:
+        dict: Custom scheme data. ``None`` if the custom scheme is not registered.
+
+    .. note:: This feature is experimental.
+    """
     if name not in _config:
         return None
     return dict(_config[name])
