@@ -16,8 +16,7 @@ try:
 except ImportError:
     has_hdfs = False
 
-from . import _utils
-from .fs import FS, FileStat, ForkedError
+from .fs import FS, FileStat, ForkedError, format_repr
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -261,7 +260,7 @@ class Hdfs(FS):
         self.__dict__ = state
 
     def __repr__(self):
-        return _utils.format_repr(
+        return format_repr(
             Hdfs,
             {
                 "cwd": self._cwd,

@@ -7,8 +7,7 @@ from typing import Optional, Type
 import boto3
 from botocore.exceptions import ClientError
 
-from . import _utils
-from .fs import FS, FileStat
+from .fs import FS, FileStat, format_repr
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
 
@@ -385,7 +384,7 @@ class S3(FS):
         self.__dict__ = state
 
     def __repr__(self) -> str:
-        return _utils.format_repr(
+        return format_repr(
             S3,
             {
                 "bucket": self.bucket,

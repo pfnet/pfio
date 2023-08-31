@@ -7,8 +7,7 @@ from typing import Optional, Set
 
 from pfio.cache.sparse_file import MPCachedWrapper
 
-from . import _utils
-from .fs import FS, FileStat
+from .fs import FS, FileStat, format_repr
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -135,7 +134,7 @@ class Zip(FS):
         self.__dict__ = state
 
     def __repr__(self):
-        return _utils.format_repr(
+        return format_repr(
             Zip,
             {
                 "file_path": self.file_path,
