@@ -1,5 +1,4 @@
 import abc
-import configparser
 import contextlib
 import copy
 import os
@@ -13,6 +12,7 @@ from urllib.parse import urlparse
 
 from deprecation import deprecated
 
+from pfio.v2 import config
 from pfio.version import __version__  # NOQA
 
 
@@ -404,44 +404,13 @@ def from_url(url: str, **kwargs) -> 'FS':
     return fs
 
 
-def _default_config_file():
-    path = os.getenv('PFIO_CONFIG_PATH')
-    if path:
-        return path
-
-    basedir = os.getenv('XDG_CONFIG_HOME')
-    if not basedir:
-        basedir = os.path.join(os.getenv('HOME'), ".config")
-
-    return os.path.join(basedir, "pfio.ini")
-
-
-class _CustomScheme:
-    conf = None
-
-    @staticmethod
-    def config(scheme):
-        if _CustomScheme.conf is None:
-            _CustomScheme.load_config()
-
-        if scheme in _CustomScheme.conf:
-            return dict(_CustomScheme.conf[scheme])
-
-    @staticmethod
-    def load_config():
-        config = configparser.ConfigParser()
-        configfile = _default_config_file()
-        config.read(configfile)
-        _CustomScheme.conf = config
-
-
 def _from_scheme(scheme, dirname, kwargs, bucket=None):
     known_scheme = ['file', 'hdfs', 's3']
 
     # Custom scheme; using configparser for older Python. Will
     # update to toml in Python 3.11 once 3.10 is in the end.
     if scheme not in known_scheme:
-        config_dict = _CustomScheme.config(scheme)
+        config_dict = config.get_custom_scheme(scheme)
         if config_dict is not None:
             scheme = config_dict.pop('scheme')  # Get the real scheme
             # Custom scheme expected here
@@ -462,7 +431,7 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
         from .s3 import S3
         fs = S3(bucket=bucket, prefix=dirname, **kwargs)
     else:
-        raise RuntimeError("bug: scheme '{}' is not supported".format(scheme))
+        raise RuntimeError("scheme '{}' is not defined".format(scheme))
 
     return fs
 

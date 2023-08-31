@@ -27,6 +27,7 @@ Or::
   pfio = Hdfs()
 
 '''
+from . import config  # NOQA
 from .fs import from_url, lazify, open_url  # NOQA
 from .hdfs import Hdfs, HdfsFileStat  # NOQA
 from .local import Local, LocalFileStat  # NOQA
