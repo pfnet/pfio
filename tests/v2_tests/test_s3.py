@@ -48,6 +48,12 @@ def test_s3_init(s3_fixture):
         assert s3.endpoint is None
 
 
+def test_s3_repr_str(s3_fixture):
+    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+        repr(s3)
+        str(s3)
+
+
 def test_s3_files(s3_fixture):
     with from_url('s3://test-bucket/base',
                   **s3_fixture.aws_kwargs) as s3:

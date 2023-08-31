@@ -8,7 +8,7 @@ import warnings
 from abc import abstractmethod
 from io import IOBase
 from types import TracebackType
-from typing import Any, Callable, Iterator, Optional, Type, Union
+from typing import Any, Callable, Dict, Iterator, Optional, Type, Union
 from urllib.parse import urlparse
 
 from deprecation import deprecated
@@ -474,3 +474,8 @@ def lazify(init_func, lazy_init=True, recreate_on_fork=True):
 
     '''
     pass
+
+
+def format_repr(cls: Type, data: Dict[str, Any]) -> str:
+    data_str = ", ".join(f"{name}={value!r}" for name, value in data.items())
+    return f"{cls.__module__}.{cls.__name__}({data_str})"

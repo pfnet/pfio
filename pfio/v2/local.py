@@ -4,7 +4,7 @@ import pathlib
 import shutil
 from typing import Optional
 
-from .fs import FS, FileStat
+from .fs import FS, FileStat, format_repr
 
 
 class LocalFileStat(FileStat):
@@ -74,6 +74,14 @@ class Local(FS):
 
     def _reset(self):
         pass
+
+    def __repr__(self):
+        return format_repr(
+            Local,
+            {
+                "cwd": self._cwd,
+            },
+        )
 
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,

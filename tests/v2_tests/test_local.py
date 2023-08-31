@@ -21,6 +21,11 @@ class TestLocal(unittest.TestCase):
     def tearDown(self):
         self.testdir.cleanup()
 
+    def test_repr_str(self):
+        with Local(self.testdir.name) as fs:
+            str(fs)
+            repr(fs)
+
     def test_read_string(self):
 
         with Local() as fs:

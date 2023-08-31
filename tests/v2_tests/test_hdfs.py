@@ -50,6 +50,11 @@ class TestHdfs(unittest.TestCase):
         self.hdfs.remove(self.dirname, recursive=True)
         self.hdfs.close()
 
+    def test_repr_str(self):
+        with Hdfs(self.dirname) as fs:
+            repr(fs)
+            str(fs)
+
     def test_read_non_exist(self):
         non_exist_file = "non_exist_file.txt"
 
