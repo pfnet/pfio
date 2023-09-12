@@ -100,6 +100,7 @@ class Zip(FS):
         # Use sparse file cache: Optimization for a remote object
         # store system e.g. AWS S3 or HDFS
         if self.local_cache:
+            # Will be removed in 2.8
             warnings.warn("Sparse file cache deprecated in 2.7",
                           DeprecationWarning)
 
