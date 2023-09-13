@@ -160,4 +160,4 @@ class Local(FS):
             for item in pathlib.Path(self.cwd).glob(pattern)]
 
     def _canonical_name(self, file_path: str) -> str:
-        return "local:/" + os.path.normpath(os.path.join(self.cwd, file_path))
+        return "file:/" + os.path.normpath(os.path.join(self.cwd, file_path))

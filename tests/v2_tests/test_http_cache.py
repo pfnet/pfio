@@ -18,18 +18,18 @@ def test_normpath_local():
         with from_url(d) as fs:
             filename = "somefile"
             assert \
-                f"local:/{d}/{filename}" == fs._canonical_name(filename)
+                f"file:/{d}/{filename}" == fs._canonical_name(filename)
             zipfilename = "some.zip"
             with fs.open_zip(zipfilename, mode="w") as zipfs:
                 assert (
-                    f"local:/{d}/{zipfilename}/pfio-zipfs/hoge/fuga" ==
+                    f"file:/{d}/{zipfilename}/pfio-zipfs/hoge/fuga" ==
                     zipfs._canonical_name("hoge//fuga")
                 )
 
             foldername = "somefolder"
             with fs.subfs(foldername) as subfs:
                 assert (
-                    f"local:/{d}/{foldername}/{filename}" ==
+                    f"file:/{d}/{foldername}/{filename}" ==
                     subfs._canonical_name(filename)
                 )
 
