@@ -4,6 +4,21 @@ import pathlib
 import shutil
 from typing import Optional
 
+try:
+    from pytorch_pfn_extras.profiler import record_function, record_iterable
+
+except ImportError:
+    print("no ppe")
+    # IF PPE is not available, wrap with noop
+    def record_function(*args):
+        def wrapper(f):
+            return f
+        return wrapper
+
+    def record_iterable(tag, iter, *args):
+        yield from iter
+
+
 from .fs import FS, FileStat, format_repr
 
 
@@ -83,6 +98,7 @@ class Local(FS):
             },
         )
 
+    @record_function("local-open")
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
@@ -94,6 +110,12 @@ class Local(FS):
 
     def list(self, path: Optional[str] = '', recursive=False,
              detail=False):
+        for e in record_iterable("local-list",
+                                 self._list(path, recursive, detail)):
+            yield e
+
+    def _list(self, path: Optional[str] = '', recursive=False,
+              detail=False):
         path_or_prefix = os.path.join(self.cwd,
                                       "" if path is None else path)
 
@@ -128,6 +150,7 @@ class Local(FS):
                 yield from self._recursive_list(prefix_end_index,
                                                 e.path, detail)
 
+    @record_function("local-stat")
     def stat(self, path):
         path = os.path.join(self.cwd, path)
         return LocalFileStat(os.stat(path), path)
