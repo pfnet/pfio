@@ -10,12 +10,12 @@ try:
 except ImportError:
 
     # IF PPE is not available, wrap with noop
-    def record_function(*args):
+    def record_function(*args): # type: ignore
         def wrapper(f):
             return f
         return wrapper
 
-    def record_iterable(tag, iter, *args):
+    def record_iterable(tag, iter, *args): # type: ignore
         yield from iter
 
 
