@@ -160,23 +160,28 @@ class Local(FS):
         path = os.path.join(self.cwd, path)
         return os.path.isdir(path)
 
+    @record_function("local-mkdir")
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         path = os.path.join(self.cwd, file_path)
         return os.mkdir(path, mode, *args, dir_fd=None)
 
+    @record_function("local-makedirs")
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
         path = os.path.join(self.cwd, file_path)
         return os.makedirs(path, mode, exist_ok)
 
+    @record_function("local-exists")
     def exists(self, file_path: str):
         path = os.path.join(self.cwd, file_path)
         return os.path.exists(path)
 
+    @record_function("local-rename")
     def rename(self, src, dst):
         s = os.path.join(self.cwd, src)
         d = os.path.join(self.cwd, dst)
         return os.rename(s, d)
 
+    @record_function("local-remove")
     def remove(self, file_path: str, recursive=False):
         file_path = os.path.join(self.cwd, file_path)
         if recursive:
@@ -186,6 +191,7 @@ class Local(FS):
 
         return os.remove(file_path)
 
+    @record_function("local-glob")
     def glob(self, pattern: str):
         return [
             str(item.relative_to(self.cwd))
