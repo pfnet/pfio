@@ -99,7 +99,7 @@ class Local(FS):
             },
         )
 
-    @record_function("local-open")
+    @record_function("pfio.v2.Local:open")
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
@@ -111,7 +111,7 @@ class Local(FS):
 
     def list(self, path: Optional[str] = '', recursive=False,
              detail=False):
-        for e in record_iterable("local-list",
+        for e in record_iterable("pfio.v2.Local:list",
                                  self._list(path, recursive, detail)):
             yield e
 
@@ -151,7 +151,7 @@ class Local(FS):
                 yield from self._recursive_list(prefix_end_index,
                                                 e.path, detail)
 
-    @record_function("local-stat")
+    @record_function("pfio.v2.Local:stat")
     def stat(self, path):
         path = os.path.join(self.cwd, path)
         return LocalFileStat(os.stat(path), path)
@@ -160,28 +160,28 @@ class Local(FS):
         path = os.path.join(self.cwd, path)
         return os.path.isdir(path)
 
-    @record_function("local-mkdir")
+    @record_function("pfio.v2.Local:mkdir")
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         path = os.path.join(self.cwd, file_path)
         return os.mkdir(path, mode, *args, dir_fd=None)
 
-    @record_function("local-makedirs")
+    @record_function("pfio.v2.Local:makedirs")
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
         path = os.path.join(self.cwd, file_path)
         return os.makedirs(path, mode, exist_ok)
 
-    @record_function("local-exists")
+    @record_function("pfio.v2.Local:exists")
     def exists(self, file_path: str):
         path = os.path.join(self.cwd, file_path)
         return os.path.exists(path)
 
-    @record_function("local-rename")
+    @record_function("pfio.v2.Local:rename")
     def rename(self, src, dst):
         s = os.path.join(self.cwd, src)
         d = os.path.join(self.cwd, dst)
         return os.rename(s, d)
 
-    @record_function("local-remove")
+    @record_function("pfio.v2.Local:remove")
     def remove(self, file_path: str, recursive=False):
         file_path = os.path.join(self.cwd, file_path)
         if recursive:
@@ -191,7 +191,7 @@ class Local(FS):
 
         return os.remove(file_path)
 
-    @record_function("local-glob")
+    @record_function("pfio.v2.Local:glob")
     def glob(self, pattern: str):
         return [
             str(item.relative_to(self.cwd))
