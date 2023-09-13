@@ -297,6 +297,14 @@ class FS(abc.ABC):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def _canonical_name(self, file_path: str) -> str:
+        """Returns its canonical name. Canonical name includes its filesystem
+        name, endpoint of filesystem, and file_path to represent its consistent
+        naming. Designed to be used in :py:class:`pfio.v2.HTTPCachedFS`.
+        """
+        raise NotImplementedError
+
 
 @contextlib.contextmanager
 def open_url(url: str, mode: str = 'r', **kwargs) -> Iterator[IOBase]:
@@ -309,7 +317,7 @@ def open_url(url: str, mode: str = 'r', **kwargs) -> Iterator[IOBase]:
        with open_url("s3://bucket.example.com/path/your-file.txt", 'r') as f:
            f.read()
 
-    .. note:: Some FS resouces won't be closed when using this
+    .. note:: Some FS resources won't be closed when using this
         functionality. See ``from_url`` for keyword arguments.
 
     Returns:
@@ -345,7 +353,13 @@ def from_url(url: str, **kwargs) -> 'FS':
 
         create (bool): Create the specified path doesn't exist.
 
-    .. note:: Some FS resouces won't be closed when using this
+        http_cache (str): Prefix url of http cached entries.
+            In the filesystem with http_cache specified, all read access will
+            be hooked and upload its content to the url with the given prefix.
+            For details, please refer to :py:class:`pfio.v2.HTTPCachedFS`.
+            (experimental feature)
+
+    .. note:: Some FS resources won't be closed when using this
         functionality.
 
     .. note:: Pickling the FS object may or may not work correctly
@@ -370,6 +384,8 @@ def from_url(url: str, **kwargs) -> 'FS':
     if force_type is not None and force_type != "zip":
         if force_type != scheme:
             raise ValueError("URL scheme mismatch with forced type")
+
+    http_cache_prefix = kwargs.pop("http_cache", None)
 
     def _zip_check_create_not_supported():
         if kwargs.get('create', False):
@@ -400,6 +416,10 @@ def from_url(url: str, **kwargs) -> 'FS':
     else:
         dirname = parsed.path
         fs = _from_scheme(scheme, dirname, kwargs, bucket=parsed.netloc)
+
+    if http_cache_prefix is not None:
+        from .http_cache import HTTPCachedFS
+        fs = HTTPCachedFS(http_cache_prefix, fs)
 
     return fs
 

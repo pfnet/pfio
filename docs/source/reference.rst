@@ -39,6 +39,12 @@ Zip Archive
 .. autoclass:: pfio.v2.Zip
    :members:
 
+HTTPCachedFS
+~~~~~~~~~~~~
+
+.. autoclass:: pfio.v2.HTTPCachedFS
+   :members:
+
 Error
 ~~~~~
 

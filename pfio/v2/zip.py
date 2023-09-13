@@ -282,6 +282,14 @@ class Zip(FS):
     def remove(self, file_path, recursive=False):
         raise io.UnsupportedOperation
 
+    def _canonical_name(self, file_path: str) -> str:
+        canonical_name = self.backend._canonical_name(self.file_path)
+        file_path = os.path.join(self.cwd, os.path.normpath(file_path))
+
+        # Use pfio-zipfs as reserved name to represent PFIO's Zip.
+        # If someone use `pfio-zipfs` in file_path, this might be broken.
+        return f"{canonical_name}/pfio-zipfs/{file_path}"
+
     def _names(self) -> Set[str]:
         if self.name_cache is not None:
             return self.name_cache
