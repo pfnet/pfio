@@ -18,7 +18,7 @@ class Path:
         '''
         self._fs = fs
         if fs is not None:
-            warnings.Warn("argument fs for Path is deprecated",
+            warnings.warn("argument fs for Path is deprecated",
                           DeprecationWarning)
             assert isinstance(self._fs, FS)
 
