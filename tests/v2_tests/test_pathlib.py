@@ -162,7 +162,7 @@ def test_s3_iterdir(fs_fixture):
         assert 4 == len(files)
         assert all([isinstance(f, pathlib.Path) for f in files])
         assert all([f._fs is fs for f in files])
-        assert sorted(str(f) for f in files) == ["0", "1", "2", "dir"]
+        assert sorted(str(f.name) for f in files) == ["0", "1", "2", "dir"]
 
 
 @parameterize_fs
@@ -174,7 +174,7 @@ def test_s3_glob1(fs_fixture):
         assert 4 == len(files)
         assert all([isinstance(f, pathlib.Path) for f in files])
         assert all([f._fs is fs for f in files])
-        assert sorted(str(f) for f in files) == ["0", "1", "2", "dir"]
+        assert sorted(str(f.name) for f in files) == ["0", "1", "2", "dir"]
 
 
 @parameterize_fs
@@ -201,6 +201,7 @@ def test_s3_glob3(fs_fixture):
         assert 1 == len(files)
         assert all([isinstance(f, pathlib.Path) for f in files])
         assert all([f._fs is fs for f in files])
+        print(">", files)
         assert sorted(str(f) for f in files) == ["dir/0"]
 
 
@@ -219,3 +220,24 @@ def test_s3_glob4(fs_fixture):
         assert all([isinstance(f, pathlib.Path) for f in files])
         assert all([f._fs is fs for f in files])
         assert ['baz/hoge/boom/huga'] == [str(f) for f in files]
+
+
+@parameterize_fs
+@mock_s3
+def test_scope(fs_fixture):
+    with fs_fixture() as fs:
+
+        p1 = pathlib.Path("2")
+        # Under no context, it tries to do Local().open("2")
+        assert "2" == str(p1)
+        with pytest.raises(FileNotFoundError):
+            p1.open().read()
+
+        with fs.scope():
+            assert "docs" == str(pathlib.Path("docs"))
+
+            # Under a known context it reads the data from fixture
+            assert '' == p1.open().read()
+
+            p2 = pathlib.Path("2")
+            assert '' == p2.open().read()

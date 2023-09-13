@@ -1,8 +1,9 @@
 import fnmatch
 import os
+import warnings
 from pathlib import PurePath
 
-from .fs import FS
+from .fs import FS, _thread_local
 from .local import Local
 
 
@@ -15,8 +16,11 @@ class Path:
         Empty argument indicates current directory in fs, fs.cwd
 
         '''
-        self._fs = fs if fs else Local()
-        assert isinstance(self._fs, FS)
+        self._fs = fs
+        if fs is not None:
+            warnings.Warn("argument fs for Path is deprecated",
+                          DeprecationWarning)
+            assert isinstance(self._fs, FS)
 
         sep = self.sep
         if root:
@@ -114,14 +118,16 @@ class Path:
         raise NotImplementedError("home() is unsupported on this system")
 
     def exists(self):
-        return self._fs.exists(str(self.resolve()))
+        fs = self._resolve_fs()
+        return fs.exists(str(self.resolve()))
 
     def is_absolute(self):
         return self._parts and self._parts[0] == self.sep
 
     def __repr__(self):
+        fs = self._resolve_fs()
         return "{}[{}:{}]".format(self.__class__.__name__,
-                                  self._fs.__class__.__name__,
+                                  fs.__class__.__name__,
                                   str(self))
 
     def __str__(self):
@@ -140,27 +146,35 @@ class Path:
     def resolve(self, strict=True):
         if '..' in self._parts or '.' in self._parts:
             raise RuntimeError("TODO")
-        return Path(*(self._fs.cwd, *self._parts), fs=self._fs)
+        if self._fs is None:
+            return Path(*self._parts, fs=None)
+
+        parts = [self._fs.cwd] + self._parts
+        fs = self._fs._newfs('')
+        return Path(*parts, fs=fs)
 
     def samefile(self, other):
         # TODO: Compare self._fs
         return str(self.resolve()) == str(other.resolve())
 
     def touch(self):
-        with self._fs.open(self.resolve(), 'wb') as fp:
+        fs = self._resolve_fs()
+        with fs.open(self.resolve(), 'wb') as fp:
             fp.write(b'')
 
     def open(self, mode='r', **kwargs):
+        fs = self._resolve_fs()
         # TODO: handle or warn on ignoring these keyword arguments
         # buffering=-1, encoding=None, errors=None, newline=None):
-        return self._fs.open(self.resolve(), mode)
+        return fs.open(self.resolve(), mode)
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        fs = self._resolve_fs()
         if parents:
-            return self._fs.makedirs(self.resolve(), mode, exist_ok)
+            return fs.makedirs(self.resolve(), mode, exist_ok)
 
         try:
-            self._fs.mkdir(self.resolve(), mode)
+            fs.mkdir(self.resolve(), mode)
         except FileExistsError as e:
             if not exist_ok:
                 raise e
@@ -168,10 +182,12 @@ class Path:
                 pass
 
     def is_dir(self):
-        return self._fs.isdir(self.resolve())
+        fs = self._resolve_fs()
+        return fs.isdir(self.resolve())
 
     def is_file(self):
-        return not self._fs.isdir(self.resolve())
+        fs = self._resolve_fs()
+        return not fs.isdir(self.resolve())
 
     def iterdir(self):
         return self.glob("*")
@@ -200,7 +216,8 @@ class Path:
         pattern_parts = (base / pattern)._parts
 
         visited_prefixes = set()
-        for p in self._fs.list(base, recursive=True):
+        fs = self._resolve_fs()
+        for p in fs.list(base, recursive=True):
             parent = p
 
             while (i := parent.rfind(self.sep)) != -1:
@@ -220,10 +237,12 @@ class Path:
                 yield self / p
 
     def stat(self):
-        return self._fs.stat(self.resolve())
+        fs = self._resolve_fs()
+        return fs.stat(self.resolve())
 
     def unlink(self, missing_ok=False):
-        return self._fs.remove(self.resolve())
+        fs = self._resolve_fs()
+        return fs.remove(self.resolve())
 
     def rename(self, target):
         raise NotImplementedError("rename() is unsupported on this system")
@@ -245,8 +264,19 @@ class Path:
         with self.open(mode='wb') as fp:
             return fp.write(view)
 
+    def _resolve_fs(self):
+        if self._fs:
+            return self._fs
+
+        fs = getattr(_thread_local, "_pfio_fs", None)
+        if fs is not None:
+            return fs
+
+        return Local()
+
     def _as_fs(self):
-        return self._fs._newfs(str(self.resolve()))
+        fs = self._resolve_fs()
+        return fs._newfs(str(self.resolve()))
 
 
 def _test_glob_by_parts(target_parts, pattern_parts):
