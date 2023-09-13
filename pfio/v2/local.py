@@ -5,17 +5,18 @@ import shutil
 from typing import Optional
 
 try:
-    from pytorch_pfn_extras.profiler import record_function, record_iterable
+    from pytorch_pfn_extras.profiler import (  # type: ignore # NOQA
+        record_function, record_iterable)
 
 except ImportError:
 
     # IF PPE is not available, wrap with noop
-    def record_function(*args): # type: ignore # NOQA
+    def record_function(*args):  # type: ignore # NOQA
         def wrapper(f):
             return f
         return wrapper
 
-    def record_iterable(tag, iter, *args): # type: ignore # NOQA
+    def record_iterable(tag, iter, *args):   # type: ignore # NOQA
         yield from iter
 
 
