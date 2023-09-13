@@ -8,7 +8,7 @@ try:
     from pytorch_pfn_extras.profiler import record_function, record_iterable
 
 except ImportError:
-    print("no ppe")
+
     # IF PPE is not available, wrap with noop
     def record_function(*args):
         def wrapper(f):
