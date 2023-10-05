@@ -601,12 +601,10 @@ class S3(FS):
         }
         dst = os.path.join(self.cwd, dst)
         dst = _normalize_key(dst)
-        res = self.client.copy_object(Bucket=self.bucket,
-                                      CopySource=source,
-                                      Key=dst)
-        if not res.get('CopyObjectResult'):
-            # copy failed
-            return
+        res = self.client.copy(Bucket=self.bucket,
+                               CopySource=source,
+                               Key=dst)
+        print(f"{res=}")
         return self.remove(src)
 
     def remove(self, file_path: str, recursive=False):
