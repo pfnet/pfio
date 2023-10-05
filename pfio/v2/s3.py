@@ -198,9 +198,6 @@ class _ObjectWriter:
         else:
             md5 = base64.b64encode(hashlib.md5(data.encode()).digest()).decode()
         num = len(self.parts) + 1
-        print(f"{md5=}")
-        print(f"{len(data)}")
-        print(f"{type(data)=}")
         res = c.upload_part(Body=data, Bucket=b, Key=k,
                             PartNumber=num,
                             UploadId=self.mpu_id,
