@@ -595,18 +595,21 @@ class S3(FS):
 
         '''
         self._checkfork()
-        source = {
-            'Bucket': self.bucket,
-            'Key': _normalize_key(os.path.join(self.cwd, src)),
-        }
+        src_key = _normalize_key(os.path.join(self.cwd, src))
         dst = os.path.join(self.cwd, dst)
         dst = _normalize_key(dst)
-        res = self.client.copy_object(Bucket=self.bucket,
-                                      CopySource=source,
-                                      Key=dst)
-        if not res.get('CopyObjectResult'):
-            # copy failed
-            return
+        src_size = self.stat(src).size
+        mp = self.bucket.initial_multipart_upload(dst)
+
+        for i, start in enumerate(range(0, src_size, self.mpu_chunksize)):
+            print(f"Copying part {i + 1} from {start}...")
+            mp.copy_part_from_key(
+                self.bucket, 
+                src_key, 
+                i + 1,
+                start, 
+                min(src_size - 1, start + self.mpu_chunksize - 1))
+        mp.upload_complete()
         return self.remove(src)
 
     def remove(self, file_path: str, recursive=False):
