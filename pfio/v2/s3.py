@@ -202,7 +202,7 @@ class _ObjectWriter:
                 hashlib.md5(data.encode()).digest()
             ).decode()
         num = len(self.parts) + 1
-        
+
         res = c.upload_part(Body=data, Bucket=b, Key=k,
                             PartNumber=num,
                             UploadId=self.mpu_id,
