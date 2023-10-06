@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import io
 import os
@@ -193,9 +194,13 @@ class _ObjectWriter:
 
         data = self.buf.getvalue()
         if 'b' in self.mode:
-            md5 = hashlib.md5(data).hexdigest()
+            md5 = base64.b64encode(
+                hashlib.md5(data).digest()
+            ).decode()
         else:
-            md5 = hashlib.md5(data.encode()).hexdigest()
+            md5 = base64.b64encode(
+                hashlib.md5(data.encode()).digest()
+            ).decode()
         num = len(self.parts) + 1
 
         res = c.upload_part(Body=data, Bucket=b, Key=k,
@@ -601,12 +606,9 @@ class S3(FS):
         }
         dst = os.path.join(self.cwd, dst)
         dst = _normalize_key(dst)
-        res = self.client.copy_object(Bucket=self.bucket,
-                                      CopySource=source,
-                                      Key=dst)
-        if not res.get('CopyObjectResult'):
-            # copy failed
-            return
+        self.client.copy(Bucket=self.bucket,
+                         CopySource=source,
+                         Key=dst)
         return self.remove(src)
 
     def remove(self, file_path: str, recursive=False):
