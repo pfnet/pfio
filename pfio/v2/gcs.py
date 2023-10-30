@@ -11,11 +11,15 @@ from .fs import FS, FileStat
 
 class ObjectStat(FileStat):
     def __init__(self, blob):
-        self.path = blob.path
+        self.path = blob.name
         self.size = blob.size
         self.metadata = blob.metadata
         self.crc32c = blob.crc32c
         self.md5_hash = base64.b64decode(blob.md5_hash).hex()
+        self.filename = os.path.basename(blob.name)
+
+    def isdir(self):
+        return self.size == 0 and self.path.endswith('/')
 
 
 class GoogleCloudStorage(FS):
@@ -57,7 +61,7 @@ class GoogleCloudStorage(FS):
         # See also:
         # https://cloud.google.com/storage/docs/access-control/iam-roles
         self.bucket = self.client.get_bucket(self.bucket_name)
-        self.bucket_name = self.bucket
+        self.bucket_name = self.bucket_name
 
     def open(self, path, mode='r', **kwargs):
         blob = self.bucket.blob(os.path.join(self.prefix, path))
