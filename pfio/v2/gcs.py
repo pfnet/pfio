@@ -61,6 +61,7 @@ class GoogleCloudStorage(FS):
         # See also:
         # https://cloud.google.com/storage/docs/access-control/iam-roles
         self.bucket = self.client.get_bucket(self.bucket_name)
+        assert self.bucket
         self.bucket_name = self.bucket_name
 
     def open(self, path, mode='r', **kwargs):
@@ -76,10 +77,20 @@ class GoogleCloudStorage(FS):
 
         raise RuntimeError("Invalid mode")
 
-    def list(self, prefix, recursive=False, detail=False):
+    def list(self, prefix, recursive=True, detail=False):
         #  TODO: recursive
-        for blob in self.client.list_blobs(self.bucket_name,
-                                           prefix=self.prefix):
+        assert recursive, "gcs.list recursive=False no supported yet"
+        path = None
+        if prefix:
+            path = prefix
+        if self.prefix:
+            path = os.path.join(self.prefix, path)
+
+        if path:
+            path = os.path.normpath(path)
+
+        for blob in self.bucket.list_blobs():
+            # prefix=path):
             if detail:
                 yield ObjectStat(blob)
             else:
