@@ -1,5 +1,7 @@
 ## PFIO
 
+![Doc Status Badge](https://readthedocs.org/projects/pfio/badge/?version=master&style=flat)
+
 PFIO is an IO abstraction library developed by PFN, optimized for deep
 learning training with batteries included. It supports
 
