@@ -3,6 +3,7 @@ import contextlib
 import copy
 import os
 import stat
+import threading
 import warnings
 from abc import abstractmethod
 from io import IOBase
@@ -14,6 +15,8 @@ from deprecation import deprecated
 
 from pfio.v2 import config
 from pfio.version import __version__  # NOQA
+
+_thread_local = threading.local()
 
 
 class FileStat(abc.ABC):
@@ -133,7 +136,11 @@ class FS(abc.ABC):
 
     def _newfs(self, path: str) -> 'FS':
         fs = copy.copy(self)
-        fs._cwd = path
+        if path and path.startswith('/'):
+            fs._cwd = path
+        elif path:
+            fs._cwd = os.path.join(self._cwd, path)
+
         fs._reset()
         return fs
 
@@ -205,6 +212,16 @@ class FS(abc.ABC):
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]):
         self.close()
+
+    @contextlib.contextmanager
+    def scope(self):
+        '''
+        Create a context so that PFIO library automatically picks
+        active FS.
+        '''
+        _thread_local._pfio_fs = self
+        yield
+        delattr(_thread_local, "_pfio_fs")
 
     @abstractmethod
     def isdir(self, file_path: str) -> bool:
