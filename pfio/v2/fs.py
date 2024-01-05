@@ -450,6 +450,9 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
     elif scheme == 's3':
         from .s3 import S3
         fs = S3(bucket=bucket, prefix=dirname, **kwargs)
+    elif scheme == 'gs':
+        from .gcs import GoogleCloudStorage
+        fs = GoogleCloudStorage(bucket=bucket, prefix=dirname, **kwargs)
     else:
         raise RuntimeError("scheme '{}' is not defined".format(scheme))
 
