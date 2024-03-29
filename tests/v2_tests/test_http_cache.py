@@ -5,7 +5,7 @@ import io
 import tempfile
 import zipfile
 
-from moto import mock_s3
+from moto import mock_aws
 from parameterized import parameterized
 from test_fs import gen_fs
 
@@ -34,7 +34,7 @@ def test_normpath_local():
                 )
 
 
-@mock_s3
+@mock_aws
 def test_normpath_s3():
     bucket = "test-dummy-bucket"
     with from_url("s3://{}".format(bucket), create_bucket=True) as fs:
@@ -60,7 +60,7 @@ def test_normpath_s3():
 
 
 @parameterized.expand(["s3", "local"])
-@mock_s3
+@mock_aws
 def test_httpcache_simple(target):
     filename = "testfile"
     content = b"deadbeef"
@@ -120,7 +120,7 @@ def test_httpcache_too_large():
 
 
 @parameterized.expand(["s3", "local"])
-@mock_s3
+@mock_aws
 def test_httpcache_zipfile_flat(target):
     zipfilename = "test.zip"
     filename1 = "testfile1"
@@ -162,7 +162,7 @@ def test_httpcache_zipfile_flat(target):
 
 
 @parameterized.expand(["s3", "local"])
-@mock_s3
+@mock_aws
 def test_httpcache_zipfile_archived(target):
     zipfilename = "test.zip"
     filename1 = "testfile1"

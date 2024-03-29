@@ -5,7 +5,7 @@ import pickle
 import tempfile
 
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 from pfio.v2 import S3, from_url, open_url
 from pfio.v2.s3 import _ObjectReader
@@ -14,10 +14,10 @@ from pfio.v2.s3 import _ObjectReader
 @pytest.fixture
 def s3_fixture():
     # A test fixture which provides
-    # - S3 mock. using this fixture is equivalent to using @mock_s3 decorator
+    # - S3 mock. using this fixture is equivalent to using @mock_aws decorator
     # - Dummy credentials
     # - S3 filesystem with bucket creation
-    with mock_s3():
+    with mock_aws():
         class _S3Fixture():
             bucket = "test-bucket"
             aws_kwargs = {

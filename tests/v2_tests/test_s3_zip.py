@@ -7,14 +7,14 @@ import traceback
 import zipfile
 
 import pytest
-from moto import mock_s3, server
+from moto import mock_aws, server
 
 import pfio
 from pfio.testing import ZipForTest
 from pfio.v2 import S3, Zip, from_url
 
 
-@mock_s3
+@mock_aws
 @pytest.mark.parametrize("local_cache", [False, True])
 def test_s3_zip(local_cache):
     with tempfile.TemporaryDirectory() as d:
@@ -61,7 +61,7 @@ def test_s3_zip(local_cache):
 
 @pytest.mark.parametrize("mp_start_method", ["fork", "forkserver"])
 def test_s3_zip_mp(mp_start_method):
-    # mock_s3 doesn't work well in forkserver, thus we use server-mode moto
+    # mock_aws doesn't work well in forkserver, thus we use server-mode moto
     address = "127.0.0.1"
     port = 0  # auto-selection
     moto_server = server.ThreadedMotoServer(
@@ -147,7 +147,7 @@ def s3_zip_mp_child(q, zfs, worker_idx,
         q.put(('ng', e))
 
 
-@mock_s3
+@mock_aws
 def test_force_type2():
     with tempfile.TemporaryDirectory() as d:
         zipfilename = os.path.join(d, "test.zip")
