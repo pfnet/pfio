@@ -1,11 +1,11 @@
 import os
 
-from moto import mock_s3
+from moto import mock_aws
 
 import pfio
 
 
-@mock_s3
+@mock_aws
 def test_ini():
     try:
         prev = os.getenv('PFIO_CONFIG_PATH')
@@ -31,7 +31,7 @@ def test_ini():
             assert not os.getenv('PFIO_CONFIG_PATH')
 
 
-@mock_s3
+@mock_aws
 def test_add_custom_scheme():
     pfio.v2.config._load_config()
 

@@ -2,7 +2,7 @@ import contextlib
 import tempfile
 
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 from pfio.v2 import S3, Local, from_url, pathlib
 
@@ -68,7 +68,7 @@ def test_root():
     assert pathlib.Path('a', '/b', 'c').root == '/'
 
 
-@mock_s3
+@mock_aws
 def test_s3():
     bucket = "test-dummy-bucket"
     key = "it's me!deadbeef"
@@ -154,7 +154,7 @@ parameterize_fs = pytest.mark.parametrize(
 
 
 @parameterize_fs
-@mock_s3
+@mock_aws
 def test_s3_iterdir(fs_fixture):
     with fs_fixture() as fs:
         d = pathlib.Path(fs=fs)
@@ -166,7 +166,7 @@ def test_s3_iterdir(fs_fixture):
 
 
 @parameterize_fs
-@mock_s3
+@mock_aws
 def test_s3_glob1(fs_fixture):
     with fs_fixture() as fs:
         d = pathlib.Path(fs=fs)
@@ -178,7 +178,7 @@ def test_s3_glob1(fs_fixture):
 
 
 @parameterize_fs
-@mock_s3
+@mock_aws
 def test_s3_glob2(fs_fixture):
     with fs_fixture() as fs:
         if isinstance(fs, Local):
@@ -193,7 +193,7 @@ def test_s3_glob2(fs_fixture):
 
 
 @parameterize_fs
-@mock_s3
+@mock_aws
 def test_s3_glob3(fs_fixture):
     with fs_fixture() as fs:
         d2 = pathlib.Path(fs=fs)
@@ -205,7 +205,7 @@ def test_s3_glob3(fs_fixture):
 
 
 @parameterize_fs
-@mock_s3
+@mock_aws
 def test_s3_glob4(fs_fixture):
     with fs_fixture() as fs:
         paths = ['foo', 'bar', 'baz/foo', 'baz/hoge/boom/huga']

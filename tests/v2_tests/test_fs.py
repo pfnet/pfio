@@ -5,7 +5,7 @@ import os
 import tempfile
 
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
@@ -30,7 +30,7 @@ def gen_fs(target):
 
 
 @parameterized.expand(["s3", "local"])
-@mock_s3
+@mock_aws
 def test_smoke(target):
     filename = randstring()
     filename2 = randstring()
@@ -155,7 +155,7 @@ def test_from_url_force_type():
 
 
 @parameterized.expand(["s3", "local"])
-@mock_s3
+@mock_aws
 def test_seekeable_read(target):
     filename = randstring()
     content = b'0123456789'
@@ -185,7 +185,7 @@ class DummyLoader:
             assert self.content == fp.read()
 
 
-@mock_s3
+@mock_aws
 def test_recreate():
     content = b'deadbeef'
     # TODO: test with hdfs?
