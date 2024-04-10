@@ -33,6 +33,12 @@ S3 (AWS S3)
 .. autoclass:: pfio.v2.S3
    :members:
 
+Google Cloud Storage
+~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: pfio.v2.GoogleCloudStorage
+   :members:
+
 Zip Archive
 ~~~~~~~~~~~
 
