@@ -15,13 +15,11 @@ from pfio.v2 import S3, Zip, from_url
 
 
 @mock_aws
-@pytest.mark.parametrize("local_cache", [False, True])
-def test_s3_zip(local_cache):
+def test_s3_zip():
     with tempfile.TemporaryDirectory() as d:
         zipfilename = os.path.join(d, "test.zip")
         zft = ZipForTest(zipfilename)
         bucket = "test-dummy-bucket"
-        local_cachedir = d if local_cache else None
 
         with from_url('s3://{}/'.format(bucket),
                       create_bucket=True) as s3:
@@ -33,9 +31,7 @@ def test_s3_zip(local_cache):
             with s3.open('test.zip', 'rb') as fp:
                 assert zipfile.is_zipfile(fp)
 
-        with from_url('s3://{}/test.zip'.format(bucket),
-                      local_cache=local_cache,
-                      local_cachedir=local_cachedir) as z:
+        with from_url('s3://{}/test.zip'.format(bucket)) as z:
             assert isinstance(z, Zip)
             assert isinstance(z.fileobj, io.BufferedReader)
 
@@ -44,15 +40,10 @@ def test_s3_zip(local_cache):
                 assert zft.content('file') == fp.read()
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      buffering=0, local_cache=local_cache,
-                      local_cachedir=local_cachedir) as z:
+                      buffering=0) as z:
             assert isinstance(z, Zip)
             assert 'buffering' in z.kwargs
-            if not local_cache:
-                assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
-            else:
-                assert isinstance(z.fileobj,
-                                  pfio.cache.sparse_file.CachedWrapper)
+            assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
 
             assert zipfile.is_zipfile(z.fileobj)
             with z.open('file', 'rb') as fp:
@@ -105,7 +96,6 @@ def test_s3_zip_mp(mp_start_method):
                 assert zipfile.is_zipfile(fp)
 
         with from_url('s3://{}/test.zip'.format(bucket),
-                      local_cache=True, local_cachedir=d,
                       **kwargs) as fs:
 
             # Add tons of data into the cache in parallel
