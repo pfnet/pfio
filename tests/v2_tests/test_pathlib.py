@@ -665,3 +665,85 @@ def test_unlink(storage: str) -> None:
             print(entry)
 
         assert len(list(target.rglob("*"))) == 0
+
+
+def test_not_implemented(storage: str) -> None:
+    with pytest.raises(NotImplementedError):
+        Path.cwd()
+
+    with pytest.raises(NotImplementedError):
+        Path.home()
+
+    with from_url(url=storage) as fs:
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).cwd()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).home()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).stat(follow_symlinks=False)
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).chmod(mode=0o777)
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).exists(follow_symlinks=False)
+
+        with pytest.raises(NotImplementedError):
+            Path("~user", fs=fs).expanduser()
+
+        with pytest.raises(NotImplementedError):
+            next(Path(".", fs=fs).glob("*", case_sensitive=True))
+
+        with pytest.raises(NotImplementedError):
+            next(Path(".", fs=fs).glob("*", case_sensitive=False))
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).group()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).is_mount()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).is_symlink()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).is_socket()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).is_fifo()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).is_block_device()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).is_char_device()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).is_mount()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).walk()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).lchmod(mode=0o777)
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).lstat()
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).owner()
+
+        with pytest.raises(NotImplementedError):
+            p = Path("my/library.tar.gz", fs=fs)
+            p.samefile(p)
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).symlink_to(
+                "/tmp/symlink-test",
+                target_is_directory=True,
+            )
+
+        with pytest.raises(NotImplementedError):
+            Path(".", fs=fs).hardlink_to("/tmp/hardlink-test")

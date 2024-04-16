@@ -24,8 +24,9 @@ SelfPathType = TypeVar("SelfPathType", bound="Path")
 @functools.lru_cache(maxsize=16)
 def _has_directory_feature(fs: FS) -> bool:
     if isinstance(fs, S3):
-        # NOTE: Apache Ozone supports supports directory or folder.
-        # refers to `ozone.om.enable.filesystem.paths` property.
+        # NOTE: Apache Ozone supports supports directories
+        #       depending on its configuration.
+        #       refers to `ozone.om.enable.filesystem.paths` property.
         dpath = f"__pfio_check_{str(uuid.uuid4())[:8]}"
         upath = f"{dpath}/__tmp"
 
@@ -79,9 +80,15 @@ def _not_supported(name: Optional[str] = None) -> NotImplementedError:
         import inspect
 
         stack = inspect.stack()
-        cname = stack[1].frame.f_locals["self"].__class__.__name__
+        if "self" in stack[1].frame.f_locals:
+            cname = stack[1].frame.f_locals["self"].__class__.__name__
+        elif "cls" in stack[1].frame.f_locals:
+            cname = stack[1].frame.f_locals["cls"].__name__
+        else:
+            cname = ""
+
         fname = stack[1].function
-        name = f"{cname}.{fname}"
+        name = f"{cname}.{fname}" if cname else fname
 
     return NotImplementedError(f"`{name}` is unsupported on this system")
 
@@ -386,7 +393,7 @@ class Path(PurePath):
 
         return self._fs.stat(self._as_relative_to_fs())
 
-    def chmod(self, *, follow_symlinks: bool = True) -> None:
+    def chmod(self, *, mode: int, follow_symlinks: bool = True) -> None:
         raise _not_supported()
 
     def exists(self, *, follow_symlinks: bool = True) -> bool:
