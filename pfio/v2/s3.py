@@ -313,9 +313,10 @@ class S3(FS):
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
                  create=False,
+                 scheme=None,
                  _skip_connect=None,  # For test purpose
                  **_):
-        super().__init__()
+        super().__init__(scheme=scheme)
         self.bucket = bucket
         self.create_bucket = create_bucket
         if prefix is not None:

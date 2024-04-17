@@ -54,6 +54,11 @@ def test_s3_repr_str(s3_fixture):
         str(s3)
 
 
+def test_scheme(s3_fixture):
+    with from_url('s3://test-bucket/base', **s3_fixture.aws_kwargs) as s3:
+        assert s3.scheme == "s3"
+
+
 def test_s3_files(s3_fixture):
     with from_url('s3://test-bucket/base',
                   **s3_fixture.aws_kwargs) as s3:

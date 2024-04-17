@@ -119,6 +119,10 @@ class TestZip(unittest.TestCase):
             repr(z)
             str(z)
 
+    def test_scheme(self):
+        with local.open_zip(self.zip_file_path) as z:
+            assert z.scheme == local.scheme
+
     def test_read_bytes(self):
         with local.open_zip(os.path.abspath(self.zip_file_path)) as z:
             with z.open(self.zipped_file_path, "rb") as zipped_file:
