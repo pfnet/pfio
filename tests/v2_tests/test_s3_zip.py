@@ -35,6 +35,7 @@ def test_s3_zip():
         with from_url('s3://{}/test.zip'.format(bucket)) as z:
             assert isinstance(z, Zip)
             assert isinstance(z.fileobj, io.BufferedReader)
+            assert z.scheme == "s3"
 
             assert zipfile.is_zipfile(z.fileobj)
             with z.open('file', 'rb') as fp:
@@ -43,6 +44,7 @@ def test_s3_zip():
         with from_url('s3://{}/test.zip'.format(bucket),
                       buffering=0) as z:
             assert isinstance(z, Zip)
+            assert z.scheme == "s3"
             assert 'buffering' in z.kwargs
             assert isinstance(z.fileobj, pfio.v2.s3._ObjectReader)
 

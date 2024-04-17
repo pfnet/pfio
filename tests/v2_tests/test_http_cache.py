@@ -73,6 +73,8 @@ def test_httpcache_simple(target):
 
         with gen_fs(target) as underlay:
             fs = HTTPCachedFS(http_cache, underlay)
+
+            assert fs.scheme == underlay.scheme
             with fs.open(filename, mode="wb") as fp:
                 fp.write(content)
             with fs.open(filename, mode="rb") as fp:
@@ -96,6 +98,8 @@ def test_httpcache_too_large():
 
         with gen_fs("local") as underlay:
             fs = HTTPCachedFS(http_cache, underlay)
+            assert fs.scheme == underlay.scheme
+
             with fs.open(filename, mode="wb") as fp:
                 for _ in range(1024 + 1):  # 1 MB exceeds
                     fp.write(one_mb_array)
@@ -137,6 +141,8 @@ def test_httpcache_zipfile_flat(target):
         with gen_fs(target) as underlay:
             with underlay.open_zip(zipfilename, mode="w") as zipfs:
                 fs = HTTPCachedFS(http_cache, zipfs)
+                assert fs.scheme == underlay.scheme
+
                 with fs.open(filename1, mode="wb") as fp:
                     fp.write(filecontent1)
                 with fs.open(filename2, mode="wb") as fp:
@@ -146,6 +152,8 @@ def test_httpcache_zipfile_flat(target):
 
             with underlay.open_zip(zipfilename, mode="r") as zipfs:
                 fs = HTTPCachedFS(http_cache, zipfs)
+                assert fs.scheme == underlay.scheme
+
                 with fs.open(filename1, mode="rb") as fp:
                     assert fp.read(-1) == filecontent1
                 with fs.open(filename2, mode="rb") as fp:
@@ -180,6 +188,8 @@ def test_httpcache_zipfile_archived(target):
             cached_fs = HTTPCachedFS(http_cache, underlay)
 
             with cached_fs.open_zip(zipfilename, mode="w") as fs:
+                assert cached_fs.scheme == underlay.scheme
+
                 with fs.open(filename1, mode="wb") as fp:
                     fp.write(filecontent1)
                 with fs.open(filename2, mode="wb") as fp:
@@ -188,6 +198,8 @@ def test_httpcache_zipfile_archived(target):
                 assert len(cache_content) == 0
 
             with cached_fs.open_zip(zipfilename, mode="r") as fs:
+                assert cached_fs.scheme == underlay.scheme
+
                 with fs.open(filename1, mode="rb") as fp:
                     assert fp.read(-1) == filecontent1
                 with fs.open(filename2, mode="rb") as fp:

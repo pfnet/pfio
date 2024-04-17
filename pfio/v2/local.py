@@ -70,8 +70,8 @@ class LocalFileStat(FileStat):
 
 
 class Local(FS):
-    def __init__(self, cwd=None, trace=False, create=False, **_):
-        super().__init__()
+    def __init__(self, cwd=None, trace=False, create=False, scheme=None, **_):
+        super().__init__(scheme=scheme)
 
         self.trace = trace
 

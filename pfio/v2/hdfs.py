@@ -219,8 +219,8 @@ class Hdfs(FS):
 
     '''
 
-    def __init__(self, cwd=None, create=False, **_):
-        super().__init__()
+    def __init__(self, cwd=None, create=False, scheme=None, **_):
+        super().__init__(scheme=scheme)
         self._nameservice, self._fs = _create_fs()
         assert self._fs is not None
         self.username = self._get_principal_name()

@@ -55,6 +55,10 @@ class TestHdfs(unittest.TestCase):
             repr(fs)
             str(fs)
 
+    def test_scheme(self):
+        with Hdfs(self.dirname, scheme="hdfs") as fs:
+            assert fs.scheme == "hdfs"
+
     def test_read_non_exist(self):
         non_exist_file = "non_exist_file.txt"
 

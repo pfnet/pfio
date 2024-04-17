@@ -357,10 +357,11 @@ class S3(FS):
                  create=False,
                  connect_timeout=None,
                  read_timeout=None,
+                 scheme=None,
                  _skip_connect=None,  # For test purpose
                  trace=False,
                  **_):
-        super().__init__()
+        super().__init__(scheme=scheme)
 
         self.trace = trace
 

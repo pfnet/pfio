@@ -95,7 +95,6 @@ class PurePath(PathLike):
     Args:
         args: construct paths.
         fs: target file system.
-        scheme: specify URL scheme. (for `as_uri` method)
 
     Note:
         It conforms to `pathlib.PurePosixPath` of Python 3.12 specification.
@@ -103,32 +102,16 @@ class PurePath(PathLike):
         this class not inherits any `pathlib` classes because
         pfio filesystems is not suitable for pathlib abstact
         and helper classes.
-
-    TODO:
-        `scheme` should moves to `FS`.
     """
 
     def __init__(
         self,
         *args: Union[str, PathLike],
         fs: FS,
-        scheme: Optional[str] = None,
     ) -> None:
-        if isinstance(fs, Local):
-            scheme = scheme or "file"
-        elif isinstance(fs, S3):
-            scheme = scheme or "s3"
-        elif isinstance(fs, Hdfs):
-            scheme = scheme or "hdfs"
-        elif isinstance(fs, Zip):
-            scheme = scheme or ""
-        else:
-            raise ValueError(f"unsupported FS: {fs}")
-
         self._fs: FS = fs
-        self._scheme = scheme
         self._pure = PurePosixPath(*args)
-        self._hash = hash(self._pure) + hash(self._fs) + hash(self._scheme)
+        self._hash = hash(self._pure) + hash(self._fs) + hash(self.scheme)
 
     @property
     def sep(self) -> str:
@@ -136,7 +119,7 @@ class PurePath(PathLike):
 
     @property
     def scheme(self) -> str:
-        return self._scheme
+        return self._fs.scheme
 
     def __hash__(self) -> int:
         return self._hash
@@ -372,7 +355,7 @@ class PurePath(PathLike):
         self: SelfPurePathType,
         *args: Union[str, PathLike],
     ) -> SelfPurePathType:
-        return type(self)(*args, fs=self._fs, scheme=self.scheme)
+        return type(self)(*args, fs=self._fs)
 
 
 class Path(PurePath):
@@ -382,7 +365,6 @@ class Path(PurePath):
     Args:
         args: construct paths.
         fs: target file system.
-        scheme: specify URL scheme. (for `as_uri` method)
 
     Note:
         many methods raise `NotImplementedError`
@@ -397,9 +379,8 @@ class Path(PurePath):
         self,
         *args: str,
         fs: FS,
-        scheme: Optional[str] = None,
     ) -> None:
-        super().__init__(*args, fs=fs, scheme=scheme)
+        super().__init__(*args, fs=fs)
 
     def _as_relative_to_fs(self) -> str:
         return self.as_posix().removeprefix(self.anchor)

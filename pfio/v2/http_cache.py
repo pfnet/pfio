@@ -51,7 +51,7 @@ class HTTPCachedFS(FS):
                  max_cache_size: int = 1024 * 1024 * 1024,
                  bearer_token_path: Optional[str] = None):
         assert not isinstance(fs, HTTPCachedFS)
-        super().__init__()
+        super().__init__(scheme=fs.scheme)
 
         self.fs = fs
         self.trace = self.fs.is_traced
