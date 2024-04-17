@@ -26,6 +26,13 @@ class TestLocal(unittest.TestCase):
             str(fs)
             repr(fs)
 
+    def test_scheme(self):
+        with Local(self.testdir.name) as fs:
+            assert fs.scheme == ""
+
+        with Local(self.testdir.name, scheme="file") as fs:
+            assert fs.scheme == "file"
+
     def test_read_string(self):
 
         with Local() as fs:

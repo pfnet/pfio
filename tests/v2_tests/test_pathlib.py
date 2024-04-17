@@ -648,6 +648,17 @@ def test_path_iterdir(storage: str, path: str) -> None:
         assert sorted(actual_entries) == sorted(filtered)
 
 
+def test_path_scheme_property(storage: str) -> None:
+    scheme = urlparse(storage).scheme or "file"
+
+    with from_url(url=storage) as fs:
+        p = PurePath(fs=fs)
+        assert p.scheme == scheme
+
+        q = Path(fs=fs)
+        assert q.scheme == scheme
+
+
 def test_unlink(storage: str) -> None:
     with from_url(url=storage) as fs:
         target = Path("my", fs=fs)

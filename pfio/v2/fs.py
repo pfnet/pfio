@@ -87,9 +87,16 @@ class FS(abc.ABC):
     '''
 
     _cwd = ''
+    _scheme = ''
 
-    def __init__(self):
+    def __init__(self, scheme=None):
         self.pid = os.getpid()
+        if scheme:
+            self._scheme = str(scheme)
+
+    @property
+    def scheme(self):
+        return self._scheme
 
     @property
     def cwd(self):
@@ -426,32 +433,33 @@ def from_url(url: str, **kwargs) -> 'FS':
 
 def _from_scheme(scheme, dirname, kwargs, bucket=None):
     known_scheme = ['file', 'hdfs', 's3']
+    actual_scheme = scheme
 
     # Custom scheme; using configparser for older Python. Will
     # update to toml in Python 3.11 once 3.10 is in the end.
-    if scheme not in known_scheme:
+    if actual_scheme not in known_scheme:
         config_dict = config.get_custom_scheme(scheme)
         if config_dict is not None:
-            scheme = config_dict.pop('scheme')  # Get the real scheme
+            actual_scheme = config_dict.pop('scheme')  # Get the real scheme
             # Custom scheme expected here
-            if scheme not in known_scheme:
-                raise ValueError("Scheme {} is not supported", scheme)
+            if actual_scheme not in known_scheme:
+                raise ValueError("Scheme {} is not supported", actual_scheme)
             for k in config_dict:
                 if k not in kwargs:
                     # Don't overwrite with configuration value
                     kwargs[k] = config_dict[k]
 
-    if scheme == 'file':
+    if actual_scheme == 'file':
         from .local import Local
-        fs = Local(dirname, **kwargs)
-    elif scheme == 'hdfs':
+        fs = Local(dirname, scheme=scheme, **kwargs)
+    elif actual_scheme == 'hdfs':
         from .hdfs import Hdfs
-        fs = Hdfs(dirname, **kwargs)
-    elif scheme == 's3':
+        fs = Hdfs(dirname, scheme=scheme, **kwargs)
+    elif actual_scheme == 's3':
         from .s3 import S3
-        fs = S3(bucket=bucket, prefix=dirname, **kwargs)
+        fs = S3(bucket=bucket, prefix=dirname, scheme=scheme, **kwargs)
     else:
-        raise RuntimeError("scheme '{}' is not defined".format(scheme))
+        raise RuntimeError("scheme '{}' is not defined".format(actual_scheme))
 
     return fs
 

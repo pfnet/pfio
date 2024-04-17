@@ -53,7 +53,7 @@ class Zip(FS):
 
     def __init__(self, backend, file_path, mode='r', create=False,
                  local_cache=False, local_cachedir=None, **kwargs):
-        super().__init__()
+        super().__init__(scheme=backend.scheme)
         self.backend = backend
         self.file_path = file_path
         self.mode = mode

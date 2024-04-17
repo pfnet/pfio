@@ -15,9 +15,11 @@ def test_ini():
 
         with pfio.v2.from_url('foobar://pfio/') as fs:
             assert isinstance(fs, pfio.v2.Local)
+            assert fs.scheme == "foobar"
 
         with pfio.v2.from_url('baz://pfio/', _skip_connect=True) as s3:
             assert isinstance(s3, pfio.v2.S3)
+            assert s3.scheme == "baz"
 
             assert 'https://s3.example.com' == s3.kwargs['endpoint_url']
             assert 'hoge' == s3.kwargs['aws_access_key_id']
@@ -56,9 +58,11 @@ def test_add_custom_scheme():
 
     with pfio.v2.from_url('foobar2://pfio/') as fs:
         assert isinstance(fs, pfio.v2.Local)
+        assert fs.scheme == "foobar2"
 
     with pfio.v2.from_url('baz2://pfio/', _skip_connect=True) as s3:
         assert isinstance(s3, pfio.v2.S3)
+        assert s3.scheme == "baz2"
 
         assert 'https://s3.example.com' == s3.kwargs['endpoint_url']
         assert 'hoge' == s3.kwargs['aws_access_key_id']
