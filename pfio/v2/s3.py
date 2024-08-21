@@ -7,6 +7,7 @@ from types import TracebackType
 from typing import Optional, Type
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from .fs import FS, FileStat, format_repr
@@ -313,6 +314,8 @@ class S3(FS):
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
                  create=False,
+                 connect_timeout=None,
+                 read_timeout=None,
                  _skip_connect=None,  # For test purpose
                  **_):
         super().__init__()
@@ -347,6 +350,13 @@ class S3(FS):
             kwargs['aws_secret_access_key'] = os.path.expandvars(
                 aws_secret_access_key)
 
+        botocore_config = {}
+        if connect_timeout is not None:
+            botocore_config['connect_timeout'] = int(connect_timeout)
+        if read_timeout is not None:
+            botocore_config['read_timeout'] = int(read_timeout)
+        self.botocore_config = botocore_config
+
         # We won't expect any enviroment variable for S3 endpoints
         # supported by boto3. Instead, we take S3_ENDPOINT in case
         # argument ``endpoint`` is not given. Otherwise, it goes to
@@ -380,7 +390,8 @@ class S3(FS):
 
     def _connect(self):
         # print('boto3.client options:', kwargs)
-        self.client = boto3.client('s3', **self.kwargs)
+        config = Config(**self.botocore_config)
+        self.client = boto3.client('s3', config=config, **self.kwargs)
 
         try:
             self.client.head_bucket(Bucket=self.bucket)

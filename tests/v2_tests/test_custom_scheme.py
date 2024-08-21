@@ -42,7 +42,8 @@ def test_add_custom_scheme():
         {
             "endpoint": "https://s3.example.com",
             "aws_access_key_id": "hoge",
-            "aws_secret_access_key": os.environ["HOME"]
+            "aws_secret_access_key": os.environ["HOME"],
+            "read_timeout": "120",
         },
     )
 
@@ -52,6 +53,7 @@ def test_add_custom_scheme():
         "endpoint": "https://s3.example.com",
         "aws_access_key_id": "hoge",
         "aws_secret_access_key": os.environ["HOME"],
+        "read_timeout": "120",
     } == pfio.v2.config.get_custom_scheme("baz2")
 
     with pfio.v2.from_url('foobar2://pfio/') as fs:
@@ -63,3 +65,4 @@ def test_add_custom_scheme():
         assert 'https://s3.example.com' == s3.kwargs['endpoint_url']
         assert 'hoge' == s3.kwargs['aws_access_key_id']
         assert os.getenv('HOME') == s3.kwargs['aws_secret_access_key']
+        assert 120 == s3.botocore_config['read_timeout']
