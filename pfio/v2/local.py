@@ -5,7 +5,7 @@ import shutil
 from typing import Optional
 
 try:
-    from pytorch_pfn_extras.profiler import record, record_function, record_iterable
+    from pytorch_pfn_extras.profiler import record, record_iterable
 
 except ImportError:
 
@@ -22,11 +22,6 @@ except ImportError:
     # IF PPE is not available, wrap with noop
     def record(tag, trace, *args):  # type: ignore # NOQA
         return _DummyRecord()
-
-    def record_function(tag, trace, *args):  # type: ignore # NOQA
-        def wrapper(f):
-            return f
-        return wrapper
 
     def record_iterable(tag, iter, trace, *args):   # type: ignore # NOQA
         yield from iter
@@ -95,8 +90,10 @@ class LocalFileStat(FileStat):
 
 
 class Local(FS):
-    def __init__(self, cwd=None, create=False, **_):
+    def __init__(self, cwd=None, trace=False, create=False, **_):
         super().__init__()
+
+        self.trace = trace
 
         if cwd is None:
             self._cwd = ''
@@ -133,25 +130,28 @@ class Local(FS):
             },
         )
 
-    @record_function("pfio.v2.Local:open", trace=True)
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
 
-        path = os.path.join(self.cwd, file_path)
+        with record("pfio.v2.Local:open", trace=self.trace):
+            path = os.path.join(self.cwd, file_path)
 
-        fp = io.open(path, mode,
-                     buffering, encoding, errors,
-                     newline, closefd, opener)
+            fp = io.open(path, mode,
+                         buffering, encoding, errors,
+                         newline, closefd, opener)
 
-        # Add ppe recorder to io class methods (e.g. read, write)
-        return LocalProfileWrapper(fp)
+            # Add ppe recorder to io class methods (e.g. read, write)
+            if self.trace:
+                return LocalProfileWrapper(fp)
+            else:
+                return fp
 
     def list(self, path: Optional[str] = '', recursive=False,
              detail=False):
         for e in record_iterable("pfio.v2.Local:list",
                                  self._list(path, recursive, detail),
-                                 trace=True):
+                                 trace=self.trace):
             yield e
 
     def _list(self, path: Optional[str] = '', recursive=False,
@@ -190,51 +190,51 @@ class Local(FS):
                 yield from self._recursive_list(prefix_end_index,
                                                 e.path, detail)
 
-    @record_function("pfio.v2.Local:stat", trace=True)
     def stat(self, path):
-        path = os.path.join(self.cwd, path)
-        return LocalFileStat(os.stat(path), path)
+        with record("pfio.v2.Local:stat", trace=self.trace):
+            path = os.path.join(self.cwd, path)
+            return LocalFileStat(os.stat(path), path)
 
     def isdir(self, path: str):
         path = os.path.join(self.cwd, path)
         return os.path.isdir(path)
 
-    @record_function("pfio.v2.Local:mkdir", trace=True)
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
-        path = os.path.join(self.cwd, file_path)
-        return os.mkdir(path, mode, *args, dir_fd=None)
+        with record("pfio.v2.Local:mkdir", trace=self.trace):
+            path = os.path.join(self.cwd, file_path)
+            return os.mkdir(path, mode, *args, dir_fd=None)
 
-    @record_function("pfio.v2.Local:makedirs", trace=True)
     def makedirs(self, file_path: str, mode=0o777, exist_ok=False):
-        path = os.path.join(self.cwd, file_path)
-        return os.makedirs(path, mode, exist_ok)
+        with record("pfio.v2.Local:makedirs", trace=self.trace):
+            path = os.path.join(self.cwd, file_path)
+            return os.makedirs(path, mode, exist_ok)
 
-    @record_function("pfio.v2.Local:exists", trace=True)
     def exists(self, file_path: str):
-        path = os.path.join(self.cwd, file_path)
-        return os.path.exists(path)
+        with record("pfio.v2.Local:exists", trace=self.trace):
+            path = os.path.join(self.cwd, file_path)
+            return os.path.exists(path)
 
-    @record_function("pfio.v2.Local:rename", trace=True)
     def rename(self, src, dst):
-        s = os.path.join(self.cwd, src)
-        d = os.path.join(self.cwd, dst)
-        return os.rename(s, d)
+        with record("pfio.v2.Local:rename", trace=self.trace):
+            s = os.path.join(self.cwd, src)
+            d = os.path.join(self.cwd, dst)
+            return os.rename(s, d)
 
-    @record_function("pfio.v2.Local:remove", trace=True)
     def remove(self, file_path: str, recursive=False):
-        file_path = os.path.join(self.cwd, file_path)
-        if recursive:
-            return shutil.rmtree(file_path)
-        if os.path.isdir(file_path):
-            return os.rmdir(file_path)
+        with record("pfio.v2.Local:remove", trace=self.trace):
+            file_path = os.path.join(self.cwd, file_path)
+            if recursive:
+                return shutil.rmtree(file_path)
+            if os.path.isdir(file_path):
+                return os.rmdir(file_path)
 
-        return os.remove(file_path)
+            return os.remove(file_path)
 
-    @record_function("pfio.v2.Local:glob", trace=True)
     def glob(self, pattern: str):
-        return [
-            str(item.relative_to(self.cwd))
-            for item in pathlib.Path(self.cwd).glob(pattern)]
+        with record("pfio.v2.Local:glob", trace=self.trace):
+            return [
+                str(item.relative_to(self.cwd))
+                for item in pathlib.Path(self.cwd).glob(pattern)]
 
     def _canonical_name(self, file_path: str) -> str:
         return "file:/" + os.path.normpath(os.path.join(self.cwd, file_path))
