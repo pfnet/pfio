@@ -5,11 +5,24 @@ import shutil
 from typing import Optional
 
 try:
-    from pytorch_pfn_extras.profiler import record_function, record_iterable
+    from pytorch_pfn_extras.profiler import record, record_function, record_iterable
 
 except ImportError:
 
+    class _DummyRecord:
+        def __init__(self):
+            pass
+
+        def __enter__(self):
+            pass
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            pass
+
     # IF PPE is not available, wrap with noop
+    def record(tag, trace, *args):  # type: ignore # NOQA
+        return _DummyRecord()
+
     def record_function(tag, trace, *args):  # type: ignore # NOQA
         def wrapper(f):
             return f
@@ -20,6 +33,28 @@ except ImportError:
 
 
 from .fs import FS, FileStat, format_repr
+
+
+class LocalProfileWrapper:
+    def __init__(self, fp):
+        self.fp = fp
+
+    def __enter__(self):
+        self.fp.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.fp.__exit__(exc_type, exc_value, traceback)
+
+    def __getattr__(self, name):
+        attr = getattr(self.fp, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                with record(f"pfio.v2.Local:{attr.__name__}", trace=True):
+                    return attr(*args, **kwargs)
+            return wrapper
+        else:
+            return attr
 
 
 class LocalFileStat(FileStat):
@@ -104,9 +139,13 @@ class Local(FS):
              newline=None, closefd=True, opener=None):
 
         path = os.path.join(self.cwd, file_path)
-        return io.open(path, mode,
-                       buffering, encoding, errors,
-                       newline, closefd, opener)
+
+        fp = io.open(path, mode,
+                     buffering, encoding, errors,
+                     newline, closefd, opener)
+
+        # Add ppe recorder to io class methods (e.g. read, write)
+        return LocalProfileWrapper(fp)
 
     def list(self, path: Optional[str] = '', recursive=False,
              detail=False):
