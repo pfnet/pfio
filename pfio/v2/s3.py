@@ -16,6 +16,29 @@ from .fs import FS, FileStat, format_repr
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
 
 
+class S3ProfileIOWrapper:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __enter__(self):
+        self.obj.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        with record("pfio.v2.S3:exit-context", trace=True):
+            self.obj.__exit__(exc_type, exc_value, traceback)
+
+    def __getattr__(self, name):
+        attr = getattr(self.obj, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                with record(f"pfio.v2.S3:{attr.__name__}", trace=True):
+                    return attr(*args, **kwargs)
+            return wrapper
+        else:
+            return attr
+
+
 def _normalize_key(key: str) -> str:
     key = os.path.normpath(key)
     if key.startswith("/"):
@@ -478,7 +501,10 @@ class S3(FS):
             else:
                 raise RuntimeError(f'Unknown option: {mode}')
 
-            return obj
+            if self.trace:
+                return S3ProfileIOWrapper(obj)
+            else:
+                return obj
 
     def list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         '''List all objects (and prefixes)
