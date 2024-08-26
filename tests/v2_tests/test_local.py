@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import pickle
 import tempfile
@@ -290,6 +291,49 @@ class TestLocal(unittest.TestCase):
 
         from_url(path, create=True)
         assert os.path.exists(path) and os.path.isdir(path)
+
+
+def test_local_rw_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+
+    with Local(trace=True) as fs:
+        ppe.profiler.clear_tracer()
+
+        with fs.open('foo.txt', 'w') as fp:
+            fp.write('bar')
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.v2.Local:open" in keys
+        assert "pfio.v2.Local:write" in keys
+
+    with Local(trace=True) as fs:
+        ppe.profiler.clear_tracer()
+
+        with fs.open('foo.txt', 'r') as fp:
+            tmp = fp.read()
+            assert tmp == 'bar'
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.v2.Local:open" in keys
+        assert "pfio.v2.Local:read" in keys
+
+    # no profile case
+    with Local(trace=False) as fs:
+        ppe.profiler.clear_tracer()
+
+        with fs.open('foo.txt', 'r') as fp:
+            tmp = fp.read()
+            assert tmp == 'bar'
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.v2.Local:open" not in keys
+        assert "pfio.v2.Local:read" not in keys
 
 
 if __name__ == '__main__':
