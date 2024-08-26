@@ -8,7 +8,7 @@ from ._profiler import record, record_iterable
 from .fs import FS, FileStat, format_repr
 
 
-class LocalProfileWrapper:
+class LocalProfileIOWrapper:
     def __init__(self, fp):
         self.fp = fp
 
@@ -17,7 +17,8 @@ class LocalProfileWrapper:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.fp.__exit__(exc_type, exc_value, traceback)
+        with record("pfio.v2.Local:exit-context", trace=True):
+            self.fp.__exit__(exc_type, exc_value, traceback)
 
     def __getattr__(self, name):
         attr = getattr(self.fp, name)
@@ -121,7 +122,7 @@ class Local(FS):
 
             # Add ppe recorder to io class methods (e.g. read, write)
             if self.trace:
-                return LocalProfileWrapper(fp)
+                return LocalProfileIOWrapper(fp)
             else:
                 return fp
 
