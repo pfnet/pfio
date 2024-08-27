@@ -305,6 +305,7 @@ class S3(FS):
     whichever smaller.
     ``buffering=0`` disables buffering, and ``buffering>0`` forcibly sets the
     specified value as the buffer size in bytes.
+    ``connect_timeout`` and ``read_timeout`` are passed as ``botocore.config``.
     '''
 
     def __init__(self, bucket, prefix=None,
