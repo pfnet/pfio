@@ -84,6 +84,15 @@ def test_s3_files(s3_fixture):
         assert not s3.isdir("/bas")
 
 
+def test_s3_init_with_timeouts(s3_fixture):
+    with from_url('s3://test-bucket/base',
+                  connect_timeout=300,
+                  read_timeout=120) as s3:
+        assert isinstance(s3, S3)
+        assert (s3.botocore_config['connect_timeout'] == 300)
+        assert (s3.botocore_config['read_timeout'] == 120)
+
+
 # TODO: Find out a way to know buffer size used in a BufferedReader
 @pytest.mark.parametrize("buffering, reader_type",
                          [(-1, io.BufferedReader),
