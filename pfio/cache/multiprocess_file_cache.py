@@ -8,6 +8,7 @@ import warnings
 from struct import calcsize, pack, unpack
 
 from pfio import cache
+from pfio._profiler import record
 from pfio.cache.file_cache import _check_local, _default_cache_path
 
 
@@ -139,10 +140,12 @@ class MultiprocessFileCache(cache.Cache):
     '''  # NOQA
 
     def __init__(self, length, do_pickle=False,
-                 dir=None, cache_size_limit=None, verbose=False):
+                 dir=None, cache_size_limit=None,
+                 verbose=False, trace=False):
         self.length = length
         self.do_pickle = do_pickle
         self.verbose = verbose
+        self.trace = trace
         if self.length <= 0 or (2 ** 64) <= self.length:
             raise ValueError("length has to be between 0 and 2^64")
 
@@ -207,12 +210,13 @@ class MultiprocessFileCache(cache.Cache):
         return True
 
     def get(self, i):
-        if self.closed:
-            return
-        data = self._get(i)
-        if self.do_pickle and data:
-            data = pickle.loads(data)
-        return data
+        with record("pfio.cache.multiprocessfile:get", trace=self.trace):
+            if self.closed:
+                return
+            data = self._get(i)
+            if self.do_pickle and data:
+                data = pickle.loads(data)
+            return data
 
     def _open_fds(self):
         pid = os.getpid()
@@ -227,34 +231,40 @@ class MultiprocessFileCache(cache.Cache):
 
         self._open_fds()
         offset = self.buflen * i
-        fcntl.flock(self.cache_fd, fcntl.LOCK_SH)
-        index_entry = os.pread(self.cache_fd, self.buflen, offset)
-        (o, l) = unpack('Qq', index_entry)
-        if l < 0 or o < 0:
-            fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
-            return None
 
-        data = os.pread(self.cache_fd, l, o)
-        assert len(data) == l
-        fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
+        with record(f"pfio.cache.multiprocessfile:get:lock-{self.cache_fd}",
+                    trace=self.trace):
+            fcntl.flock(self.cache_fd, fcntl.LOCK_SH)
+            index_entry = os.pread(self.cache_fd, self.buflen, offset)
+            (o, l) = unpack('Qq', index_entry)
+            if l < 0 or o < 0:
+                fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
+                return None
+
+            data = os.pread(self.cache_fd, l, o)
+            assert len(data) == l
+            fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
+
         return data
 
     def put(self, i, data):
-        if self._frozen or self.closed:
-            return False
-
-        try:
-            if self.do_pickle:
-                data = pickle.dumps(data)
-            return self._put(i, data)
-
-        except OSError as ose:
-            # Disk full (ENOSPC) possibly by cache; just warn and keep running
-            if ose.errno == errno.ENOSPC:
-                warnings.warn(ose.strerror, RuntimeWarning)
+        with record("pfio.cache.multiprocessfile:put", trace=self.trace):
+            if self._frozen or self.closed:
                 return False
-            else:
-                raise ose
+
+            try:
+                if self.do_pickle:
+                    data = pickle.dumps(data)
+                return self._put(i, data)
+
+            except OSError as ose:
+                # Disk full (ENOSPC) possibly by cache;
+                # just warn and keep running
+                if ose.errno == errno.ENOSPC:
+                    warnings.warn(ose.strerror, RuntimeWarning)
+                    return False
+                else:
+                    raise ose
 
     def _put(self, i, data):
         if self.closed:
@@ -266,27 +276,32 @@ class MultiprocessFileCache(cache.Cache):
         self._open_fds()
 
         index_ofst = self.buflen * i
-        fcntl.flock(self.cache_fd, fcntl.LOCK_EX)
-        buf = os.pread(self.cache_fd, self.buflen, index_ofst)
-        (o, l) = unpack('Qq', buf)
 
-        if l >= 0 and o >= 0:
-            # Already data exists
-            fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
-            return False
+        with record(f"pfio.cache.multiprocessfile:put:lock-{self.cache_fd}",
+                    trace=self.trace):
+            fcntl.flock(self.cache_fd, fcntl.LOCK_EX)
+            buf = os.pread(self.cache_fd, self.buflen, index_ofst)
+            (o, l) = unpack('Qq', buf)
 
-        data_pos = os.lseek(self.cache_fd, 0, os.SEEK_END)
-        if self.cache_size_limit:
-            if self.cache_size_limit < (data_pos + len(data)):
-                self._frozen = True
+            if l >= 0 and o >= 0:
+                # Already data exists
                 fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
                 return False
 
-        index_entry = pack('Qq', data_pos, len(data))
-        assert os.pwrite(self.cache_fd, index_entry, index_ofst) == self.buflen
-        assert os.pwrite(self.cache_fd, data, data_pos) == len(data)
-        os.fsync(self.cache_fd)
-        fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
+            data_pos = os.lseek(self.cache_fd, 0, os.SEEK_END)
+            if self.cache_size_limit:
+                if self.cache_size_limit < (data_pos + len(data)):
+                    self._frozen = True
+                    fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
+                    return False
+
+            index_entry = pack('Qq', data_pos, len(data))
+            assert os.pwrite(self.cache_fd,
+                             index_entry, index_ofst) == self.buflen
+            assert os.pwrite(self.cache_fd, data, data_pos) == len(data)
+            os.fsync(self.cache_fd)
+            fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
+
         return True
 
     def __enter__(self):
