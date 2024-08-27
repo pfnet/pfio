@@ -12,6 +12,29 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 
+class ZipProfileIOWrapper:
+    def __init__(self, fp):
+        self.fp = fp
+
+    def __enter__(self):
+        self.fp.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        with record("pfio.v2.Zip:exit-context", trace=True):
+            self.fp.__exit__(exc_type, exc_value, traceback)
+
+    def __getattr__(self, name):
+        attr = getattr(self.fp, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                with record(f"pfio.v2.Zip:{attr.__name__}", trace=True):
+                    return attr(*args, **kwargs)
+            return wrapper
+        else:
+            return attr
+
+
 class ZipFileStat(FileStat):
     """Detailed information of a file in a Zip
 
@@ -120,7 +143,10 @@ class Zip(FS):
             if 'b' not in mode:
                 fp = io.TextIOWrapper(fp, encoding, errors, newline)
 
-            return fp
+            if self.trace:
+                return ZipProfileIOWrapper(fp)
+            else:
+                return fp
 
     def subfs(self, path):
         # TODO
