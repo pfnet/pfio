@@ -100,13 +100,15 @@ class Zip(FS):
         self._reset()
 
     def _reset(self):
-        obj = self.backend.open(self.file_path,
-                                self.mode + 'b',
-                                **self.kwargs)
-        self.fileobj = obj
+        with record("pfio.v2.Zip:create-zipfile-obj", trace=self.trace):
+            obj = self.backend.open(self.file_path,
+                                    self.mode + 'b',
+                                    **self.kwargs)
+            self.fileobj = obj
 
-        assert self.fileobj is not None
-        self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
+            assert self.fileobj is not None
+            self.zipobj = zipfile.ZipFile(self.fileobj, self.mode)
+
         self.name_cache: Optional[Set[str]] = None
         if self._readonly:
             self.name_cache = self._names()
