@@ -5,6 +5,7 @@ import zipfile
 from datetime import datetime
 from typing import Optional, Set
 
+from ._profiler import record, record_iterable
 from .fs import FS, FileStat, format_repr
 
 logger = logging.getLogger(__name__)
@@ -51,13 +52,15 @@ class ZipFileStat(FileStat):
 class Zip(FS):
     _readonly = True
 
-    def __init__(self, backend, file_path, mode='r', create=False,
-                 local_cache=False, local_cachedir=None, **kwargs):
+    def __init__(self, backend, file_path, mode='r',
+                 create=False, local_cache=False, local_cachedir=None,
+                 trace=False, **kwargs):
         super().__init__()
         self.backend = backend
         self.file_path = file_path
         self.mode = mode
         self.kwargs = kwargs
+        self.trace = trace
 
         if create:
             raise ValueError("create option is not supported")
@@ -108,43 +111,56 @@ class Zip(FS):
     def open(self, file_path, mode='r',
              buffering=-1, encoding=None, errors=None,
              newline=None, closefd=True, opener=None):
-        self._checkfork()
+        with record("pfio.v2.Zip:open", trace=self.trace):
+            self._checkfork()
 
-        file_path = os.path.join(self.cwd, os.path.normpath(file_path))
-        fp = self.zipobj.open(file_path, mode.replace('b', ''))
+            file_path = os.path.join(self.cwd, os.path.normpath(file_path))
+            fp = self.zipobj.open(file_path, mode.replace('b', ''))
 
-        if 'b' not in mode:
-            fp = io.TextIOWrapper(fp, encoding, errors, newline)
+            if 'b' not in mode:
+                fp = io.TextIOWrapper(fp, encoding, errors, newline)
 
-        return fp
+            return fp
 
     def subfs(self, path):
         # TODO
         raise NotImplementedError()
 
     def close(self):
-        self._checkfork()
-        self.zipobj.close()
-        self.fileobj.close()
+        with record("pfio.v2.Zip:close", trace=self.trace):
+            self._checkfork()
+            self.zipobj.close()
+            self.fileobj.close()
 
     def stat(self, path):
-        self._checkfork()
-        names = self._names()
-        path = os.path.join(self.cwd, os.path.normpath(path))
-        if path in names:
-            actual_path = path
-        elif not path.endswith('/') and path + '/' in names:
-            # handles cases when path is a directory but without trailing slash
-            # see issue $67
-            actual_path = path + '/'
-        else:
-            raise FileNotFoundError(
-                "{} is not found".format(path))
+        with record("pfio.v2.Zip:stat", trace=self.trace):
+            self._checkfork()
+            names = self._names()
+            path = os.path.join(self.cwd, os.path.normpath(path))
+            if path in names:
+                actual_path = path
+            elif not path.endswith('/') and path + '/' in names:
+                # handles cases when path is a directory
+                # but without trailing slash
+                # see issue $67
+                actual_path = path + '/'
+            else:
+                raise FileNotFoundError(
+                    "{} is not found".format(path))
 
-        return ZipFileStat(self.zipobj.getinfo(actual_path))
+            return ZipFileStat(self.zipobj.getinfo(actual_path))
 
     def list(self, path_or_prefix: Optional[str] = "", recursive=False,
              detail=False):
+        for e in record_iterable("pfio.v2.Zip:list",
+                                 self._list(path_or_prefix,
+                                            recursive,
+                                            detail),
+                                 trace=self.trace):
+            yield e
+
+    def _list(self, path_or_prefix: Optional[str] = "", recursive=False,
+              detail=False):
         self._checkfork()
 
         if path_or_prefix:
@@ -207,18 +223,19 @@ class Zip(FS):
                         yield return_file_name
 
     def isdir(self, file_path: str):
-        self._checkfork()
-        file_path = os.path.join(self.cwd, file_path)
-        if self.exists(file_path):
-            return self.stat(file_path).isdir()
-        else:
-            file_path = os.path.normpath(file_path)
-            # check if directories are NOT included in the zip
-            if any(name.startswith(file_path + "/")
-                   for name in self._names()):
-                return True
+        with record("pfio.v2.Zip:isdir", trace=self.trace):
+            self._checkfork()
+            file_path = os.path.join(self.cwd, file_path)
+            if self.exists(file_path):
+                return self.stat(file_path).isdir()
+            else:
+                file_path = os.path.normpath(file_path)
+                # check if directories are NOT included in the zip
+                if any(name.startswith(file_path + "/")
+                       for name in self._names()):
+                    return True
 
-            return False
+                return False
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         raise io.UnsupportedOperation("zip does not support mkdir")
@@ -227,11 +244,12 @@ class Zip(FS):
         raise io.UnsupportedOperation("zip does not support makedirs")
 
     def exists(self, file_path: str):
-        self._checkfork()
-        file_path = os.path.join(self.cwd, os.path.normpath(file_path))
-        namelist = self.zipobj.namelist()
-        return (file_path in namelist
-                or file_path + "/" in namelist)
+        with record("pfio.v2.Zip:exists", trace=self.trace):
+            self._checkfork()
+            file_path = os.path.join(self.cwd, os.path.normpath(file_path))
+            namelist = self.zipobj.namelist()
+            return (file_path in namelist
+                    or file_path + "/" in namelist)
 
     def rename(self, *args):
         raise io.UnsupportedOperation
