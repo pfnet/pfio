@@ -1,4 +1,5 @@
 import io
+import json
 import multiprocessing
 import os
 import shutil
@@ -186,3 +187,39 @@ def test_force_type2():
             k = "dir/f"
             with s3z.open(k, 'wb') as fp:
                 fp.write(b"bar")
+
+
+@mock_aws
+def test_s3_zip_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zipfilename = os.path.join(tmpdir, "test.zip")
+        zft = ZipForTest(zipfilename)
+        bucket = "test-dummy-bucket"
+
+        with from_url('s3://{}/'.format(bucket),
+                      create_bucket=True) as s3:
+            with open(zipfilename, 'rb') as src, \
+                    s3.open('test.zip', 'wb') as dst:
+                shutil.copyfileobj(src, dst)
+
+        ppe.profiler.clear_tracer()
+        with from_url('s3://{}/test.zip'.format(bucket),
+                      trace=True) as fs:
+            with fs.open('file', 'rb') as fp:
+                assert zft.content('file') == fp.read()
+
+        state = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(state['_event_list'])]
+
+        assert "pfio.v2.Zip:create-zipfile-obj" in keys
+        assert "pfio.v2.Zip:open" in keys
+        assert "pfio.v2.Zip:read" in keys
+        assert "pfio.v2.Zip:close" in keys
+
+        assert "pfio.v2.S3:open" in keys
+        assert "pfio.v2.S3:read" in keys
+        assert "pfio.v2.S3:close" in keys
+
+        assert "pfio.boto3:get_object" in keys

@@ -1,4 +1,5 @@
 import io
+import json
 import multiprocessing
 import os
 import pickle
@@ -890,3 +891,31 @@ def test_is_zipfile():
         with local.open_zip(zipfilename) as zfs:
             for o in zfs.list(recursive=True, detail=True):
                 assert isinstance(o, ZipFileStat)
+
+
+def test_zip_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zipfilename = os.path.join(tmpdir, 'test.zip')
+        _ = ZipForTest(zipfilename)
+
+        ppe.profiler.clear_tracer()
+        with from_url(zipfilename, trace=True) as fs:
+            for name in fs.list(recursive=True):
+                with fs.open(name, mode='r') as fp:
+                    _ = fp.read()
+
+        state = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(state['_event_list'])]
+
+        assert "pfio.v2.Zip:create-zipfile-obj" in keys
+        assert "pfio.v2.Zip:list-0" in keys
+        assert "pfio.v2.Zip:list-1" in keys
+        assert "pfio.v2.Zip:open" in keys
+        assert "pfio.v2.Zip:read" in keys
+        assert "pfio.v2.Zip:close" in keys
+
+        assert "pfio.v2.Local:open" in keys
+        assert "pfio.v2.Local:read" in keys
+        assert "pfio.v2.Local:close" in keys
