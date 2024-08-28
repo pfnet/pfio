@@ -307,6 +307,7 @@ def test_local_rw_profiling():
 
         assert "pfio.v2.Local:open" in keys
         assert "pfio.v2.Local:write" in keys
+        assert "pfio.v2.Local:exit-context" in keys
 
     with Local(trace=True) as fs:
         ppe.profiler.clear_tracer()
@@ -320,6 +321,7 @@ def test_local_rw_profiling():
 
         assert "pfio.v2.Local:open" in keys
         assert "pfio.v2.Local:read" in keys
+        assert "pfio.v2.Local:exit-context" in keys
 
     # no profile case
     with Local(trace=False) as fs:
