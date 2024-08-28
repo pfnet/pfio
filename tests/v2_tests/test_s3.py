@@ -1,4 +1,5 @@
 import io
+import json
 import multiprocessing as mp
 import os
 import pickle
@@ -415,3 +416,55 @@ def test_from_url_create_option(s3_fixture):
 
     with from_url(path, create=True) as fs:
         assert not fs.exists(path)
+
+
+def test_s3_rw_profiling(s3_fixture):
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+
+    with from_url('s3://test-bucket/base', trace=True,
+                  **s3_fixture.aws_kwargs) as s3:
+        ppe.profiler.clear_tracer()
+
+        with s3.open('foo.txt', 'w') as fp:
+            fp.write('bar')
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.v2.S3:open" in keys
+        assert "pfio.v2.S3:write" in keys
+        assert "pfio.boto3:put_object" in keys
+        assert "pfio.v2.S3:exit-context" in keys
+
+    with from_url('s3://test-bucket/base', trace=True,
+                  **s3_fixture.aws_kwargs) as s3:
+        ppe.profiler.clear_tracer()
+
+        with s3.open('foo.txt', 'r') as fp:
+            tmp = fp.read()
+            assert tmp == 'bar'
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.v2.S3:open" in keys
+        assert "pfio.v2.S3:read" in keys
+        assert "pfio.boto3:get_object" in keys
+        assert "pfio.v2.S3:exit-context" in keys
+
+    with from_url('s3://test-bucket/base', trace=True,
+                  **s3_fixture.aws_kwargs) as s3:
+        ppe.profiler.clear_tracer()
+
+        fp = s3.open('foo.txt', 'rb')
+        tmp = fp.peek()
+        assert tmp == b'bar'
+
+        fp.close()
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.v2.S3:open" in keys
+        assert "pfio.v2.S3:peek" in keys
+        assert "pfio.v2.S3:close" in keys

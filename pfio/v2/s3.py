@@ -10,9 +10,48 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
+from ._profiler import record, record_iterable
 from .fs import FS, FileStat, format_repr
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
+
+
+class S3ProfileIOWrapper:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __enter__(self):
+        self.obj.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        with record("pfio.v2.S3:exit-context", trace=True):
+            self.obj.__exit__(exc_type, exc_value, traceback)
+
+    def __getattr__(self, name):
+        attr = getattr(self.obj, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                with record(f"pfio.v2.S3:{attr.__name__}", trace=True):
+                    return attr(*args, **kwargs)
+            return wrapper
+        else:
+            return attr
+
+
+class Boto3ProfileWrapper:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __getattr__(self, name):
+        attr = getattr(self.obj, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                with record(f"pfio.boto3:{attr.__name__}", trace=True):
+                    return attr(*args, **kwargs)
+            return wrapper
+        else:
+            return attr
 
 
 def _normalize_key(key: str) -> str:
@@ -318,8 +357,12 @@ class S3(FS):
                  connect_timeout=None,
                  read_timeout=None,
                  _skip_connect=None,  # For test purpose
+                 trace=False,
                  **_):
         super().__init__()
+
+        self.trace = trace
+
         self.bucket = bucket
         self.create_bucket = create_bucket
         if prefix is not None:
@@ -392,7 +435,11 @@ class S3(FS):
     def _connect(self):
         # print('boto3.client options:', kwargs)
         config = Config(**self.botocore_config)
-        self.client = boto3.client('s3', config=config, **self.kwargs)
+        obj = boto3.client('s3', config=config, **self.kwargs)
+        if self.trace:
+            self.client = Boto3ProfileWrapper(obj)
+        else:
+            self.client = obj
 
         try:
             self.client.head_bucket(Bucket=self.bucket)
@@ -431,45 +478,52 @@ class S3(FS):
 
             mode (str): open mode
         '''
-        self._checkfork()
-        if 'a' in mode:
-            raise io.UnsupportedOperation('Append is not supported')
-        if 'r' in mode and 'w' in mode:
-            raise io.UnsupportedOperation('Read-write mode is not supported')
+        with record("pfio.v2.S3:open", trace=self.trace):
+            self._checkfork()
+            if 'a' in mode:
+                raise io.UnsupportedOperation('Append is not supported')
+            if 'r' in mode and 'w' in mode:
+                raise io.UnsupportedOperation(
+                    'Read-write mode is not supported'
+                )
 
-        path = os.path.join(self.cwd, path)
-        path = _normalize_key(path)
-        if 'r' in mode:
-            obj = _ObjectReader(self.client, self.bucket, path, mode, kwargs)
+            path = os.path.join(self.cwd, path)
+            path = _normalize_key(path)
+            if 'r' in mode:
+                obj = _ObjectReader(self.client, self.bucket,
+                                    path, mode, kwargs)
 
-            bs = self.buffering
-            if bs < 0:
-                bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
+                bs = self.buffering
+                if bs < 0:
+                    bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
 
-            if 'b' in mode:
-                if self.buffering and bs != 0:
-                    obj = io.BufferedReader(obj, buffer_size=bs)
+                if 'b' in mode:
+                    if self.buffering and bs != 0:
+                        obj = io.BufferedReader(obj, buffer_size=bs)
+                else:
+                    obj = io.TextIOWrapper(obj)
+                    if self.buffering:
+                        # This is undocumented property; but resident at
+                        # least since 2009 (the merge of io-c branch).
+                        # We'll use it until the day of removal.
+                        if bs == 0:
+                            # empty file case: _CHUNK_SIZE must be positive
+                            bs = DEFAULT_MAX_BUFFER_SIZE
+                        obj._CHUNK_SIZE = bs
+
+            elif 'w' in mode:
+                obj = _ObjectWriter(self.client, self.bucket, path, mode,
+                                    self.mpu_chunksize, kwargs)
+                if 'b' in mode:
+                    obj = io.BufferedWriter(obj)
+
             else:
-                obj = io.TextIOWrapper(obj)
-                if self.buffering:
-                    # This is undocumented property; but resident at
-                    # least since 2009 (the merge of io-c branch).
-                    # We'll use it until the day of removal.
-                    if bs == 0:
-                        # empty file case: _CHUNK_SIZE must be positive
-                        bs = DEFAULT_MAX_BUFFER_SIZE
-                    obj._CHUNK_SIZE = bs
+                raise RuntimeError(f'Unknown option: {mode}')
 
-        elif 'w' in mode:
-            obj = _ObjectWriter(self.client, self.bucket, path, mode,
-                                self.mpu_chunksize, kwargs)
-            if 'b' in mode:
-                obj = io.BufferedWriter(obj)
-
-        else:
-            raise RuntimeError(f'Unknown option: {mode}')
-
-        return obj
+            if self.trace:
+                return S3ProfileIOWrapper(obj)
+            else:
+                return obj
 
     def list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         '''List all objects (and prefixes)
@@ -478,6 +532,12 @@ class S3(FS):
         common prefixes shows up like directories.
 
         '''
+        for e in record_iterable("pfio.v2.S3:list",
+                                 self._list(prefix, recursive, detail),
+                                 trace=self.trace):
+            yield e
+
+    def _list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         self._checkfork()
         key = os.path.join(self.cwd, "" if prefix is None else prefix)
         key = _normalize_key(key)
@@ -515,23 +575,24 @@ class S3(FS):
         '''Imitate FileStat with S3 Object metadata
 
         '''
-        self._checkfork()
-        key = os.path.join(self.cwd, path)
-        key = _normalize_key(key)
-        try:
-            res = self.client.head_object(Bucket=self.bucket,
-                                          Key=key)
-            if res.get('DeleteMarker'):
-                raise FileNotFoundError()
+        with record("pfio.v2.S3:stat", trace=self.trace):
+            self._checkfork()
+            key = os.path.join(self.cwd, path)
+            key = _normalize_key(key)
+            try:
+                res = self.client.head_object(Bucket=self.bucket,
+                                              Key=key)
+                if res.get('DeleteMarker'):
+                    raise FileNotFoundError()
 
-            return S3ObjectStat(key, res)
-        except ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                if self.isdir(path):
-                    return S3PrefixStat(key)
-                raise FileNotFoundError()
-            else:
-                raise e
+                return S3ObjectStat(key, res)
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    if self.isdir(path):
+                        return S3PrefixStat(key)
+                    raise FileNotFoundError()
+                else:
+                    raise e
 
     def isdir(self, file_path: str):
         '''Imitate isdir by handling common prefix ending with "/" as directory
@@ -539,28 +600,31 @@ class S3(FS):
         AWS S3 does not have concept of directory tree, but this class
         imitates other file systems to increase compatibility.
         '''
-        self._checkfork()
-        key = _normalize_key(os.path.join(self.cwd, file_path))
-        if key == '.':
-            key = ''
-        elif key.endswith('/'):
-            key = key[:-1]
-        if '/../' in key or key.startswith('..'):
-            raise ValueError('Invalid S3 key: {} as {}'.format(file_path, key))
+        with record("pfio.v2.S3:isdir", trace=self.trace):
+            self._checkfork()
+            key = _normalize_key(os.path.join(self.cwd, file_path))
+            if key == '.':
+                key = ''
+            elif key.endswith('/'):
+                key = key[:-1]
+            if '/../' in key or key.startswith('..'):
+                raise ValueError(
+                    'Invalid S3 key: {} as {}'.format(file_path, key)
+                )
 
-        if len(key) == 0:
-            return True
-
-        res = self.client.list_objects_v2(
-            Bucket=self.bucket,
-            Prefix=key,
-            Delimiter="/",
-            MaxKeys=1,
-        )
-        for common_prefix in res.get('CommonPrefixes', []):
-            if common_prefix['Prefix'] == key + "/":
+            if len(key) == 0:
                 return True
-        return False
+
+            res = self.client.list_objects_v2(
+                Bucket=self.bucket,
+                Prefix=key,
+                Delimiter="/",
+                MaxKeys=1,
+            )
+            for common_prefix in res.get('CommonPrefixes', []):
+                if common_prefix['Prefix'] == key + "/":
+                    return True
+            return False
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         '''Does nothing
@@ -589,20 +653,21 @@ class S3(FS):
 
         For common prefixes, it does nothing. See discussion in ``isdir()``.
         '''
-        self._checkfork()
-        try:
-            key = os.path.join(self.cwd, file_path)
-            key = _normalize_key(key)
-            res = self.client.head_object(Bucket=self.bucket,
-                                          Key=key)
-            return not res.get('DeleteMarker')
-        except ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                if self.isdir(file_path):
-                    return True
-                return False
-            else:
-                raise e
+        with record("pfio.v2.S3:exists", trace=self.trace):
+            self._checkfork()
+            try:
+                key = os.path.join(self.cwd, file_path)
+                key = _normalize_key(key)
+                res = self.client.head_object(Bucket=self.bucket,
+                                              Key=key)
+                return not res.get('DeleteMarker')
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    if self.isdir(file_path):
+                        return True
+                    return False
+                else:
+                    raise e
 
     def rename(self, src, dst):
         '''Copies & removes the object
@@ -611,35 +676,37 @@ class S3(FS):
         ``pfio``, although AWS S3 supports inter-bucket copying.
 
         '''
-        self._checkfork()
-        source = {
-            'Bucket': self.bucket,
-            'Key': _normalize_key(os.path.join(self.cwd, src)),
-        }
-        dst = os.path.join(self.cwd, dst)
-        dst = _normalize_key(dst)
-        self.client.copy(Bucket=self.bucket,
-                         CopySource=source,
-                         Key=dst)
-        return self.remove(src)
+        with record("pfio.v2.S3:rename", trace=self.trace):
+            self._checkfork()
+            source = {
+                'Bucket': self.bucket,
+                'Key': _normalize_key(os.path.join(self.cwd, src)),
+            }
+            dst = os.path.join(self.cwd, dst)
+            dst = _normalize_key(dst)
+            self.client.copy(Bucket=self.bucket,
+                             CopySource=source,
+                             Key=dst)
+            return self.remove(src)
 
     def remove(self, file_path: str, recursive=False):
         '''Removes an object
 
         It raises a FileNotFoundError when the specified file doesn't exist.
         '''
-        if recursive:
-            raise io.UnsupportedOperation("Recursive delete not supported")
+        with record("pfio.v2.S3:remove", trace=self.trace):
+            if recursive:
+                raise io.UnsupportedOperation("Recursive delete not supported")
 
-        if not self.exists(file_path):
-            msg = "No such S3 object: '{}'".format(file_path)
-            raise FileNotFoundError(msg)
+            if not self.exists(file_path):
+                msg = "No such S3 object: '{}'".format(file_path)
+                raise FileNotFoundError(msg)
 
-        self._checkfork()
-        key = os.path.join(self.cwd, file_path)
-        key = _normalize_key(key)
-        return self.client.delete_object(Bucket=self.bucket,
-                                         Key=key)
+            self._checkfork()
+            key = os.path.join(self.cwd, file_path)
+            key = _normalize_key(key)
+            return self.client.delete_object(Bucket=self.bucket,
+                                             Key=key)
 
     def _canonical_name(self, file_path: str) -> str:
         path = os.path.join(self.cwd, file_path)
