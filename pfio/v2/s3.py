@@ -39,6 +39,21 @@ class S3ProfileIOWrapper:
             return attr
 
 
+class Boto3ProfileWrapper:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __getattr__(self, name):
+        attr = getattr(self.obj, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                with record(f"pfio.boto3:{attr.__name__}", trace=True):
+                    return attr(*args, **kwargs)
+            return wrapper
+        else:
+            return attr
+
+
 def _normalize_key(key: str) -> str:
     key = os.path.normpath(key)
     if key.startswith("/"):
@@ -420,7 +435,11 @@ class S3(FS):
     def _connect(self):
         # print('boto3.client options:', kwargs)
         config = Config(**self.botocore_config)
-        self.client = boto3.client('s3', config=config, **self.kwargs)
+        obj = boto3.client('s3', config=config, **self.kwargs)
+        if self.trace:
+            self.client = Boto3ProfileWrapper(obj)
+        else:
+            self.client = obj
 
         try:
             self.client.head_bucket(Bucket=self.bucket)
