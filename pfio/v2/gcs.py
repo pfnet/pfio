@@ -188,8 +188,16 @@ class GoogleCloudStorage(FS):
         path = os.path.join(self.cwd, "" if prefix is None else prefix)
         if path:
             path = os.path.normpath(path)
-
-        for blob in self.bucket.list_blobs():
+            
+            
+        delim = ''
+        if not recursive:
+            delim = '/'
+            
+        # blobs = self.bucket.list_blobs(prefix=path, delimiter=delim)
+        # blob_list_obj = list(blobs)
+            
+        for blob in gcs_list_folders(bucket=self.bucket_name, prefix=prefix, delimiter=delim, gcs_client=self.client):
             # prefix=path):
             if detail:
                 yield ObjectStat(blob)
@@ -212,13 +220,13 @@ class GoogleCloudStorage(FS):
         return self.bucket.blob(path).exists()
 
     def rename(self, src, dst):
+        pass
         # source_blob = self.bucket.blob(src)
         # dest = self.client.bucket(dst)
 
-        # Returns Blob destination
-        # self.bucket.copy_blob(source_blob, self.bucket, dst)
+        # # Returns Blob destination
+        # self.bucket.copy_blob(source_blob, self.bucket, new_name=dst)
         # self.bucket.delete_blob(src)
-        pass
 
     def remove(self, path, recursive=False):
         self.bucket.delete_blob(path)
@@ -228,3 +236,31 @@ class GoogleCloudStorage(FS):
         norm_path = _normalize_key(path)
 
         return f"gs://{self.hostname}/{self.bucket}/{norm_path}"
+    
+
+# def gcs_list_folders(bucket, prefix="", delimiter="/", guess_lexicographically_last_item="~", gcs_client=None):
+#     folders = set()
+#     prefix_parts = prefix.split(delimiter)
+#     start_offset = "/".join(prefix_parts)
+#     last_blob_name = None
+#     while True:
+#         blobs = list(gcs_client.list_blobs(
+#             bucket_or_name=bucket,
+#             prefix=prefix,
+#             start_offset=start_offset,
+#             max_results=1
+#         ))
+#         if not blobs:
+#             break
+#         blob = blobs[0]
+#         if last_blob_name == blob.name:
+#             raise Exception("Saw blob {} twice, try setting a different guess_lexicographically_last_item={}.".format(
+#                 repr(blob.name), repr(guess_lexicographically_last_item)
+#             ))
+#         folder = delimiter.join(blob.name.split(delimiter)[0:len(prefix_parts)] + [""])
+#         folders.add(folder)
+#         start_offset = folder + guess_lexicographically_last_item
+#         last_blob_name = blob.name
+#         try_characters = 1
+
+#     return folders
