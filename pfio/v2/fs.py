@@ -425,7 +425,7 @@ def from_url(url: str, **kwargs) -> 'FS':
 
 
 def _from_scheme(scheme, dirname, kwargs, bucket=None):
-    known_scheme = ['file', 'hdfs', 's3']
+    known_scheme = ['file', 'hdfs', 's3', 'gs']
 
     # Custom scheme; using configparser for older Python. Will
     # update to toml in Python 3.11 once 3.10 is in the end.
