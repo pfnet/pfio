@@ -1,6 +1,9 @@
 import base64
 import json
+import io
 import os
+from types import TracebackType
+from typing import Optional, Type
 
 from google.cloud import storage
 from google.cloud.storage.fileio import BlobReader, BlobWriter
@@ -26,6 +29,95 @@ class ObjectStat(FileStat):
 
     def isdir(self):
         return self.size == 0 and self.path.endswith('/')
+    
+
+class _ObjectTextWriter:
+    def __init__(self, blob, chunk_size):
+        # self.client = client
+        # self.bucket = bucket
+        # self.key = key
+        # self.mode = mode
+        self._init_buf()
+        self.blob = blob
+        self.mpu_chunksize = chunk_size
+        # self.mpu_id = None
+        # self.parts = []
+
+    def _init_buf(self):
+        self.buf = io.StringIO()
+
+    def flush(self):
+        # A part must be more than 8 MiB in S3
+        if len(self.buf.getvalue()) < 8 * 1024 * 1024:
+            return
+        self._flush()
+
+    # TODO: GCS対応
+    def _flush(self):
+        # Send buffer as a part
+        # c = self.client
+        # b = self.bucket
+        # k = self.key
+
+        data = self.buf.getvalue()
+        # md5 = base64.b64encode(
+        #     hashlib.md5(data.encode()).digest()
+        # ).decode()
+        # num = len(self.parts) + 1
+        self.blob.upload_from_string(data)
+
+        # res = c.upload_part(Body=data, Bucket=b, Key=k,
+        #                     PartNumber=num,
+        #                     UploadId=self.mpu_id,
+        #                     ContentLength=len(data),
+        #                     ContentMD5=md5)
+        # self.parts.append({'ETag': res['ETag'], 'PartNumber': num})
+
+        self._init_buf()
+
+    def write(self, buf):
+        written = 0
+        overflow = len(self.buf.getvalue()) + len(buf) - self.mpu_chunksize
+        if overflow > 0:
+            l = len(buf) - overflow
+            written += self.buf.write(buf[:l])
+            self.flush()
+            buf = buf[l:]
+
+        written += self.buf.write(buf)
+        if len(self.buf.getvalue()) >= self.mpu_chunksize:
+            self.flush()
+
+        return written
+
+    def close(self):
+        self.blob.upload_from_string(self.buf.getvalue())
+        self.buf = None
+
+    def __enter__(self):
+        return self
+
+    # TODO: 対応
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]):
+        self.close()
+
+    @property
+    def closed(self):
+        return self.buf is None
+
+    def isatty(self):
+        return False
+
+    def readable(self):
+        return False
+
+    def seekable(self):
+        return False
+
+    def writable(self):
+        return True
 
 
 class GoogleCloudStorage(FS):
@@ -82,20 +174,18 @@ class GoogleCloudStorage(FS):
             return BlobReader(blob, chunk_size=1024*1024)
 
         elif 'w' in mode:
-            return BlobWriter(blob, chunk_size=1024*1024,
-                              text_mode=('b' not in mode))
+            if 'b' in mode:
+                return BlobWriter(blob, chunk_size=1024*1024)
+            else:
+                return _ObjectTextWriter(blob, chunk_size=1024*1024)
 
         raise RuntimeError("Invalid mode")
 
-    def list(self, prefix, recursive=True, detail=False):
+    def list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         #  TODO: recursive
-        assert recursive, "gcs.list recursive=False no supported yet"
-        path = None
-        if prefix:
-            path = prefix
-        if self.cwd:
-            path = os.path.join(self.cwd, path)
+        # assert recursive, "gcs.list recursive=False no supported yet"
 
+        path = os.path.join(self.cwd, "" if prefix is None else prefix)
         if path:
             path = os.path.normpath(path)
 
@@ -104,7 +194,7 @@ class GoogleCloudStorage(FS):
             if detail:
                 yield ObjectStat(blob)
             else:
-                yield blob.path
+                yield blob.name
 
     def stat(self, path):
         return ObjectStat(self.bucket.get_blob(path))
