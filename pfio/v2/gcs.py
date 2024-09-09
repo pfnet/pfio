@@ -3,11 +3,17 @@ import json
 import os
 
 from google.cloud import storage
-from google.cloud.storage.fileio import BlobReader  # , BlobWriter
+from google.cloud.storage.fileio import BlobReader, BlobWriter
 from google.oauth2 import service_account
 
 from .fs import FS, FileStat
 
+def _normalize_key(key: str) -> str:
+    key = os.path.normpath(key)
+    if key.startswith("/"):
+        return key[1:]
+    else:
+        return key
 
 class ObjectStat(FileStat):
     def __init__(self, blob):
@@ -36,8 +42,13 @@ class GoogleCloudStorage(FS):
 
     def __init__(self, bucket: str, prefix=None, key_path=None):
         self.bucket_name = bucket
-        self.prefix = prefix
         self.key_path = key_path
+
+        if prefix is not None:
+            self.cwd = prefix
+        else:
+            self.cwd = ''
+
         self._reset()
 
     def _reset(self):
@@ -65,14 +76,14 @@ class GoogleCloudStorage(FS):
         self.bucket_name = self.bucket_name
 
     def open(self, path, mode='r', **kwargs):
-        blob = self.bucket.blob(os.path.join(self.prefix, path))
+        blob = self.bucket.blob(os.path.join(self.cwd, path))
 
         if 'r' in mode:
             return BlobReader(blob, chunk_size=1024*1024,
                               text_mode=('b' not in mode))
 
         elif 'w' in mode:
-            return BlobReader(blob, chunk_size=1024*1024,
+            return BlobWriter(blob, chunk_size=1024*1024,
                               text_mode=('b' not in mode))
 
         raise RuntimeError("Invalid mode")
@@ -83,8 +94,8 @@ class GoogleCloudStorage(FS):
         path = None
         if prefix:
             path = prefix
-        if self.prefix:
-            path = os.path.join(self.prefix, path)
+        if self.cwd:
+            path = os.path.join(self.cwd, path)
 
         if path:
             path = os.path.normpath(path)
@@ -122,3 +133,9 @@ class GoogleCloudStorage(FS):
 
     def remove(self, path, recursive=False):
         self.bucket.delete_blob(path)
+
+    def _canonical_name(self, file_path: str) -> str:
+        path = os.path.join(self.cwd, file_path)
+        norm_path = _normalize_key(path)
+
+        return f"gs://{self.hostname}/{self.bucket}/{norm_path}"
