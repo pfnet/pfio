@@ -79,8 +79,7 @@ class GoogleCloudStorage(FS):
         blob = self.bucket.blob(os.path.join(self.cwd, path))
 
         if 'r' in mode:
-            return BlobReader(blob, chunk_size=1024*1024,
-                              text_mode=('b' not in mode))
+            return BlobReader(blob, chunk_size=1024*1024)
 
         elif 'w' in mode:
             return BlobWriter(blob, chunk_size=1024*1024,
