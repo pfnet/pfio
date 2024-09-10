@@ -40,7 +40,6 @@ class PrefixStat(FileStat):
     def isdir(self):
         return True
     
-
 class _ObjectTextWriter:
     def __init__(self, blob, chunk_size):
         # self.client = client
@@ -181,12 +180,16 @@ class GoogleCloudStorage(FS):
         blob = self.bucket.blob(os.path.join(self.cwd, path))
 
         if 'r' in mode:
-            return BlobReader(blob, chunk_size=1024*1024)
+            if 'b' in mode:
+                return BlobReader(blob, chunk_size=1024*1024)
+            else:
+                return io.TextIOWrapper(BlobReader(blob, chunk_size=1024*1024))
 
         elif 'w' in mode:
             if 'b' in mode:
                 return BlobWriter(blob, chunk_size=1024*1024)
             else:
+                # return io.TextIOWrapper(BlobWriter(blob, chunk_size=1024*1024))
                 return _ObjectTextWriter(blob, chunk_size=1024*1024)
 
         raise RuntimeError("Invalid mode")
