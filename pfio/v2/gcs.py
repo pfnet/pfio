@@ -261,7 +261,9 @@ class GoogleCloudStorage(FS):
     def makedirs(self, path):
         pass
 
-    def exists(self, path):
+    def exists(self, file_path):
+        path = os.path.join(self.cwd, file_path)
+        path = _normalize_key(path)
         return self.bucket.blob(path).exists()
 
     def rename(self, src, dst):
