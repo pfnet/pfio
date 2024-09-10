@@ -40,6 +40,115 @@ class PrefixStat(FileStat):
     def isdir(self):
         return True
     
+class _ObjectReader(io.RawIOBase):
+    def __init__(self, blob):
+        super(_ObjectReader, self).__init__()
+
+        # self.client = client
+        # self.bucket = bucket
+        # self.key = key
+        self.blob = blob
+
+        # TODO: GCSにdelete markerはない（多分）
+        # res = self.client.head_object(Bucket=bucket, Key=key)
+        # if res.get('DeleteMarker'):
+        #     raise FileNotFoundError()
+
+        # self._mode = mode
+        self.pos = 0
+        self.content_length = blob.size
+        self._closed = False
+
+    def read(self, size=-1) -> bytes:
+        # Always returns binary; as this object is wrapped with
+        # TextIOWrapper in case of text mode open.
+
+        s = self.pos
+
+        if self.pos >= self.content_length:
+            return b''
+        elif size <= 0:
+            e = None
+        else:
+            e = min(self.pos + size, self.content_length)
+
+        body = self.blob.download_as_bytes(start=s, end=e)
+
+        if size < 0:
+            data = body
+        else:
+            data = body[:size]
+
+        self.pos += len(data)
+
+        return data
+
+    def readline(self):
+        raise NotImplementedError()
+
+    def close(self):
+        self._closed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_value: Optional[BaseException],
+                 traceback: Optional[TracebackType]):
+        self.close()
+
+    def flush(self):
+        pass
+
+    @property
+    def closed(self):
+        return self._closed
+
+    def isatty(self):
+        return False
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def tell(self):
+        return self.pos
+
+    def truncate(self, size=None):
+        raise io.UnsupportedOperation('truncate')
+
+    def seek(self, pos, whence=io.SEEK_SET):
+        if whence in [0, io.SEEK_SET]:
+            if pos < 0:
+                raise OSError(22, "[Errno 22] Invalid argument")
+        elif whence in [1, io.SEEK_CUR]:
+            pos += self.pos
+        elif whence in [2, io.SEEK_END]:
+            pos += self.content_length
+        else:
+            raise ValueError('Wrong whence value: {}'.format(whence))
+
+        if pos < 0:
+            raise OSError(22, "[Errno 22] Invalid argument")
+        self.pos = pos
+        return self.pos
+
+    def writable(self):
+        return False
+
+    def write(self, data):
+        raise io.UnsupportedOperation('not writable')
+
+    def readall(self):
+        return self.read(-1)
+
+    def readinto(self, b):
+        buf = self.read(len(b))
+        b[:len(buf)] = buf
+        return len(buf)
+    
 class _ObjectTextWriter:
     def __init__(self, blob, chunk_size):
         # self.client = client
@@ -106,7 +215,6 @@ class _ObjectTextWriter:
     def __enter__(self):
         return self
 
-    # TODO: 対応
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_value: Optional[BaseException],
                  traceback: Optional[TracebackType]):
@@ -141,7 +249,12 @@ class GoogleCloudStorage(FS):
 
     '''
 
-    def __init__(self, bucket: str, prefix=None, key_path=None):
+    def __init__(self, bucket: str, prefix=None, 
+                 key_path=None, 
+                 create_bucket=False, 
+                 mpu_chunksize=32*1024*1024,
+                 connect_timeout=None,
+                 read_timeout=None):
         self.bucket_name = bucket
         self.key_path = key_path
 
@@ -177,19 +290,20 @@ class GoogleCloudStorage(FS):
         self.bucket_name = self.bucket_name
 
     def open(self, path, mode='r', **kwargs):
-        blob = self.bucket.blob(os.path.join(self.cwd, path))
+        blob = self.bucket.get_blob(os.path.join(self.cwd, path))
 
         if 'r' in mode:
             if 'b' in mode:
-                return BlobReader(blob, chunk_size=1024*1024)
+                # return _ObjectReader(blob, chunk_size=1024*1024)
+                return _ObjectReader(blob)
             else:
-                return io.TextIOWrapper(BlobReader(blob, chunk_size=1024*1024))
+                # return io.TextIOWrapper(_ObjectReader(blob, chunk_size=1024*1024))
+                return io.TextIOWrapper(_ObjectReader(blob))
 
         elif 'w' in mode:
             if 'b' in mode:
                 return BlobWriter(blob, chunk_size=1024*1024)
             else:
-                # return io.TextIOWrapper(BlobWriter(blob, chunk_size=1024*1024))
                 return _ObjectTextWriter(blob, chunk_size=1024*1024)
 
         raise RuntimeError("Invalid mode")
