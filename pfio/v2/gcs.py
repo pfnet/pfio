@@ -290,7 +290,17 @@ class GoogleCloudStorage(FS):
         self.bucket_name = self.bucket_name
 
     def open(self, path, mode='r', **kwargs):
-        blob = self.bucket.get_blob(os.path.join(self.cwd, path))
+        if 'a' in mode:
+            raise io.UnsupportedOperation('Append is not supported')
+        if 'r' in mode and 'w' in mode:
+            raise io.UnsupportedOperation(
+                'Read-write mode is not supported'
+            )
+
+        path = os.path.join(self.cwd, path)
+        blob = self.bucket.get_blob(path)
+        if blob is None:
+            blob = self.bucket.blob(path)
 
         if 'r' in mode:
             if 'b' in mode:
