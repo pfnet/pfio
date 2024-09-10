@@ -31,6 +31,16 @@ class ObjectStat(FileStat):
         return self.size == 0 and self.path.endswith('/')
     
 
+class PrefixStat(FileStat):
+    def __init__(self, key):
+        self.filename = key
+        self.last_modified = 0
+        self.size = -1
+
+    def isdir(self):
+        return True
+    
+
 class _ObjectTextWriter:
     def __init__(self, blob, chunk_size):
         # self.client = client
@@ -190,20 +200,33 @@ class GoogleCloudStorage(FS):
             path = os.path.normpath(path)
             
             
-        delim = ''
-        if not recursive:
-            delim = '/'
+        # delim = ''
+        # if not recursive:
+        #     delim = '/'
             
-        # blobs = self.bucket.list_blobs(prefix=path, delimiter=delim)
-        # blob_list_obj = list(blobs)
+        if recursive:
+            blobs = self.bucket.list_blobs(prefix=prefix)
+            for blob in blobs:
+                if detail:
+                    yield ObjectStat(blob)
+                else:
+                    yield blob.name
+        else:
+            blobs = self.bucket.list_blobs(prefix=prefix, delimiter='/')
+            # objects
+            for blob in blobs:
+                if detail:
+                    yield ObjectStat(blob)
+                else:
+                    yield blob.name
+                
+            # folders
+            for blob in blobs.prefixes:
+                if detail:
+                    yield PrefixStat(blob)
+                else:
+                    yield blob
             
-        for blob in gcs_list_folders(bucket=self.bucket_name, prefix=prefix, delimiter=delim, gcs_client=self.client):
-            # prefix=path):
-            if detail:
-                yield ObjectStat(blob)
-            else:
-                yield blob.name
-
     def stat(self, path):
         return ObjectStat(self.bucket.get_blob(path))
 
@@ -220,15 +243,21 @@ class GoogleCloudStorage(FS):
         return self.bucket.blob(path).exists()
 
     def rename(self, src, dst):
-        pass
-        # source_blob = self.bucket.blob(src)
-        # dest = self.client.bucket(dst)
+        src = self.cwd + "/" + src
+        dst = self.cwd + "/" + dst
 
-        # # Returns Blob destination
-        # self.bucket.copy_blob(source_blob, self.bucket, new_name=dst)
-        # self.bucket.delete_blob(src)
+        source_blob = self.bucket.blob(src)
+        dest = self.client.bucket(dst)
+
+        # Returns Blob destination
+        self.bucket.copy_blob(source_blob, self.bucket, new_name=dst)
+        self.bucket.delete_blob(src)
 
     def remove(self, path, recursive=False):
+        if not self.exists(path):
+            msg = f"No such GCS object: '{path}'"
+            raise FileNotFoundError(msg)
+
         self.bucket.delete_blob(path)
 
     def _canonical_name(self, file_path: str) -> str:
