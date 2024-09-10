@@ -205,34 +205,54 @@ class GoogleCloudStorage(FS):
         if '/../' in path or path.startswith('..'):
             raise ValueError('Invalid GCS key: {} as {}'.format(prefix, path))
         
-            
-        if recursive:
-            blobs = self.bucket.list_blobs(prefix=path)
-            for blob in blobs:
-                if detail:
-                    yield ObjectStat(blob)
-                else:
-                    yield blob.name
-        else:
-            blobs = self.bucket.list_blobs(prefix=path, delimiter='/')
-            # objects
-            for blob in blobs:
-                if detail:
-                    yield ObjectStat(blob)
-                else:
-                    yield blob.name
-                
-            # folders
-            for blob in blobs.prefixes:
-                if detail:
-                    yield PrefixStat(blob)
-                else:
-                    yield blob
+        
+        blobs = self.bucket.list_blobs(prefix=path, delimiter=('' if recursive else '/'))
+        # objects
+        for blob in blobs:
+            if detail:
+                yield ObjectStat(blob)
+            else:
+                yield blob.name
+        # folders
+        for blob in blobs.prefixes:
+            if detail:
+                yield PrefixStat(blob)
+            else:
+                yield blob
             
     def stat(self, path):
         return ObjectStat(self.bucket.get_blob(path))
 
-    def isdir(self, path):
+    def isdir(self, file_path):
+        '''Imitate isdir by handling common prefix ending with "/" as directory
+
+        GoogleCloudStorage does not have concept of directory tree, but this class
+        imitates other file systems to increase compatibility.
+        '''
+        
+        path = _normalize_key(os.path.join(self.cwd, file_path))
+
+        if path == '.':
+            path = ''
+        elif path != '' and not path.endswith('/'):
+            path += '/'
+        if '/../' in path or path.startswith('..'):
+            raise ValueError('Invalid GCS key: {} as {}'.format(file_path, path))
+
+        if len(path) == 0:
+            return True
+        
+        tmp = path.rsplit('/', 2)
+        parent_dir = ''
+        if len(tmp) > 2:
+            parent_dir = tmp[0]
+
+        blobs = self.bucket.list_blobs(prefix=parent_dir, delimiter='/')
+        list(blobs)
+        for prefix in blobs.prefixes:
+            if prefix == path:
+                return True
+
         return False
 
     def mkdir(self, path):
