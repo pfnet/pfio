@@ -9,6 +9,7 @@ from google.cloud import storage
 from google.cloud.storage.fileio import BlobReader, BlobWriter
 from google.oauth2 import service_account
 
+from ._profiler import record, record_iterable
 from .fs import FS, FileStat
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
@@ -172,7 +173,6 @@ class _ObjectTextWriter:
             return
         self._flush()
 
-    # TODO: GCS対応
     def _flush(self):
         # Send buffer as a part
         # c = self.client
@@ -256,8 +256,11 @@ class GoogleCloudStorage(FS):
                  create_bucket=False, 
                  mpu_chunksize=32*1024*1024,
                  buffering=-1,
+                 create=False,
                  connect_timeout=None,
-                 read_timeout=None):
+                 read_timeout=None,
+                 trace=False):
+        super().__init__()
         self.bucket_name = bucket
         self.key_path = key_path
 
@@ -266,7 +269,12 @@ class GoogleCloudStorage(FS):
         else:
             self.cwd = ''
             
+        # In GCS, create flag can be disregarded
+        del create
+
         self.buffering = buffering
+        self.trace = trace
+
 
         self._reset()
 
@@ -295,53 +303,71 @@ class GoogleCloudStorage(FS):
         self.bucket_name = self.bucket_name
 
     def open(self, path, mode='r', **kwargs):
-        if 'a' in mode:
-            raise io.UnsupportedOperation('Append is not supported')
-        if 'r' in mode and 'w' in mode:
-            raise io.UnsupportedOperation(
-                'Read-write mode is not supported'
-            )
+        '''Opens an object accessor for read or write
 
-        path = os.path.join(self.cwd, path)
-        blob = self.bucket.get_blob(path)
-        if blob is None:
-            blob = self.bucket.blob(path)
+        .. note:: Multi-part upload is not yet available.
 
-        if 'r' in mode:
-            obj = _ObjectReader(blob)
+        Arguments:
+            path (str): relative path from basedir
 
-            bs = self.buffering
-            if bs < 0:
-                bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
+            mode (str): open mode
+        '''
+        with record("pfio.v2.GoogleCloudStorage:open", trace=self.trace):
+            if 'a' in mode:
+                raise io.UnsupportedOperation('Append is not supported')
+            if 'r' in mode and 'w' in mode:
+                raise io.UnsupportedOperation(
+                    'Read-write mode is not supported'
+                )
 
-            if 'b' in mode:
-                if self.buffering and bs != 0:
-                    obj = io.BufferedReader(obj, buffer_size=bs)
-            else:
-                obj = io.TextIOWrapper(obj)
-                if self.buffering:
-                    # This is undocumented property; but resident at
-                    # least since 2009 (the merge of io-c branch).
-                    # We'll use it until the day of removal.
-                    if bs == 0:
-                        # empty file case: _CHUNK_SIZE must be positive
-                        bs = DEFAULT_MAX_BUFFER_SIZE
-                    obj._CHUNK_SIZE = bs
+            path = os.path.join(self.cwd, path)
+            blob = self.bucket.get_blob(path)
+            if blob is None:
+                blob = self.bucket.blob(path)
 
-            return obj
-        elif 'w' in mode:
-            if 'b' in mode:
-                return BlobWriter(blob, chunk_size=1024*1024)
-            else:
-                return _ObjectTextWriter(blob, chunk_size=1024*1024)
-            
+            if 'r' in mode:
+                obj = _ObjectReader(blob)
 
-        raise RuntimeError("Invalid mode")
+                bs = self.buffering
+                if bs < 0:
+                    bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
+
+                if 'b' in mode:
+                    if self.buffering and bs != 0:
+                        obj = io.BufferedReader(obj, buffer_size=bs)
+                else:
+                    obj = io.TextIOWrapper(obj)
+                    if self.buffering:
+                        # This is undocumented property; but resident at
+                        # least since 2009 (the merge of io-c branch).
+                        # We'll use it until the day of removal.
+                        if bs == 0:
+                            # empty file case: _CHUNK_SIZE must be positive
+                            bs = DEFAULT_MAX_BUFFER_SIZE
+                        obj._CHUNK_SIZE = bs
+
+                return obj
+            elif 'w' in mode:
+                if 'b' in mode:
+                    return BlobWriter(blob, chunk_size=1024*1024)
+                else:
+                    return _ObjectTextWriter(blob, chunk_size=1024*1024)
+                
+
+            raise RuntimeError("Invalid mode")
 
     def list(self, prefix: Optional[str] = "", recursive=False, detail=False):
-        #  TODO: recursive
-        # assert recursive, "gcs.list recursive=False no supported yet"
+        '''List all objects (and prefixes)
 
+        Although there is not concept of directory in GCS API,
+        common prefixes shows up like directories.
+        '''
+        for e in record_iterable("pfio.v2.GoogleCloudStorage:list",
+                                 self._list(prefix, recursive, detail),
+                                 trace=self.trace):
+            yield e
+
+    def _list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         path = os.path.join(self.cwd, "" if prefix is None else prefix)
 
         path = _normalize_key(path)
@@ -368,7 +394,14 @@ class GoogleCloudStorage(FS):
                 yield blob
             
     def stat(self, path):
-        return ObjectStat(self.bucket.get_blob(path))
+        '''Imitate FileStat with S3 Object metadata
+
+        '''
+        with record("pfio.v2.GoogleCloudStorage:stat", trace=self.trace):
+            self._checkfork()
+            path = _normalize_key(os.path.join(self.cwd, path))
+
+            return ObjectStat(self.bucket.get_blob(path))
 
     def isdir(self, file_path):
         '''Imitate isdir by handling common prefix ending with "/" as directory
@@ -377,59 +410,100 @@ class GoogleCloudStorage(FS):
         imitates other file systems to increase compatibility.
         '''
         
-        path = _normalize_key(os.path.join(self.cwd, file_path))
+        with record("pfio.v2.GoogleCloudStorage:isdir", trace=self.trace):
+            self._checkfork()
 
-        if path == '.':
-            path = ''
-        elif path != '' and not path.endswith('/'):
-            path += '/'
-        if '/../' in path or path.startswith('..'):
-            raise ValueError('Invalid GCS key: {} as {}'.format(file_path, path))
+            path = _normalize_key(os.path.join(self.cwd, file_path))
+            if path == '.':
+                path = ''
+            elif path != '' and not path.endswith('/'):
+                path += '/'
+            if '/../' in path or path.startswith('..'):
+                raise ValueError('Invalid GCS key: {} as {}'.format(file_path, path))
 
-        if len(path) == 0:
-            return True
-        
-        tmp = path.rsplit('/', 2)
-        parent_dir = ''
-        if len(tmp) > 2:
-            parent_dir = tmp[0]
-
-        blobs = self.bucket.list_blobs(prefix=parent_dir, delimiter='/')
-        list(blobs)
-        for prefix in blobs.prefixes:
-            if prefix == path:
+            if len(path) == 0:
                 return True
+            
+            tmp = path.rsplit('/', 2)
+            parent_dir = ''
+            if len(tmp) > 2:
+                parent_dir = tmp[0]
 
-        return False
+            blobs = self.bucket.list_blobs(prefix=parent_dir, delimiter='/')
+            list(blobs)
+            for prefix in blobs.prefixes:
+                if prefix == path:
+                    return True
+
+            return False
 
     def mkdir(self, path):
+        '''Does nothing
+
+        .. note:: GCS does not have concept of directory tree; what
+           this function (and ``makedirs()``) should do
+           and return? To be strict, it would be straightforward to
+           raise ``io.UnsupportedOperation`` exception. But it just
+           breaks users' applications that except quasi-compatible
+           behaviour. Thus, imitating other file systems, like
+           returning ``None`` would be nicer.
+        '''
         pass
 
     def makedirs(self, path):
+        '''Does nothing
+
+        .. note:: see discussion in ``mkdir()``.
+        '''
         pass
 
     def exists(self, file_path):
-        path = os.path.join(self.cwd, file_path)
-        path = _normalize_key(path)
-        return self.bucket.blob(path).exists()
+        '''Returns the existence of objects
+
+        For common prefixes, it does nothing. See discussion in ``isdir()``.
+        '''
+        with record("pfio.v2.GoogleCloudStorage:exists", trace=self.trace):
+            self._checkfork()
+            path = _normalize_key(os.path.join(self.cwd, file_path))
+            return self.bucket.blob(path).exists()
+                
 
     def rename(self, src, dst):
-        src = self.cwd + "/" + src
-        dst = self.cwd + "/" + dst
+        '''Copies & removes the object
 
-        source_blob = self.bucket.blob(src)
-        dest = self.client.bucket(dst)
+        Source and destination must be in the same bucket for
+        ``pfio``, although GCS supports inter-bucket copying.
 
-        # Returns Blob destination
-        self.bucket.copy_blob(source_blob, self.bucket, new_name=dst)
-        self.bucket.delete_blob(src)
+        '''
+        with record("pfio.v2.GoogleCloudStorage:rename", trace=self.trace):
+            self._checkfork()
+            src = self.cwd + "/" + src
+            dst = self.cwd + "/" + dst
+
+            source_blob = self.bucket.blob(src)
+            dest = self.client.bucket(dst)
+
+            # Returns Blob destination
+            self.bucket.copy_blob(source_blob, self.bucket, new_name=dst)
+            return self.bucket.delete_blob(src)
 
     def remove(self, path, recursive=False):
-        if not self.exists(path):
-            msg = f"No such GCS object: '{path}'"
-            raise FileNotFoundError(msg)
+        '''Removes an object
 
-        self.bucket.delete_blob(path)
+        It raises a FileNotFoundError when the specified file doesn't exist.
+        '''
+        with record("pfio.v2.GoogleCloudStorage:remove", trace=self.trace):
+            if recursive:
+                raise io.UnsupportedOperation("Recursive delete not supported")
+
+            if not self.exists(path):
+                msg = f"No such GCS object: '{path}'"
+                raise FileNotFoundError(msg)
+            
+            self._checkfork()
+            path = _normalize_key(os.path.join(self.cwd, path))
+            print(path)
+            return self.bucket.delete_blob(path)
 
     def _canonical_name(self, file_path: str) -> str:
         path = os.path.join(self.cwd, file_path)
