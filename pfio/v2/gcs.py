@@ -11,6 +11,8 @@ from google.oauth2 import service_account
 
 from .fs import FS, FileStat
 
+DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
+
 def _normalize_key(key: str) -> str:
     key = os.path.normpath(key)
     if key.startswith("/"):
@@ -253,6 +255,7 @@ class GoogleCloudStorage(FS):
                  key_path=None, 
                  create_bucket=False, 
                  mpu_chunksize=32*1024*1024,
+                 buffering=-1,
                  connect_timeout=None,
                  read_timeout=None):
         self.bucket_name = bucket
@@ -262,6 +265,8 @@ class GoogleCloudStorage(FS):
             self.cwd = prefix
         else:
             self.cwd = ''
+            
+        self.buffering = buffering
 
         self._reset()
 
@@ -303,18 +308,33 @@ class GoogleCloudStorage(FS):
             blob = self.bucket.blob(path)
 
         if 'r' in mode:
-            if 'b' in mode:
-                # return _ObjectReader(blob, chunk_size=1024*1024)
-                return _ObjectReader(blob)
-            else:
-                # return io.TextIOWrapper(_ObjectReader(blob, chunk_size=1024*1024))
-                return io.TextIOWrapper(_ObjectReader(blob))
+            obj = _ObjectReader(blob)
 
+            bs = self.buffering
+            if bs < 0:
+                bs = min(obj.content_length, DEFAULT_MAX_BUFFER_SIZE)
+
+            if 'b' in mode:
+                if self.buffering and bs != 0:
+                    obj = io.BufferedReader(obj, buffer_size=bs)
+            else:
+                obj = io.TextIOWrapper(obj)
+                if self.buffering:
+                    # This is undocumented property; but resident at
+                    # least since 2009 (the merge of io-c branch).
+                    # We'll use it until the day of removal.
+                    if bs == 0:
+                        # empty file case: _CHUNK_SIZE must be positive
+                        bs = DEFAULT_MAX_BUFFER_SIZE
+                    obj._CHUNK_SIZE = bs
+
+            return obj
         elif 'w' in mode:
             if 'b' in mode:
                 return BlobWriter(blob, chunk_size=1024*1024)
             else:
                 return _ObjectTextWriter(blob, chunk_size=1024*1024)
+            
 
         raise RuntimeError("Invalid mode")
 
