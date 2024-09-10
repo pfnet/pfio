@@ -196,23 +196,25 @@ class GoogleCloudStorage(FS):
         # assert recursive, "gcs.list recursive=False no supported yet"
 
         path = os.path.join(self.cwd, "" if prefix is None else prefix)
-        if path:
-            path = os.path.normpath(path)
-            
-            
-        # delim = ''
-        # if not recursive:
-        #     delim = '/'
+
+        path = _normalize_key(path)
+        if path == '.':
+            path = ''
+        elif path != '' and not path.endswith('/'):
+            path += '/'
+        if '/../' in path or path.startswith('..'):
+            raise ValueError('Invalid GCS key: {} as {}'.format(prefix, path))
+        
             
         if recursive:
-            blobs = self.bucket.list_blobs(prefix=prefix)
+            blobs = self.bucket.list_blobs(prefix=path)
             for blob in blobs:
                 if detail:
                     yield ObjectStat(blob)
                 else:
                     yield blob.name
         else:
-            blobs = self.bucket.list_blobs(prefix=prefix, delimiter='/')
+            blobs = self.bucket.list_blobs(prefix=path, delimiter='/')
             # objects
             for blob in blobs:
                 if detail:
