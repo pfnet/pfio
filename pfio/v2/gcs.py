@@ -5,7 +5,7 @@ import os
 from types import TracebackType
 from typing import Optional, Type
 
-from google.cloud import storage
+from google.cloud import storage, exceptions
 from google.cloud.storage.fileio import BlobReader, BlobWriter
 from google.oauth2 import service_account
 
@@ -20,6 +20,28 @@ def _normalize_key(key: str) -> str:
         return key[1:]
     else:
         return key
+
+class GCSProfileIOWrapper:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __enter__(self):
+        self.obj.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        with record("pfio.v2.GoogleCloudStorage:exit-context", trace=True):
+            self.obj.__exit__(exc_type, exc_value, traceback)
+
+    def __getattr__(self, name):
+        attr = getattr(self.obj, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                with record(f"pfio.v2.GoogleCloudStorage:{attr.__name__}", trace=True):
+                    return attr(*args, **kwargs)
+            return wrapper
+        else:
+            return attr
 
 class ObjectStat(FileStat):
     def __init__(self, blob):
@@ -152,93 +174,6 @@ class _ObjectReader(io.RawIOBase):
         b[:len(buf)] = buf
         return len(buf)
     
-class _ObjectTextWriter:
-    def __init__(self, blob, chunk_size):
-        # self.client = client
-        # self.bucket = bucket
-        # self.key = key
-        # self.mode = mode
-        self._init_buf()
-        self.blob = blob
-        self.mpu_chunksize = chunk_size
-        # self.mpu_id = None
-        # self.parts = []
-
-    def _init_buf(self):
-        self.buf = io.StringIO()
-
-    def flush(self):
-        # A part must be more than 8 MiB in S3
-        if len(self.buf.getvalue()) < 8 * 1024 * 1024:
-            return
-        self._flush()
-
-    def _flush(self):
-        # Send buffer as a part
-        # c = self.client
-        # b = self.bucket
-        # k = self.key
-
-        data = self.buf.getvalue()
-        # md5 = base64.b64encode(
-        #     hashlib.md5(data.encode()).digest()
-        # ).decode()
-        # num = len(self.parts) + 1
-        self.blob.upload_from_string(data)
-
-        # res = c.upload_part(Body=data, Bucket=b, Key=k,
-        #                     PartNumber=num,
-        #                     UploadId=self.mpu_id,
-        #                     ContentLength=len(data),
-        #                     ContentMD5=md5)
-        # self.parts.append({'ETag': res['ETag'], 'PartNumber': num})
-
-        self._init_buf()
-
-    def write(self, buf):
-        written = 0
-        overflow = len(self.buf.getvalue()) + len(buf) - self.mpu_chunksize
-        if overflow > 0:
-            l = len(buf) - overflow
-            written += self.buf.write(buf[:l])
-            self.flush()
-            buf = buf[l:]
-
-        written += self.buf.write(buf)
-        if len(self.buf.getvalue()) >= self.mpu_chunksize:
-            self.flush()
-
-        return written
-
-    def close(self):
-        self.blob.upload_from_string(self.buf.getvalue())
-        self.buf = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]):
-        self.close()
-
-    @property
-    def closed(self):
-        return self.buf is None
-
-    def isatty(self):
-        return False
-
-    def readable(self):
-        return False
-
-    def seekable(self):
-        return False
-
-    def writable(self):
-        return True
-
-
 class GoogleCloudStorage(FS):
     '''Google Cloud Storage wrapper
 
@@ -259,7 +194,8 @@ class GoogleCloudStorage(FS):
                  create=False,
                  connect_timeout=None,
                  read_timeout=None,
-                 trace=False):
+                 trace=False,
+                 **_):
         super().__init__()
         self.bucket_name = bucket
         self.key_path = key_path
@@ -274,6 +210,8 @@ class GoogleCloudStorage(FS):
 
         self.buffering = buffering
         self.trace = trace
+        self.connect_time = connect_timeout
+        self.create_bucket = create_bucket
 
 
         self._reset()
@@ -298,9 +236,27 @@ class GoogleCloudStorage(FS):
         #
         # See also:
         # https://cloud.google.com/storage/docs/access-control/iam-roles
-        self.bucket = self.client.get_bucket(self.bucket_name)
+        
+        try:
+            self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.connect_time)
+        except exceptions.NotFound as e:
+            if self.create_bucket:
+                self.bucket = self.client.create_bucket(self.bucket_name)
+                print("Bucket", self.bucket, "created:", res)
+            else:
+                raise e
+
+        # self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.connect_time)
         assert self.bucket
-        self.bucket_name = self.bucket_name
+        
+        
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['client'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def open(self, path, mode='r', **kwargs):
         '''Opens an object accessor for read or write
@@ -313,6 +269,7 @@ class GoogleCloudStorage(FS):
             mode (str): open mode
         '''
         with record("pfio.v2.GoogleCloudStorage:open", trace=self.trace):
+            self._checkfork()
             if 'a' in mode:
                 raise io.UnsupportedOperation('Append is not supported')
             if 'r' in mode and 'w' in mode:
@@ -321,7 +278,7 @@ class GoogleCloudStorage(FS):
                 )
 
             path = os.path.join(self.cwd, path)
-            blob = self.bucket.get_blob(path)
+            blob = self.bucket.get_blob(path, timeout=self.connect_time)
             if blob is None:
                 blob = self.bucket.blob(path)
 
@@ -346,15 +303,21 @@ class GoogleCloudStorage(FS):
                             bs = DEFAULT_MAX_BUFFER_SIZE
                         obj._CHUNK_SIZE = bs
 
-                return obj
+                # return obj
             elif 'w' in mode:
                 if 'b' in mode:
-                    return BlobWriter(blob, chunk_size=1024*1024)
+                    obj = BlobWriter(blob, chunk_size=1024*1024)
                 else:
-                    return _ObjectTextWriter(blob, chunk_size=1024*1024)
-                
+                    obj = io.TextIOWrapper(
+                    BlobWriter(blob, chunk_size=1024*1024, ignore_flush=True))
+            else:
+                raise RuntimeError(f'Unknown option: {mode}')
 
-            raise RuntimeError("Invalid mode")
+            if self.trace:
+                return GCSProfileIOWrapper(obj)
+            else:
+                return obj
+
 
     def list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         '''List all objects (and prefixes)
@@ -424,6 +387,7 @@ class GoogleCloudStorage(FS):
             if len(path) == 0:
                 return True
             
+            # get a parent folder
             tmp = path.rsplit('/', 2)
             parent_dir = ''
             if len(tmp) > 2:
@@ -502,7 +466,6 @@ class GoogleCloudStorage(FS):
             
             self._checkfork()
             path = _normalize_key(os.path.join(self.cwd, path))
-            print(path)
             return self.bucket.delete_blob(path)
 
     def _canonical_name(self, file_path: str) -> str:
