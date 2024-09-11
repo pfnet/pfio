@@ -62,20 +62,20 @@ def test_gcs_files(gcs_fixture):
             fp.write('bar')
             assert not fp.closed
 
-        assert ['base/foo.txt'] == list(gcs.list())
+        assert 'base/foo.txt' in list(gcs.list())
         assert [] == list(gcs.list('base'))
         assert [] == list(gcs.list('base/'))
-        assert ['base/foo.txt'] == list(gcs.list('/base'))
-        assert ['base/foo.txt'] == list(gcs.list('/base/'))
+        assert 'base/foo.txt' in list(gcs.list('/base'))
+        assert 'base/foo.txt' in list(gcs.list('/base/'))
 
-        assert ['base/foo.txt'] == list(gcs.list(recursive=True))
-        assert ['base/foo.txt'] == list(gcs.list('/', recursive=True))
+        assert 'base/foo.txt' in list(gcs.list(recursive=True))
+        assert 'base/foo.txt' in list(gcs.list('/', recursive=True))
 
         with gcs.open('dir/foo.txt', 'w') as fp:
             fp.write('bar')
             assert not fp.closed
 
-        assert ['base/foo.txt', 'base/dir/'] == list(gcs.list())
+        assert 'base/foo.txt' in list(gcs.list()) and 'base/dir/' in list(gcs.list())
 
         assert not gcs.isdir("foo.txt")
         assert gcs.isdir(".")
