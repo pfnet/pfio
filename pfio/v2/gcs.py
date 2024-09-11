@@ -311,7 +311,7 @@ class GoogleCloudStorage(FS):
                     obj = BlobWriter(blob, chunk_size=1024*1024, ignore_flush=self.ignore_flush)
                 else:
                     obj = io.TextIOWrapper(
-                    BlobWriter(blob, chunk_size=1024*1024, ignore_flush=True))
+                        BlobWriter(blob, chunk_size=1024*1024, ignore_flush=True))
             else:
                 raise RuntimeError(f'Unknown option: {mode}')
 
@@ -344,7 +344,7 @@ class GoogleCloudStorage(FS):
             raise ValueError('Invalid GCS key: {} as {}'.format(prefix, path))
         
         
-        blobs = self.bucket.list_blobs(prefix=path, delimiter=('' if recursive else '/'))
+        blobs = self.bucket.list_blobs(prefix=path, delimiter=('' if recursive else '/'), timeout=self.connect_time)
         # objects
         for blob in blobs:
             if detail:
@@ -395,7 +395,7 @@ class GoogleCloudStorage(FS):
             if len(tmp) > 2:
                 parent_dir = tmp[0]
 
-            blobs = self.bucket.list_blobs(prefix=parent_dir, delimiter='/')
+            blobs = self.bucket.list_blobs(prefix=parent_dir, delimiter='/', timeout=self.connect_time)
             list(blobs)
             for prefix in blobs.prefixes:
                 if prefix == path:
@@ -431,7 +431,7 @@ class GoogleCloudStorage(FS):
         with record("pfio.v2.GoogleCloudStorage:exists", trace=self.trace):
             self._checkfork()
             path = _normalize_key(os.path.join(self.cwd, file_path))
-            return self.bucket.blob(path).exists()
+            return self.bucket.blob(path).exists(timeout=self.connect_time)
                 
 
     def rename(self, src, dst):
@@ -450,8 +450,8 @@ class GoogleCloudStorage(FS):
             dest = self.client.bucket(dst)
 
             # Returns Blob destination
-            self.bucket.copy_blob(source_blob, self.bucket, new_name=dst)
-            return self.bucket.delete_blob(src)
+            self.bucket.copy_blob(source_blob, self.bucket, new_name=dst, timeout=self.connect_time)
+            return self.bucket.delete_blob(src, timeout=self.connect_time)
 
     def remove(self, path, recursive=False):
         '''Removes an object
@@ -468,7 +468,7 @@ class GoogleCloudStorage(FS):
             
             self._checkfork()
             path = _normalize_key(os.path.join(self.cwd, path))
-            return self.bucket.delete_blob(path)
+            return self.bucket.delete_blob(path, timeout=self.connect_time)
 
     def _canonical_name(self, file_path: str) -> str:
         path = os.path.join(self.cwd, file_path)
