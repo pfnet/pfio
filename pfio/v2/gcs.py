@@ -194,6 +194,7 @@ class GoogleCloudStorage(FS):
                  create=False,
                  connect_timeout=None,
                  read_timeout=None,
+                 ignore_flush=False,
                  trace=False,
                  **_):
         super().__init__()
@@ -212,6 +213,7 @@ class GoogleCloudStorage(FS):
         self.trace = trace
         self.connect_time = connect_timeout
         self.create_bucket = create_bucket
+        self.ignore_flush = ignore_flush
 
 
         self._reset()
@@ -306,7 +308,7 @@ class GoogleCloudStorage(FS):
                 # return obj
             elif 'w' in mode:
                 if 'b' in mode:
-                    obj = BlobWriter(blob, chunk_size=1024*1024)
+                    obj = BlobWriter(blob, chunk_size=1024*1024, ignore_flush=self.ignore_flush)
                 else:
                     obj = io.TextIOWrapper(
                     BlobWriter(blob, chunk_size=1024*1024, ignore_flush=True))

@@ -380,7 +380,7 @@ def from_url(url: str, **kwargs) -> 'FS':
         scheme = 'file'  # Default is local
 
     # When ``force_type`` is defined, it must be equal with given one.
-    force_type = kwargs.pop('force_type', None)
+    force_type = kwargs.get('force_type', None)
     if force_type is not None and force_type != "zip":
         if force_type != scheme:
             raise ValueError("URL scheme mismatch with forced type")
@@ -451,8 +451,18 @@ def _from_scheme(scheme, dirname, kwargs, bucket=None):
         from .s3 import S3
         fs = S3(bucket=bucket, prefix=dirname, **kwargs)
     elif scheme == 'gs':
+        # Bucket names must start and end with a number or letter.
+        if len(dirname) > 0 and dirname[0] == "/":
+            dirname = dirname[1:]
+        
+        # When ``force_type`` is defined, it must be equal with given one.
+        force_type = kwargs.pop('force_type', None)
+        if force_type is not None and force_type != "zip":
+            if force_type != scheme:
+                raise ValueError("URL scheme mismatch with forced type")
+
         from .gcs import GoogleCloudStorage
-        fs = GoogleCloudStorage(bucket=bucket, prefix=dirname, **kwargs)
+        fs = GoogleCloudStorage(bucket=bucket, prefix=dirname, ignore_flush=(force_type is not None), **kwargs)
     else:
         raise RuntimeError("scheme '{}' is not defined".format(scheme))
 
