@@ -7,15 +7,15 @@ import tempfile
 
 import pytest
 
-from google.cloud.storage.fileio import BlobReader  # , BlobWriter
-
 from pfio.v2 import GoogleCloudStorage, from_url, open_url
 from pfio.v2.gcs import _ObjectReader
 
 # BUCKET_NAME='my-pfio-test'
-BUCKET_NAME='pfn-pfio-test-bucket'
-URL=f'gs://{BUCKET_NAME}/base'
-KEY_PATH="~/.config/gcloud/application_default_credentials.json"
+BUCKET_NAME = 'pfn-pfio-test-bucket'
+URL = f'gs://{BUCKET_NAME}/base'
+KEY_PATH = "~/.config/gcloud/application_default_credentials.json"
+
+
 # KEY_PATH=os.environ["GOOGLE_APPLICATION_CREDENTIAL"]
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def gcs_fixture():
     # - GCS mock. using this fixture is equivalent to using @mock_aws decorator
     # - Dummy credentials
     # - GCS filesystem with bucket creation
-    class _GCSFixture():
+    class _GCSFixture:
         bucket_name = BUCKET_NAME
         fs = GoogleCloudStorage(bucket_name)
 
@@ -36,6 +36,7 @@ def touch(gcs, path, content):
         fp.write(content)
 
     assert gcs.exists(path)
+
 
 def test_gcs_init(gcs_fixture):
     with from_url(URL) as gcs:
@@ -53,11 +54,10 @@ def test_gcs_repr_str(gcs_fixture):
     with from_url(URL) as gcs:
         repr(gcs)
         str(gcs)
-        
+
 
 def test_gcs_files(gcs_fixture):
     with from_url(URL) as gcs:
-
         with gcs.open('foo.txt', 'w') as fp:
             fp.write('bar')
             assert not fp.closed
@@ -83,7 +83,6 @@ def test_gcs_files(gcs_fixture):
         assert gcs.isdir("/base")
         assert gcs.isdir("/")
         assert not gcs.isdir("/bas")
-        
 
 
 def test_gcs_init_with_timeouts(gcs_fixture):
@@ -101,7 +100,6 @@ def test_gcs_init_with_timeouts(gcs_fixture):
 def test_gcs_read(gcs_fixture, buffering, reader_type):
     with from_url(URL,
                   buffering=buffering) as gcs:
-
         with gcs.open('foo.txt', 'w') as fp:
             fp.write('bar')
             assert not fp.closed
@@ -123,12 +121,10 @@ def test_gcs_read(gcs_fixture, buffering, reader_type):
             assert b'r' == fp.read(1)
             assert b'' == fp.read(1)
             assert not fp.closed
-            
 
 
 def test_empty_file(gcs_fixture):
     with from_url(URL) as gcs:
-
         # Create an empty file
         with gcs.open('foo.dat', 'wb'):
             pass
@@ -136,11 +132,10 @@ def test_empty_file(gcs_fixture):
         # It should be able to read it without error
         with gcs.open('foo.dat', 'rb') as f:
             assert len(f.read()) == 0
-            
+
 
 def test_gcs_fork(gcs_fixture):
     with from_url(URL) as gcs:
-
         with gcs.open('foo.txt', 'w') as fp:
             fp.write('bar')
             assert not fp.closed
@@ -163,16 +158,15 @@ def test_gcs_fork(gcs_fixture):
         p.start()
         p.join()
         assert p.exitcode == 0
-        
 
 
 def test_gcs_mpu(gcs_fixture):
     # Test multipart upload
     # TODO: create_bucketオプションがGoogleCloudStorageクラスには現状ないので、対応させるか（できるか）調べる。
-    with GoogleCloudStorage(gcs_fixture.bucket_name, create_bucket=True, mpu_chunksize=8*1024*1024) as gcs:
+    with GoogleCloudStorage(gcs_fixture.bucket_name, create_bucket=True, mpu_chunksize=8 * 1024 * 1024) as gcs:
         with gcs.open('testfile', 'wb') as fp:
             for _ in range(4):
-                fp.write(b"01234567" * (1024*1024))
+                fp.write(b"01234567" * (1024 * 1024))
 
         with gcs.open('testfile', 'rb') as fp:
             data = fp.read()
@@ -182,7 +176,7 @@ def test_gcs_mpu(gcs_fixture):
 
         with gcs.open('testfile2', 'wb') as fp:
             for _ in range(4):
-                fp.write(b"0123456" * (1024*1024))
+                fp.write(b"0123456" * (1024 * 1024))
 
         with gcs.open('testfile2', 'rb') as fp:
             data = fp.read()
@@ -192,18 +186,17 @@ def test_gcs_mpu(gcs_fixture):
 
         with gcs.open('testfile2', 'w') as fp:
             for _ in range(4):
-                fp.write("0123456" * (1024*1024))
+                fp.write("0123456" * (1024 * 1024))
 
         with gcs.open('testfile2', 'r') as fp:
             data = fp.read()
 
         assert 7 * 1024 * 1024 * 4 == len(data)
         assert "0123456" == data[7:14]
-    
+
 
 def test_gcs_recursive(gcs_fixture):
     with from_url(URL) as gcs:
-
         touch(gcs, 'foo.txt', 'bar')
         touch(gcs, 'bar.txt', 'baz')
         touch(gcs, 'baz/foo.txt', 'foo')
@@ -213,8 +206,8 @@ def test_gcs_recursive(gcs_fixture):
         assert 3 == len(abspaths)
         for p in abspaths:
             assert p.startswith('base/')
-            
-            
+
+
 def _seek_check(f):
     # Seek by absolute position
     ###########################
@@ -251,13 +244,12 @@ def _seek_check(f):
         f.seek(-11, os.SEEK_END) == 0
     assert err.value.errno == 22
     assert f.tell() == 12, "the position should be kept after an error"
-    
-    
+
+
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_seek(gcs_fixture, buffering):
     with from_url(URL,
                   buffering=buffering) as gcs:
-
         # Make a 10-bytes test data
         touch(gcs, 'foo.data', '0123456789')
 
@@ -274,23 +266,21 @@ def test_gcs_seek(gcs_fixture, buffering):
         with open(tmpf.name, 'rb') as f:
             _seek_check(f)
 
+
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_pickle(gcs_fixture, buffering):
     with from_url(URL, buffering=buffering) as gcs:
-
         with gcs.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
 
     with open_url(f'gs://{BUCKET_NAME}/base/foo.pkl', 'rb') as f:
         assert pickle.load(f) == {'test': 'data'}
-        
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_rename(gcs_fixture, buffering):
     with from_url(URL,
                   buffering=buffering) as gcs:
-
         with gcs.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
 
@@ -302,14 +292,12 @@ def test_rename(gcs_fixture, buffering):
 
     with open_url(f'gs://{BUCKET_NAME}/base/bar.pkl', 'rb') as f:
         assert pickle.load(f) == {'test': 'data'}
-        
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_read_and_readall(gcs_fixture, buffering):
     with from_url(f'gs://{BUCKET_NAME}/',
                   buffering=buffering) as gcs:
-
         # Make a 10-bytes test data
         touch(gcs, 'foo.data', '0123456789')
 
@@ -327,13 +315,12 @@ def test_gcs_read_and_readall(gcs_fixture, buffering):
 
         f.seek(5, os.SEEK_SET)
         assert f.raw.readall() == b'56789'
-        
+
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_readlines(gcs_fixture, buffering):
     with from_url(f'gs://{BUCKET_NAME}/',
                   buffering=buffering) as gcs:
-
         # Make a 10-bytes test data
         txt = '''first line
 second line
@@ -352,7 +339,7 @@ third line
         assert len(txt) == getattr(f, '_CHUNK_SIZE')
         f._CHUNK_SIZE = 233458
         assert 233458 == f._CHUNK_SIZE
-        
+
 
 def test_remove(gcs_fixture):
     with from_url(URL) as gcs:
@@ -364,7 +351,6 @@ def test_remove(gcs_fixture):
         assert gcs.exists('foo.data')
         gcs.remove('foo.data')
         assert not gcs.exists('foo.data')
-        
 
 
 def test_fs_factory(gcs_fixture):
@@ -395,7 +381,7 @@ def test_fs_factory(gcs_fixture):
         assert fs.exists('bom.txt')
         with fs.open('bom.txt', 'rt') as f:
             assert f.read() == 'hello'
-            
+
 
 def test_from_url_create_option(gcs_fixture):
     # In S3, actually create option has no effect
@@ -406,7 +392,7 @@ def test_from_url_create_option(gcs_fixture):
     # TODO: create optionどうするか
     with from_url(path, create=True) as fs:
         assert not fs.exists(path)
-        
+
 
 def test_gcs_rw_profiling(gcs_fixture):
     ppe = pytest.importorskip("pytorch_pfn_extras")
