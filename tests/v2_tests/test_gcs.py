@@ -168,7 +168,6 @@ def test_gcs_fork(gcs_fixture):
 
 def test_gcs_mpu(gcs_fixture):
     # Test multipart upload
-    # TODO: create_bucketオプションがGoogleCloudStorageクラスには現状ないので、対応させるか（できるか）調べる。
     with GoogleCloudStorage(gcs_fixture.bucket_name, create_bucket=True, mpu_chunksize=8*1024*1024) as gcs:
         with gcs.open('testfile', 'wb') as fp:
             for _ in range(4):
@@ -403,7 +402,6 @@ def test_from_url_create_option(gcs_fixture):
     with from_url(path) as fs:
         assert not fs.exists(path)
 
-    # TODO: create optionどうするか
     with from_url(path, create=True) as fs:
         assert not fs.exists(path)
         
@@ -411,7 +409,6 @@ def test_from_url_create_option(gcs_fixture):
 def test_gcs_rw_profiling(gcs_fixture):
     ppe = pytest.importorskip("pytorch_pfn_extras")
 
-    # TODO: traceオプションの実装を確認する
     with from_url(URL, trace=True) as gcs:
         ppe.profiler.clear_tracer()
 
