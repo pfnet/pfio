@@ -442,6 +442,13 @@ def test_exists(gcs_fixture):
         assert not gcs.exists(non_exist_file)
 
 
+def test_mkdir(gcs_fixture):
+    with from_url(URL) as gcs:
+        test_dir_name = "testmkdir"
+        gcs.mkdir(test_dir_name)
+        assert gcs.isdir(test_dir_name)
+
+
 def test_remove(gcs_fixture):
     with from_url(BASE_URL + '/base') as gcs:
         with pytest.raises(FileNotFoundError) as err:
