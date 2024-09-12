@@ -341,6 +341,13 @@ third line
         assert 233458 == f._CHUNK_SIZE
 
 
+def test_mkdir(gcs_fixture):
+    with from_url(URL) as gcs:
+        test_dir_name = "testmkdir"
+        gcs.mkdir(test_dir_name)
+        assert gcs.isdir(test_dir_name)
+
+
 def test_remove(gcs_fixture):
     with from_url(URL) as gcs:
         with pytest.raises(FileNotFoundError) as err:

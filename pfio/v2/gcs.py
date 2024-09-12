@@ -393,30 +393,30 @@ class GoogleCloudStorage(FS):
 
             # get a parent folder
             tmp = path.rsplit('/', 2)
-            parent_dir = ''
-            if len(tmp) > 2:
-                parent_dir = tmp[0]
+            parent_dir = tmp[0] if len(tmp) > 2 else ''
+            parent_dir += '/' if len(parent_dir) > 0 else ''
 
             blobs = self.bucket.list_blobs(prefix=parent_dir, delimiter='/', timeout=self.connect_time)
             list(blobs)
-            for prefix in blobs.prefixes:
-                if prefix == path:
-                    return True
+            return path in blobs.prefixes
 
-            return False
+    def mkdir(self, path: str, *args) -> None:
+        """Make a simulated folder
 
-    def mkdir(self, path):
-        """Does nothing
+        Args:
+            path (str): the path to the directory to make
 
-        .. note:: GCS does not have concept of directory tree; what
-           this function (and ``makedirs()``) should do
-           and return? To be strict, it would be straightforward to
-           raise ``io.UnsupportedOperation`` exception. But it just
-           breaks users' applications that except quasi-compatible
-           behaviour. Thus, imitating other file systems, like
-           returning ``None`` would be nicer.
+        .. note:: GCS does not have concept of directory tree; but
+           some tools simulate folders.
+           Follow the behavior of creating a zero-byte objects as
+           folder placeholders, such as Google Cloud console.
+
         """
-        pass
+        with record("pfio.v2.GoogleCloudStorage:mkdir", trace=self.trace):
+            self._checkfork()
+            object_name = _normalize_key(os.path.join(self.cwd, path)) + '/'
+            blob = self.bucket.blob(object_name)
+            blob.upload_from_string('', content_type='application/octet-stream', timeout=self.connect_time)
 
     def makedirs(self, path):
         """Does nothing
