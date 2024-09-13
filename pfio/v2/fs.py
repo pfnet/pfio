@@ -255,7 +255,7 @@ class FS(abc.ABC):
     def exists(self, path: str) -> bool:
         """Returns the existence of the path
 
-        When the ``file_path`` points to a symlink, the return value
+        When the ``path`` points to a symlink, the return value
         depends on the actual file instead of the link itself.
 
         """
@@ -278,7 +278,7 @@ class FS(abc.ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def remove(self, file_path: str, recursive: bool = False) -> None:
+    def remove(self, path: str, recursive: bool = False) -> None:
         """Removes a file or directory
 
            Args:
