@@ -448,6 +448,29 @@ def test_mkdir(gcs_fixture):
         gcs.mkdir(test_dir_name)
         assert gcs.isdir(test_dir_name)
 
+        # cleanup
+        gcs.remove(test_dir_name, recursive=True)
+
+
+def test_makedirs(gcs_fixture):
+    with from_url(URL) as gcs:
+        test_dir_name = "testmkdir"
+        nested_dir_name = test_dir_name + '/' + "nested_dir"
+        gcs.makedirs(nested_dir_name)
+        assert gcs.isdir(nested_dir_name)
+
+        # cleanup
+        gcs.remove(test_dir_name, recursive=True)
+
+
+def test_exists(gcs_fixture):
+    non_exist_file = "non_exist_file.txt"
+
+    with from_url(URL) as gcs:
+        assert gcs.exists('.')
+        assert gcs.exists('/')
+        assert not gcs.exists(non_exist_file)
+
 
 def test_remove(gcs_fixture):
     with from_url(BASE_URL + '/base') as gcs:
