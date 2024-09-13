@@ -84,6 +84,10 @@ def test_gcs_files(gcs_fixture):
         assert gcs.isdir("/")
         assert not gcs.isdir("/bas")
 
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
+
 
 def test_gcs_init_with_timeouts(gcs_fixture):
     with from_url(URL,
@@ -122,6 +126,10 @@ def test_gcs_read(gcs_fixture, buffering, reader_type):
             assert b'' == fp.read(1)
             assert not fp.closed
 
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
+
 
 def test_empty_file(gcs_fixture):
     with from_url(URL) as gcs:
@@ -132,6 +140,10 @@ def test_empty_file(gcs_fixture):
         # It should be able to read it without error
         with gcs.open('foo.dat', 'rb') as f:
             assert len(f.read()) == 0
+
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
 
 
 def test_gcs_fork(gcs_fixture):
@@ -158,6 +170,10 @@ def test_gcs_fork(gcs_fixture):
         p.start()
         p.join()
         assert p.exitcode == 0
+
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
 
 
 def test_gcs_mpu(gcs_fixture):
@@ -194,6 +210,10 @@ def test_gcs_mpu(gcs_fixture):
         assert 7 * 1024 * 1024 * 4 == len(data)
         assert "0123456" == data[7:14]
 
+        # cleanup
+        gcs.remove('testfile')
+        gcs.remove('testfile2')
+
 
 def test_gcs_recursive(gcs_fixture):
     with from_url(URL) as gcs:
@@ -201,11 +221,16 @@ def test_gcs_recursive(gcs_fixture):
         touch(gcs, 'bar.txt', 'baz')
         touch(gcs, 'baz/foo.txt', 'foo')
 
-        assert 3 == len(list(gcs.list(recursive=True)))
+        expected = ['base/', 'base/bar.txt', 'base/baz/', 'base/baz/foo.txt', 'base/foo.txt']
+        assert len(expected) == len(list(gcs.list(recursive=True)))
         abspaths = list(gcs.list('/', recursive=True))
-        assert 3 == len(abspaths)
+        assert len(expected) == len(abspaths)
         for p in abspaths:
             assert p.startswith('base/')
+
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
 
 
 def _seek_check(f):
@@ -266,6 +291,10 @@ def test_gcs_seek(gcs_fixture, buffering):
         with open(tmpf.name, 'rb') as f:
             _seek_check(f)
 
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
+
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_pickle(gcs_fixture, buffering):
@@ -275,6 +304,10 @@ def test_gcs_pickle(gcs_fixture, buffering):
 
     with open_url(f'gs://{BUCKET_NAME}/base/foo.pkl', 'rb') as f:
         assert pickle.load(f) == {'test': 'data'}
+
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
@@ -292,6 +325,10 @@ def test_rename(gcs_fixture, buffering):
 
     with open_url(f'gs://{BUCKET_NAME}/base/bar.pkl', 'rb') as f:
         assert pickle.load(f) == {'test': 'data'}
+
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
@@ -315,6 +352,10 @@ def test_gcs_read_and_readall(gcs_fixture, buffering):
 
         f.seek(5, os.SEEK_SET)
         assert f.raw.readall() == b'56789'
+
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('foo.data')
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
@@ -340,12 +381,39 @@ third line
         f._CHUNK_SIZE = 233458
         assert 233458 == f._CHUNK_SIZE
 
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('foo.txt')
+
 
 def test_mkdir(gcs_fixture):
     with from_url(URL) as gcs:
         test_dir_name = "testmkdir"
         gcs.mkdir(test_dir_name)
         assert gcs.isdir(test_dir_name)
+
+        # cleanup
+        gcs.remove(test_dir_name, recursive=True)
+
+
+def test_makedirs(gcs_fixture):
+    with from_url(URL) as gcs:
+        test_dir_name = "testmkdir"
+        nested_dir_name = test_dir_name + '/' + "nested_dir"
+        gcs.makedirs(nested_dir_name)
+        assert gcs.isdir(nested_dir_name)
+
+        # cleanup
+        gcs.remove(test_dir_name, recursive=True)
+
+
+def test_exists(gcs_fixture):
+    non_exist_file = "non_exist_file.txt"
+
+    with from_url(URL) as gcs:
+        assert gcs.exists('.')
+        assert gcs.exists('/')
+        assert not gcs.exists(non_exist_file)
 
 
 def test_remove(gcs_fixture):
@@ -388,6 +456,10 @@ def test_fs_factory(gcs_fixture):
         assert fs.exists('bom.txt')
         with fs.open('bom.txt', 'rt') as f:
             assert f.read() == 'hello'
+
+    # cleanup
+    with gcs_fixture.fs as gcs:
+        gcs.remove('boom', recursive=True)
 
 
 def test_from_url_create_option(gcs_fixture):
@@ -449,3 +521,7 @@ def test_gcs_rw_profiling(gcs_fixture):
         assert "pfio.v2.S3:open" in keys
         assert "pfio.v2.S3:peek" in keys
         assert "pfio.v2.S3:close" in keys
+
+    # cleanup
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        gcs.remove('base', recursive=True)
