@@ -68,8 +68,8 @@ class ObjectStat(FileStat):
 
 
 class PrefixStat(FileStat):
-    def __init__(self, key):
-        self.filename = key
+    def __init__(self, key, path):
+        self.filename = path
         self.last_modified = 0
         self.size = -1
 
