@@ -48,21 +48,20 @@ class GCSProfileIOWrapper:
 
 
 class ObjectStat(FileStat):
-    def __init__(self, blob):
-        self.path = blob.name
+    def __init__(self, blob, path):
+        self.filename = path
+        self.last_modified = blob.updated
         self.size = blob.size
         self.metadata = blob.metadata
-        self.crc32c = blob.crc32c
-        self.md5_hash = base64.b64decode(blob.md5_hash).hex()
-        self.filename = os.path.basename(blob.name)
+        self._head = blob
 
     def isdir(self):
         return self.size == 0 and self.path.endswith('/')
 
 
 class PrefixStat(FileStat):
-    def __init__(self, key):
-        self.filename = key
+    def __init__(self, key, path):
+        self.filename = path
         self.last_modified = 0
         self.size = -1
 
@@ -299,7 +298,6 @@ class GoogleCloudStorage(FS):
                             bs = DEFAULT_MAX_BUFFER_SIZE
                         obj._CHUNK_SIZE = bs
 
-                # return obj
             elif 'w' in mode:
                 # Create intermediate directories as simulated ones
                 ps = path.split('/')
@@ -346,15 +344,26 @@ class GoogleCloudStorage(FS):
         # objects
         for blob in blobs:
             if detail:
-                yield ObjectStat(blob)
+                yield ObjectStat(blob, self._get_relative_path(blob.name))
             else:
-                yield blob.name
+                yield self._get_relative_path(blob.name)
         # folders
-        for blob in blobs.prefixes:
+        for prefix in blobs.prefixes:
             if detail:
-                yield PrefixStat(blob)
+                yield PrefixStat(blob, self._get_relative_path(prefix))
             else:
-                yield blob
+                yield self._get_relative_path(prefix)
+
+    def _get_relative_path(self, path):
+        """
+        """
+        if len(self.cwd) == 0:
+            return path
+
+        try:
+            return path[len(self.cwd)+1:]
+        except:
+            return path
 
     def stat(self, path):
         """Imitate FileStat with S3 Object metadata
@@ -364,7 +373,8 @@ class GoogleCloudStorage(FS):
             self._checkfork()
             path = _normalize_key(os.path.join(self.cwd, path))
 
-            return ObjectStat(self.bucket.get_blob(path))
+            blob = self.bucket.get_blob(path)
+            return ObjectStat(blob, self._get_relative_path(blob.name))
 
     def isdir(self, file_path):
         """Imitate isdir by handling common prefix ending with "/" as directory
