@@ -1,5 +1,6 @@
 import io
 import json
+import multiprocessing
 import os
 import shutil
 import tempfile
@@ -53,6 +54,7 @@ def test_gcs_zip():
                 assert zft.content('file') == fp.read()
 
 
+@pytest.mark.skip(reason="google.cloud.storage.client.Client is not supported pickling object")
 @pytest.mark.parametrize("mp_start_method", ["fork", "forkserver"])
 def test_gcs_zip_mp(mp_start_method):
     # mock_aws doesn't work well in forkserver, thus we use server-mode moto
@@ -84,42 +86,42 @@ def test_gcs_zip_mp(mp_start_method):
         _ = ZipForTest(zipfilename, data)
         bucket = BUCKET
 
-        # mp_ctx = multiprocessing.get_context(mp_start_method)
-        # q = mp_ctx.Queue()
+        mp_ctx = multiprocessing.get_context(mp_start_method)
+        q = mp_ctx.Queue()
 
         # Copy ZIP
-        # with from_url(f'gs://{bucket}/',
-        #               create_bucket=True) as gcs:
-        #     assert isinstance(gcs, GoogleCloudStorage)
-        #     with open(zipfilename, 'rb') as src, \
-        #             gcs.open('test.zip', 'wb') as dst:
-        #         shutil.copyfileobj(src, dst)
+        with from_url(f'gs://{bucket}/',
+                      create_bucket=True) as gcs:
+            assert isinstance(gcs, GoogleCloudStorage)
+            with open(zipfilename, 'rb') as src, \
+                    gcs.open('test.zip', 'wb') as dst:
+                shutil.copyfileobj(src, dst)
 
-        #     with gcs.open('test.zip', 'rb') as fp:
-        #         assert zipfile.is_zipfile(fp)
+            with gcs.open('test.zip', 'rb') as fp:
+                assert zipfile.is_zipfile(fp)
 
         with from_url(f'gs://{bucket}/test.zip') as fs:
             # Add tons of data into the cache in parallel
             fs.multipart_upload('test.zip')
 
-            # ps = [mp_ctx.Process(target=gcs_zip_mp_child,
-            #                      args=(q, fs, worker_idx,
-            #                            n_samples_per_worker, sample_size,
-            #                            data)
-            #                      )
-            #       for worker_idx in range(n_workers)]
-            # for p in ps:
-            #     p.start()
-            # for p in ps:
-            #     p.join()
-            #     ok, e = q.get()
-            #     assert 'ok' == ok, str(e)
+            ps = [mp_ctx.Process(target=gcs_zip_mp_child,
+                                 args=(q, fs, worker_idx,
+                                       n_samples_per_worker, sample_size,
+                                       data)
+                                 )
+                  for worker_idx in range(n_workers)]
+            for p in ps:
+                p.start()
+            for p in ps:
+                p.join()
+                ok, e = q.get()
+                assert 'ok' == ok, str(e)
 
-            # for worker_idx in range(n_workers):
-            #     gcs_zip_mp_child(q, fs, worker_idx,
-            #                     n_samples_per_worker, sample_size, data)
-            #     ok, e = q.get()
-            #     assert 'ok' == ok, str(e)
+            for worker_idx in range(n_workers):
+                gcs_zip_mp_child(q, fs, worker_idx,
+                                n_samples_per_worker, sample_size, data)
+                ok, e = q.get()
+                assert 'ok' == ok, str(e)
 
     # moto_server.stop()
 
