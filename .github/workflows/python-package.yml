@@ -9,6 +9,10 @@ on:
 
 jobs:
   build:
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
 
     runs-on: ubuntu-latest
     strategy:
@@ -18,6 +22,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: 'google-github-actions/auth@v2'
+      with:
+        project_id: 'cluster-storage'
+        workload_identity_provider: 'projects/1097862457753/locations/global/workloadIdentityPools/github-actions-pfio-ci-tasks
+/providers/github'
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -30,6 +39,8 @@ jobs:
     - name: Test with tox
       run: |
         tox run --skip-env doc
+      # env:
+      #   GOOGLE_CLOUD_PROJECT: 'cluster-storage'
 
   doc:
     runs-on: ubuntu-latest
