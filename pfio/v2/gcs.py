@@ -22,7 +22,6 @@ def _normalize_key(key: str) -> str:
     else:
         return key
 
-
 class GCSProfileIOWrapper:
     def __init__(self, obj):
         self.obj = obj
@@ -60,8 +59,8 @@ class ObjectStat(FileStat):
 
 
 class PrefixStat(FileStat):
-    def __init__(self, key, path):
-        self.filename = path
+    def __init__(self, key):
+        self.filename = key
         self.last_modified = 0
         self.size = -1
 
@@ -238,7 +237,7 @@ class GoogleCloudStorage(FS):
         except exceptions.NotFound as e:
             if self.create_bucket:
                 self.bucket = self.client.create_bucket(self.bucket_name)
-                print("Bucket", self.bucket, "created:", res)
+                print("Bucket", self.bucket_name, "created:", self.bucket)
             else:
                 raise e
 
@@ -331,7 +330,6 @@ class GoogleCloudStorage(FS):
 
     def _list(self, prefix: Optional[str] = "", recursive=False, detail=False):
         path = os.path.join(self.cwd, "" if prefix is None else prefix)
-
         path = _normalize_key(path)
         if path == '.':
             path = ''
@@ -344,26 +342,22 @@ class GoogleCloudStorage(FS):
         # objects
         for blob in blobs:
             if detail:
-                yield ObjectStat(blob, self._get_relative_path(blob.name))
+                yield ObjectStat(blob, self._format_path(blob.name))
             else:
-                yield self._get_relative_path(blob.name)
+                yield self._format_path(blob.name, path)
         # folders
         for prefix in blobs.prefixes:
             if detail:
-                yield PrefixStat(blob, self._get_relative_path(prefix))
+                yield PrefixStat(blob, self._format_path(prefix))
             else:
-                yield self._get_relative_path(prefix)
+                yield self._format_path(prefix, path)
 
-    def _get_relative_path(self, path):
+    def _format_path(self, abspath, prefix):
+        """ 
         """
-        """
-        if len(self.cwd) == 0:
-            return path
+        return abspath[len(prefix):]
 
-        try:
-            return path[len(self.cwd)+1:]
-        except:
-            return path
+        # return "/" + abspath
 
     def stat(self, path):
         """Imitate FileStat with S3 Object metadata
@@ -469,7 +463,6 @@ class GoogleCloudStorage(FS):
         """
         with record("pfio.v2.GoogleCloudStorage:exists", trace=self.trace):
             self._checkfork()
-            path = path[1:] if path.startswith('/') else path
             object_name = _normalize_key(os.path.join(self.cwd, path))
             return self.bucket.blob(object_name).exists(timeout=self.connect_time) or \
                 self.bucket.blob(object_name + '/').exists(timeout=self.connect_time)

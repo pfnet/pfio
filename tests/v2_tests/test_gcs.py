@@ -69,7 +69,7 @@ def test_gcs_files(gcs_fixture):
         assert 'foo.txt' in list(gcs.list('/base/'))
 
         assert 'foo.txt' in list(gcs.list(recursive=True))
-        assert 'foo.txt' in list(gcs.list('/', recursive=True))
+        assert 'base/foo.txt' in list(gcs.list('/', recursive=True))
 
         with gcs.open('dir/foo.txt', 'w') as fp:
             fp.write('bar')
@@ -220,7 +220,7 @@ def test_gcs_recursive(gcs_fixture):
         touch(gcs, 'bar.txt', 'baz')
         touch(gcs, 'baz/foo.txt', 'foo')
 
-        expected = ['base/', 'base/bar.txt', 'base/baz/', 'base/baz/foo.txt', 'base/foo.txt']
+        expected = ['base/', 'bar.txt', 'baz/', 'baz/foo.txt', 'foo.txt']
         assert len(expected) == len(list(gcs.list(recursive=True)))
         abspaths = list(gcs.list('/', recursive=True))
         assert len(expected) == len(abspaths)
