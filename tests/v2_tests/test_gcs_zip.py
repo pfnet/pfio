@@ -1,6 +1,5 @@
 import io
 import json
-import multiprocessing
 import os
 import shutil
 import tempfile
@@ -8,14 +7,16 @@ import traceback
 import zipfile
 
 import pytest
-# from moto import mock_aws, server
 
 import pfio
 from pfio.testing import ZipForTest
-from pfio.v2 import GoogleCloudStorage, S3, Zip, from_url
+from pfio.v2 import GoogleCloudStorage, Zip, from_url
+
+# from moto import mock_aws, server
 
 # BUCKET='my-pfio-test'
-BUCKET='pfn-pfio-test-bucket'
+BUCKET = 'pfn-pfio-test-bucket'
+
 
 def test_gcs_zip():
     with tempfile.TemporaryDirectory() as d:
@@ -98,10 +99,8 @@ def test_gcs_zip_mp(mp_start_method):
         #         assert zipfile.is_zipfile(fp)
 
         with from_url(f'gs://{bucket}/test.zip') as fs:
-
             # Add tons of data into the cache in parallel
             fs.multipart_upload('test.zip')
-
 
             # ps = [mp_ctx.Process(target=gcs_zip_mp_child,
             #                      args=(q, fs, worker_idx,
@@ -126,7 +125,7 @@ def test_gcs_zip_mp(mp_start_method):
 
 
 def gcs_zip_mp_child(q, zfs, worker_idx,
-                    n_samples_per_worker, sample_size, data):
+                     n_samples_per_worker, sample_size, data):
     try:
         for i in range(n_samples_per_worker):
             sample_idx = (worker_idx * n_samples_per_worker + i) // sample_size

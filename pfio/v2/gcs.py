@@ -1,12 +1,12 @@
 import base64
-import json
 import io
+import json
 import os
 from types import TracebackType
 from typing import Optional, Type
 
 from google.cloud import storage, exceptions
-from google.cloud.storage.fileio import BlobReader, BlobWriter
+from google.cloud.storage.fileio import BlobWriter
 from google.oauth2 import service_account
 
 from ._profiler import record, record_iterable
@@ -14,12 +14,14 @@ from .fs import FS, FileStat
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
 
+
 def _normalize_key(key: str) -> str:
     key = os.path.normpath(key)
     if key.startswith("/"):
         return key[1:]
     else:
         return key
+
 
 class GCSProfileIOWrapper:
     def __init__(self, obj):
@@ -39,9 +41,11 @@ class GCSProfileIOWrapper:
             def wrapper(*args, **kwargs):
                 with record(f"pfio.v2.GoogleCloudStorage:{attr.__name__}", trace=True):
                     return attr(*args, **kwargs)
+
             return wrapper
         else:
             return attr
+
 
 class ObjectStat(FileStat):
     def __init__(self, blob):
@@ -54,7 +58,7 @@ class ObjectStat(FileStat):
 
     def isdir(self):
         return self.size == 0 and self.path.endswith('/')
-    
+
 
 class PrefixStat(FileStat):
     def __init__(self, key):
@@ -64,7 +68,8 @@ class PrefixStat(FileStat):
 
     def isdir(self):
         return True
-    
+
+
 class _ObjectReader(io.RawIOBase):
     def __init__(self, blob):
         super(_ObjectReader, self).__init__()
@@ -173,9 +178,10 @@ class _ObjectReader(io.RawIOBase):
         buf = self.read(len(b))
         b[:len(buf)] = buf
         return len(buf)
-    
+
+
 class GoogleCloudStorage(FS):
-    '''Google Cloud Storage wrapper
+    """Google Cloud Storage wrapper
 
     ``key_path`` argument is a path to credential files of
     IAM service account. The path to the file can be set to
@@ -184,12 +190,12 @@ class GoogleCloudStorage(FS):
 
     .. note:: This is an experimental implmentation.
 
-    '''
+    """
 
-    def __init__(self, bucket: str, prefix=None, 
-                 key_path=None, 
-                 create_bucket=False, 
-                 mpu_chunksize=32*1024*1024,
+    def __init__(self, bucket: str, prefix=None,
+                 key_path=None,
+                 create_bucket=False,
+                 mpu_chunksize=32 * 1024 * 1024,
                  buffering=-1,
                  create=False,
                  connect_timeout=None,
@@ -205,7 +211,7 @@ class GoogleCloudStorage(FS):
             self.cwd = prefix
         else:
             self.cwd = ''
-            
+
         # In GCS, create flag can be disregarded
         del create
 
@@ -215,7 +221,6 @@ class GoogleCloudStorage(FS):
         self.create_bucket = create_bucket
         self.ignore_flush = ignore_flush
 
-
         self._reset()
 
     def _reset(self):
@@ -224,7 +229,7 @@ class GoogleCloudStorage(FS):
         else:
             with open(self.key_path) as kp:
                 service_account_info = json.load(kp)
-                credentials = service_account.Credentials.\
+                credentials = service_account.Credentials. \
                     from_service_account_info(service_account_info)
             self.client = storage.Client(credentials=credentials,
                                          project=credentials.project_id)
@@ -238,7 +243,7 @@ class GoogleCloudStorage(FS):
         #
         # See also:
         # https://cloud.google.com/storage/docs/access-control/iam-roles
-        
+
         try:
             self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.connect_time)
         except exceptions.NotFound as e:
@@ -250,8 +255,7 @@ class GoogleCloudStorage(FS):
 
         # self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.connect_time)
         assert self.bucket
-        
-        
+
     def __getstate__(self):
         state = self.__dict__.copy()
         state['client'] = None
@@ -261,7 +265,7 @@ class GoogleCloudStorage(FS):
         self.__dict__ = state
 
     def open(self, path, mode='r', **kwargs):
-        '''Opens an object accessor for read or write
+        """Opens an object accessor for read or write
 
         .. note:: Multi-part upload is not yet available.
 
@@ -269,7 +273,7 @@ class GoogleCloudStorage(FS):
             path (str): relative path from basedir
 
             mode (str): open mode
-        '''
+        """
         with record("pfio.v2.GoogleCloudStorage:open", trace=self.trace):
             self._checkfork()
             if 'a' in mode:
@@ -307,11 +311,17 @@ class GoogleCloudStorage(FS):
 
                 # return obj
             elif 'w' in mode:
+                # Create intermediate directories as simulated ones
+                ps = path.split('/')
+                xdi = -1  # xdi means `reverse order index`
+                while len(ps[:xdi]) != 0:
+                    self.__make_simulated_dir('/'.join(ps[:xdi]))
+                    xdi -= 1
                 if 'b' in mode:
-                    obj = BlobWriter(blob, chunk_size=1024*1024, ignore_flush=self.ignore_flush)
+                    obj = BlobWriter(blob, chunk_size=1024 * 1024, ignore_flush=self.ignore_flush)
                 else:
                     obj = io.TextIOWrapper(
-                        BlobWriter(blob, chunk_size=1024*1024, ignore_flush=True))
+                        BlobWriter(blob, chunk_size=1024 * 1024, ignore_flush=True))
             else:
                 raise RuntimeError(f'Unknown option: {mode}')
 
@@ -320,13 +330,12 @@ class GoogleCloudStorage(FS):
             else:
                 return obj
 
-
     def list(self, prefix: Optional[str] = "", recursive=False, detail=False):
-        '''List all objects (and prefixes)
+        """List all objects (and prefixes)
 
         Although there is not concept of directory in GCS API,
         common prefixes shows up like directories.
-        '''
+        """
         for e in record_iterable("pfio.v2.GoogleCloudStorage:list",
                                  self._list(prefix, recursive, detail),
                                  trace=self.trace):
@@ -342,8 +351,7 @@ class GoogleCloudStorage(FS):
             path += '/'
         if '/../' in path or path.startswith('..'):
             raise ValueError('Invalid GCS key: {} as {}'.format(prefix, path))
-        
-        
+
         blobs = self.bucket.list_blobs(prefix=path, delimiter=('' if recursive else '/'), timeout=self.connect_time)
         # objects
         for blob in blobs:
@@ -357,11 +365,11 @@ class GoogleCloudStorage(FS):
                 yield PrefixStat(blob)
             else:
                 yield blob
-            
-    def stat(self, path):
-        '''Imitate FileStat with S3 Object metadata
 
-        '''
+    def stat(self, path):
+        """Imitate FileStat with S3 Object metadata
+
+        """
         with record("pfio.v2.GoogleCloudStorage:stat", trace=self.trace):
             self._checkfork()
             path = _normalize_key(os.path.join(self.cwd, path))
@@ -369,12 +377,12 @@ class GoogleCloudStorage(FS):
             return ObjectStat(self.bucket.get_blob(path))
 
     def isdir(self, file_path):
-        '''Imitate isdir by handling common prefix ending with "/" as directory
+        """Imitate isdir by handling common prefix ending with "/" as directory
 
         GoogleCloudStorage does not have concept of directory tree, but this class
         imitates other file systems to increase compatibility.
-        '''
-        
+        """
+
         with record("pfio.v2.GoogleCloudStorage:isdir", trace=self.trace):
             self._checkfork()
 
@@ -388,59 +396,91 @@ class GoogleCloudStorage(FS):
 
             if len(path) == 0:
                 return True
-            
+
             # get a parent folder
             tmp = path.rsplit('/', 2)
-            parent_dir = ''
-            if len(tmp) > 2:
-                parent_dir = tmp[0]
+            parent_dir = tmp[0] if len(tmp) > 2 else ''
+            parent_dir += '/' if len(parent_dir) > 0 else ''
 
             blobs = self.bucket.list_blobs(prefix=parent_dir, delimiter='/', timeout=self.connect_time)
             list(blobs)
-            for prefix in blobs.prefixes:
-                if prefix == path:
-                    return True
+            return path in blobs.prefixes
 
-            return False
+    def __make_simulated_dir(self, object_name: str) -> None:
+        """Make a simulated folder
 
-    def mkdir(self, path):
-        '''Does nothing
+        Args:
+            object_name (str): Should end with '/'
 
-        .. note:: GCS does not have concept of directory tree; what
-           this function (and ``makedirs()``) should do
-           and return? To be strict, it would be straightforward to
-           raise ``io.UnsupportedOperation`` exception. But it just
-           breaks users' applications that except quasi-compatible
-           behaviour. Thus, imitating other file systems, like
-           returning ``None`` would be nicer.
-        '''
-        pass
+        Returns:
+            None
 
-    def makedirs(self, path):
-        '''Does nothing
+        """
+        # Ensure the object name for a simulated folder ends with '/' letter.
+        if not object_name.endswith('/'):
+            object_name += '/'
 
-        .. note:: see discussion in ``mkdir()``.
-        '''
-        pass
+        blob = self.bucket.blob(object_name)
+        if not blob.exists(timeout=self.connect_time):
+            blob.upload_from_string('', content_type='application/octet-stream', timeout=self.connect_time)
 
-    def exists(self, file_path):
-        '''Returns the existence of objects
+    def mkdir(self, path: str, *args) -> None:
+        """Make a simulated folder
 
-        For common prefixes, it does nothing. See discussion in ``isdir()``.
-        '''
+        Args:
+            path (str): the path to the directory to make
+
+        .. note:: GCS does not have concept of directory tree; but
+           some tools simulate folders.
+           Follow the behavior of creating a zero-byte objects as
+           folder placeholders, such as Google Cloud console.
+
+        """
+        with record("pfio.v2.GoogleCloudStorage:mkdir", trace=self.trace):
+            self._checkfork()
+            self.__make_simulated_dir(_normalize_key(os.path.join(self.cwd, path)) + '/')
+
+    def makedirs(self, path: str, *args) -> None:
+        """Make simulated folders recursively
+
+        Creates all the missing parents of the given path.
+
+        Args:
+            path (str): the path to the directory to make.
+
+        .. note: GCS does not have concept of directory tree; but
+           some tools simulate folders.
+           Follow the behavior of creating a zero-byte objects as
+           folder placeholders, such as Google Cloud console.
+
+        """
+        with record("pfio.v2.GoogleCloudStorage:makedirs", trace=self.trace):
+            self._checkfork()
+            target_path = _normalize_key(os.path.join(self.cwd, path))
+            object_name, *tail = target_path.split('/')
+            object_name += '/'
+            self.__make_simulated_dir(object_name)
+            for part in tail:
+                object_name = f'{object_name}{part}/'
+                self.__make_simulated_dir(object_name)
+
+    def exists(self, path: str):
+        """Returns whether an object exists or not
+        """
         with record("pfio.v2.GoogleCloudStorage:exists", trace=self.trace):
             self._checkfork()
-            path = _normalize_key(os.path.join(self.cwd, file_path))
-            return self.bucket.blob(path).exists(timeout=self.connect_time)
-                
+            path = path[1:] if path.startswith('/') else path
+            object_name = _normalize_key(os.path.join(self.cwd, path))
+            return self.bucket.blob(object_name).exists(timeout=self.connect_time) or \
+                self.bucket.blob(object_name + '/').exists(timeout=self.connect_time)
 
     def rename(self, src, dst):
-        '''Copies & removes the object
+        """Copies & removes the object
 
         Source and destination must be in the same bucket for
         ``pfio``, although GCS supports inter-bucket copying.
 
-        '''
+        """
         with record("pfio.v2.GoogleCloudStorage:rename", trace=self.trace):
             self._checkfork()
             src = self.cwd + "/" + src
@@ -453,26 +493,37 @@ class GoogleCloudStorage(FS):
             self.bucket.copy_blob(source_blob, self.bucket, new_name=dst, timeout=self.connect_time)
             return self.bucket.delete_blob(src, timeout=self.connect_time)
 
-    def remove(self, path, recursive=False):
-        '''Removes an object
+    def remove(self, path: str, recursive=False) -> None:
+        """Removes an object
 
         It raises a FileNotFoundError when the specified file doesn't exist.
-        '''
+        """
         with record("pfio.v2.GoogleCloudStorage:remove", trace=self.trace):
-            if recursive:
-                raise io.UnsupportedOperation("Recursive delete not supported")
+            self._checkfork()
 
-            if not self.exists(path):
+            object_name = _normalize_key(os.path.join(self.cwd, path))
+            exists_as_folder = self.bucket.blob(object_name + '/').exists(timeout=self.connect_time)
+            exists_as_file = self.bucket.blob(object_name).exists(timeout=self.connect_time)
+
+            if not exists_as_folder and not exists_as_file:
                 msg = f"No such GCS object: '{path}'"
                 raise FileNotFoundError(msg)
-            
-            self._checkfork()
-            path = _normalize_key(os.path.join(self.cwd, path))
-            return self.bucket.delete_blob(path, timeout=self.connect_time)
+
+            if exists_as_file:
+                self.bucket.delete_blob(object_name, timeout=self.connect_time)
+                return
+
+            if exists_as_folder:
+                if not recursive:
+                    raise io.UnsupportedOperation("Please add recursive=True to remove a directory")
+                blobs = self.bucket.list_blobs(prefix=object_name + '/', delimiter='', timeout=self.connect_time)
+                for blob in blobs:
+                    self.bucket.delete_blob(blob.name, timeout=self.connect_time)
+                for prefix in blobs.prefixes:
+                    self.bucket.delete_blob(prefix.name, timeout=self.connect_time)
 
     def _canonical_name(self, file_path: str) -> str:
         path = os.path.join(self.cwd, file_path)
         norm_path = _normalize_key(path)
 
         return f"gs://{self.hostname}/{self.bucket}/{norm_path}"
-    
