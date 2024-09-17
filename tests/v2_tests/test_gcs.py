@@ -14,7 +14,7 @@ from pfio.v2.gcs import _ObjectReader
 BUCKET_NAME = 'pfn-pfio-test-bucket'
 URL = f'gs://{BUCKET_NAME}/base'
 KEY_PATH = "~/.config/gcloud/application_default_credentials.json"
-
+os.environ['CLOUDSDK_CORE_PROJECT'] = 'cluster-storage'
 
 # KEY_PATH=os.environ["GOOGLE_APPLICATION_CREDENTIAL"]
 
@@ -62,20 +62,20 @@ def test_gcs_files(gcs_fixture):
             fp.write('bar')
             assert not fp.closed
 
-        assert 'base/foo.txt' in list(gcs.list())
+        assert 'foo.txt' in list(gcs.list())
         assert [] == list(gcs.list('base'))
         assert [] == list(gcs.list('base/'))
-        assert 'base/foo.txt' in list(gcs.list('/base'))
-        assert 'base/foo.txt' in list(gcs.list('/base/'))
+        assert 'foo.txt' in list(gcs.list('/base'))
+        assert 'foo.txt' in list(gcs.list('/base/'))
 
-        assert 'base/foo.txt' in list(gcs.list(recursive=True))
-        assert 'base/foo.txt' in list(gcs.list('/', recursive=True))
+        assert 'foo.txt' in list(gcs.list(recursive=True))
+        assert 'foo.txt' in list(gcs.list('/', recursive=True))
 
         with gcs.open('dir/foo.txt', 'w') as fp:
             fp.write('bar')
             assert not fp.closed
 
-        assert 'base/foo.txt' in list(gcs.list()) and 'base/dir/' in list(gcs.list())
+        assert 'foo.txt' in list(gcs.list()) and 'dir/' in list(gcs.list())
 
         assert not gcs.isdir("foo.txt")
         assert gcs.isdir(".")
