@@ -74,17 +74,7 @@ class _ObjectReader(io.RawIOBase):
     def __init__(self, blob):
         super(_ObjectReader, self).__init__()
 
-        # self.client = client
-        # self.bucket = bucket
-        # self.key = key
         self.blob = blob
-
-        # TODO: GCSにdelete markerはない（多分）
-        # res = self.client.head_object(Bucket=bucket, Key=key)
-        # if res.get('DeleteMarker'):
-        #     raise FileNotFoundError()
-
-        # self._mode = mode
         self.pos = 0
         self.content_length = blob.size
         self._closed = False
