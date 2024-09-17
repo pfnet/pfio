@@ -22,10 +22,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
     - uses: 'google-github-actions/auth@v2'
       with:
         project_id: 'cluster-storage'
         workload_identity_provider: 'projects/1097862457753/locations/global/workloadIdentityPools/github-actions-pfio-ci-tasks/providers/github'
+    - name: 'Set up Google Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v2'
+    - name: 'Check Bucket accessibility'
+      run: |
+        gcloud storage buckets describe gs://pfn-pfio-test-bucket
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
