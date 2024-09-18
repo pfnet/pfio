@@ -29,9 +29,9 @@ jobs:
         workload_identity_provider: 'projects/1097862457753/locations/global/workloadIdentityPools/github-actions-pfio-ci-tasks/providers/github'
     - name: 'Set up Google Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
-    - name: 'Set up Application Default Credentials'
-      run: |
-        gcloud auth login --cred-file=.github/workflows/clientLibraryConfig-github.json
+    # - name: 'Set up Application Default Credentials'
+    #   run: |
+    #     gcloud auth login --cred-file=.github/workflows/clientLibraryConfig-github.json
     - name: 'Check Bucket accessibility'
       run: |
         gcloud storage buckets describe gs://pfn-pfio-test-bucket
