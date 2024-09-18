@@ -17,7 +17,7 @@ from pfio.v2 import GoogleCloudStorage, Zip, from_url
 
 # BUCKET='my-pfio-test'
 BUCKET = 'pfn-pfio-test-bucket'
-
+os.environ['CLOUDSDK_CORE_PROJECT'] = 'cloud-storage'
 
 def test_gcs_zip():
     with tempfile.TemporaryDirectory() as d:
@@ -57,21 +57,6 @@ def test_gcs_zip():
 @pytest.mark.skip(reason="google.cloud.storage.client.Client is not supported pickling object")
 @pytest.mark.parametrize("mp_start_method", ["fork", "forkserver"])
 def test_gcs_zip_mp(mp_start_method):
-    # mock_aws doesn't work well in forkserver, thus we use server-mode moto
-    # address = "127.0.0.1"
-    # port = 0  # auto-selection
-    # moto_server = server.ThreadedMotoServer(
-    #     ip_address=address,
-    #     port=port
-    # )
-    # moto_server.start()
-    # port = moto_server._server.port
-
-    # kwargs = {
-    #     "endpoint": f"http://{address}:{port}",
-    #     "aws_access_key_id": "",
-    #     "aws_secret_access_key": "",
-    # }
     with tempfile.TemporaryDirectory() as d:
         n_workers = 32
         n_samples_per_worker = 1024
@@ -122,8 +107,6 @@ def test_gcs_zip_mp(mp_start_method):
                                 n_samples_per_worker, sample_size, data)
                 ok, e = q.get()
                 assert 'ok' == ok, str(e)
-
-    # moto_server.stop()
 
 
 def gcs_zip_mp_child(q, zfs, worker_idx,
@@ -191,6 +174,7 @@ def test_force_type2():
                 fp.write(b"bar")
 
 
+# TODO: Support Google Cloud Storage
 def test_gcs_zip_profiling():
     ppe = pytest.importorskip("pytorch_pfn_extras")
 
