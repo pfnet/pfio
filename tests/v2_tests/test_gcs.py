@@ -8,7 +8,7 @@ import tempfile
 import pytest
 
 from pfio.v2 import GoogleCloudStorage, from_url, open_url
-from pfio.v2.gcs import _ObjectReader
+from pfio.v2.gcs import _ObjectReader, ObjectStat, PrefixStat
 
 # BUCKET_NAME='my-pfio-test'
 BUCKET_NAME = 'pfn-pfio-test-bucket'
@@ -42,12 +42,6 @@ def test_gcs_init(gcs_fixture):
     with from_url(URL) as gcs:
         assert gcs_fixture.bucket_name == gcs.bucket_name
         assert 'base' == gcs.cwd
-        # TODO: コメントアウト部分の扱いどうするか考える
-        # assert gcs_fixture.aws_kwargs['aws_access_key_id'] \
-        #     == gcs.aws_access_key_id
-        # assert gcs_fixture.aws_kwargs['aws_secret_access_key'] \
-        #     == gcs.aws_secret_access_key
-        # assert gcs.endpoint is None
 
 
 def test_gcs_repr_str(gcs_fixture):
@@ -62,14 +56,33 @@ def test_gcs_files(gcs_fixture):
             fp.write('bar')
             assert not fp.closed
 
-        assert 'foo.txt' in list(gcs.list())
+        assert ['foo.txt'] == list(gcs.list())
         assert [] == list(gcs.list('base'))
         assert [] == list(gcs.list('base/'))
-        assert 'foo.txt' in list(gcs.list('/base'))
-        assert 'foo.txt' in list(gcs.list('/base/'))
+        assert ['foo.txt'] == list(gcs.list('/base'))
+        assert ['foo.txt'] == list(gcs.list('/base/'))
 
-        assert 'foo.txt' in list(gcs.list(recursive=True))
-        assert 'base/foo.txt' in list(gcs.list('/', recursive=True))
+        assert ['foo.txt'] == list(gcs.list(recursive=True))
+        assert ['base/', 'base/foo.txt'] == list(gcs.list('/', recursive=True))
+
+        gcs.mkdir('subdir')
+        e = list(gcs.list(detail=True))
+        assert len(e) == 2   # ['foo.txt", "subdir/"]
+
+        # "foo.txt"
+        b = e[0]
+        assert isinstance(b, ObjectStat)
+        assert 'foo.txt' == b.filename
+        assert 3 == b.size
+        assert None == b.metadata
+
+        # "subdir/"
+        f = e[1]
+        assert isinstance(f, PrefixStat)
+        assert 'subdir/' == f.filename
+        assert -1 == f.size
+
+        gcs.remove('subdir', recursive=True)
 
         with gcs.open('dir/foo.txt', 'w') as fp:
             fp.write('bar')
@@ -226,7 +239,7 @@ def test_gcs_recursive(gcs_fixture):
         touch(gcs, 'bar.txt', 'baz')
         touch(gcs, 'baz/foo.txt', 'foo')
 
-        expected = ['base/', 'bar.txt', 'baz/', 'baz/foo.txt', 'foo.txt']
+        expected = ['bar.txt', 'baz/', 'baz/foo.txt', 'foo.txt']
         assert len(expected) == len(list(gcs.list(recursive=True)))
         abspaths = list(gcs.list('/', recursive=True))
         assert len(expected) == len(abspaths)
