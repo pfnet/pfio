@@ -22,6 +22,11 @@ def _normalize_key(key: str) -> str:
     else:
         return key
 
+def _format_path(abspath, prefix):
+    """ Absolute paths returned by gcs.list are converted to s3-compatible representation
+    """
+    return abspath[len(prefix):]
+
 class GCSProfileIOWrapper:
     def __init__(self, obj):
         self.obj = obj
@@ -187,7 +192,6 @@ class GoogleCloudStorage(FS):
                  buffering=-1,
                  create=False,
                  connect_timeout=None,
-                 read_timeout=None,
                  ignore_flush=False,
                  trace=False,
                  **_):
@@ -342,22 +346,16 @@ class GoogleCloudStorage(FS):
         # objects
         for blob in blobs:
             if detail:
-                yield ObjectStat(blob, self._format_path(blob.name))
+                yield ObjectStat(blob, _format_path(blob.name, path))
             else:
                 yield self._format_path(blob.name, path)
         # folders
         for prefix in blobs.prefixes:
             if detail:
-                yield PrefixStat(blob, self._format_path(prefix))
+                yield PrefixStat(blob, self._format_path(prefix, path))
             else:
                 yield self._format_path(prefix, path)
 
-    def _format_path(self, abspath, prefix):
-        """ 
-        """
-        return abspath[len(prefix):]
-
-        # return "/" + abspath
 
     def stat(self, path):
         """Imitate FileStat with S3 Object metadata
