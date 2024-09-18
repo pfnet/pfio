@@ -16,6 +16,7 @@ from pfio.v2 import GoogleCloudStorage, Zip, from_url
 os.environ['CLOUDSDK_CORE_PROJECT'] = os.environ['PFIO_TEST_PROJECT_ID']
 BUCKET_NAME = os.environ['PFIO_TEST_BUCKET_NAME']
 
+
 def test_gcs_zip():
     with tempfile.TemporaryDirectory() as d:
         zipfilename = os.path.join(d, "test.zip")
@@ -50,8 +51,13 @@ def test_gcs_zip():
             with z.open('file', 'rb') as fp:
                 assert zft.content('file') == fp.read()
 
+    # cleanup
+    with from_url(f'gs://{bucket}/') as gcs:
+        gcs.remove('base', recursive=True)
 
-@pytest.mark.skip(reason="google.cloud.storage.client.Client is not supported pickling object")
+
+@pytest.mark.skip(reason="google.cloud.storage.client.Client \
+                  is not supported pickling object")
 @pytest.mark.parametrize("mp_start_method", ["fork", "forkserver"])
 def test_gcs_zip_mp(mp_start_method):
     with tempfile.TemporaryDirectory() as d:
@@ -100,8 +106,12 @@ def test_gcs_zip_mp(mp_start_method):
                 assert 'ok' == ok, str(e)
 
             for worker_idx in range(n_workers):
-                gcs_zip_mp_child(q, fs, worker_idx,
-                                n_samples_per_worker, sample_size, data)
+                gcs_zip_mp_child(q,
+                                 fs,
+                                 worker_idx,
+                                 n_samples_per_worker,
+                                 sample_size,
+                                 data)
                 ok, e = q.get()
                 assert 'ok' == ok, str(e)
 

@@ -8,12 +8,13 @@ import tempfile
 import pytest
 
 from pfio.v2 import GoogleCloudStorage, from_url, open_url
-from pfio.v2.gcs import _ObjectReader, ObjectStat, PrefixStat
+from pfio.v2.gcs import ObjectStat, PrefixStat, _ObjectReader
 
 os.environ['CLOUDSDK_CORE_PROJECT'] = os.environ['PFIO_TEST_PROJECT_ID']
 BUCKET_NAME = os.environ['PFIO_TEST_BUCKET_NAME']
 BASE_URL = f'gs://{BUCKET_NAME}'
 URL = BASE_URL + '/base'
+
 
 @pytest.fixture
 def gcs_fixture():
@@ -69,15 +70,15 @@ def test_gcs_files(gcs_fixture):
         # "foo.txt"
         b = e[0]
         assert isinstance(b, ObjectStat)
-        assert 'foo.txt' == b.filename
-        assert 3 == b.size
-        assert None == b.metadata
+        assert b.filename == 'foo.txt'
+        assert b.size == 3
+        assert b.metadata is None
 
         # "subdir/"
         f = e[1]
         assert isinstance(f, PrefixStat)
-        assert 'subdir/' == f.filename
-        assert -1 == f.size
+        assert f.filename == 'subdir/'
+        assert f.size == -1
 
         gcs.remove('subdir', recursive=True)
 
@@ -188,7 +189,9 @@ def test_gcs_fork(gcs_fixture):
 
 def test_gcs_mpu(gcs_fixture):
     # Test multipart upload
-    with GoogleCloudStorage(gcs_fixture.bucket_name, create_bucket=True, mpu_chunksize=8 * 1024 * 1024) as gcs:
+    with GoogleCloudStorage(gcs_fixture.bucket_name,
+                            create_bucket=True,
+                            mpu_chunksize=8 * 1024 * 1024) as gcs:
         with gcs.open('testfile', 'wb') as fp:
             for _ in range(4):
                 fp.write(b"01234567" * (1024 * 1024))
@@ -238,12 +241,16 @@ def test_gcs_recursive(gcs_fixture):
 
         expected = ['bar.txt', 'baz/', 'baz/foo.txt', 'foo.txt']
         assert expected == list(gcs.list(recursive=True))
-        # assert len(expected) == len(list(gcs.list(recursive=True)))
 
-        expected = ['base/', 'base/bar.txt', 'base/baz/', 'base/baz/foo.txt', 'base/foo.txt']
+        expected = [
+            'base/',
+            'base/bar.txt',
+            'base/baz/',
+            'base/baz/foo.txt',
+            'base/foo.txt']
         abspaths = list(gcs.list('/', recursive=True))
         assert expected == list(gcs.list('/', recursive=True))
-        # assert len(expected) == len(abspaths)
+
         for p in abspaths:
             assert p.startswith('base/')
 
@@ -445,18 +452,21 @@ def test_remove(gcs_fixture):
         assert gcs.exists('foo.data')
         gcs.remove('foo.data')
         assert not gcs.exists('foo.data')
-        
+
+
 def test_remove_folder(gcs_fixture):
     with from_url(BASE_URL + '/base') as gcs:
         d = 'subdir'
         gcs.mkdir(d)
-        
+
         with pytest.raises(io.UnsupportedOperation) as err:
             gcs.remove(d)
-        assert str(err.value) == "Please add recursive=True to remove a directory"
-        
+        assert str(err.value) == \
+            "Please add recursive=True to remove a directory"
+
         gcs.remove(d, recursive=True)
         assert not gcs.exists(d)
+
 
 def test_fs_factory(gcs_fixture):
     with gcs_fixture.fs as gcs:
