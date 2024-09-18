@@ -13,7 +13,7 @@ from pfio.v2.gcs import _ObjectReader
 # BUCKET_NAME='my-pfio-test'
 BUCKET_NAME = 'pfn-pfio-test-bucket'
 URL = f'gs://{BUCKET_NAME}/base'
-KEY_PATH = "~/.config/gcloud/application_default_credentials.json"
+
 os.environ['CLOUDSDK_CORE_PROJECT'] = 'cluster-storage'
 
 # KEY_PATH=os.environ["GOOGLE_APPLICATION_CREDENTIAL"]
@@ -215,6 +215,12 @@ def test_gcs_mpu(gcs_fixture):
 
 
 def test_gcs_recursive(gcs_fixture):
+    # If the root folder has a folder other than base, this test will fail.
+    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+        entries = list(gcs.list('/'))
+        for e in entries:
+            gcs.remove(e, recursive=True)
+
     with from_url(URL) as gcs:
         touch(gcs, 'foo.txt', 'bar')
         touch(gcs, 'bar.txt', 'baz')
@@ -471,6 +477,7 @@ def test_from_url_create_option(gcs_fixture):
         assert not fs.exists(path)
 
 
+# TODO: Support Google Cloud Storage
 def test_gcs_rw_profiling(gcs_fixture):
     ppe = pytest.importorskip("pytorch_pfn_extras")
 
