@@ -461,6 +461,10 @@ class GoogleCloudStorage(FS):
         with record("pfio.v2.GoogleCloudStorage:exists", trace=self.trace):
             self._checkfork()
             object_name = _normalize_key(os.path.join(self.cwd, path))
+
+            if object_name == "":
+                return self.bucket.exists()
+
             return self.bucket.blob(object_name).exists(timeout=self.connect_time) or \
                 self.bucket.blob(object_name + '/').exists(timeout=self.connect_time)
 
