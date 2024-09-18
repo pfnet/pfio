@@ -4,7 +4,8 @@ import os
 from types import TracebackType
 from typing import Optional, Type
 
-from google.cloud import exceptions, storage
+import google.cloud.storage as storage
+from google.cloud import exceptions
 from google.cloud.storage.fileio import BlobWriter
 from google.oauth2 import service_account
 
@@ -429,7 +430,7 @@ class GoogleCloudStorage(FS):
                                     content_type='application/octet-stream',
                                     timeout=self.connect_time)
 
-    def mkdir(self, path: str, *args) -> None:
+    def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         """Make a simulated folder
 
         Args:
@@ -444,9 +445,10 @@ class GoogleCloudStorage(FS):
         with record("pfio.v2.GoogleCloudStorage:mkdir", trace=self.trace):
             self._checkfork()
             self.__make_simulated_dir(
-                _normalize_key(os.path.join(self.cwd, path)) + '/')
+                _normalize_key(os.path.join(self.cwd, file_path)) + '/')
 
-    def makedirs(self, path: str, *args) -> None:
+    def makedirs(self, file_path: str, mode: int = 0o777,
+                 exist_ok: bool = False) -> None:
         """Make simulated folders recursively
 
         Creates all the missing parents of the given path.
@@ -462,7 +464,7 @@ class GoogleCloudStorage(FS):
         """
         with record("pfio.v2.GoogleCloudStorage:makedirs", trace=self.trace):
             self._checkfork()
-            target_path = _normalize_key(os.path.join(self.cwd, path))
+            target_path = _normalize_key(os.path.join(self.cwd, file_path))
             object_name, *tail = target_path.split('/')
             object_name += '/'
             self.__make_simulated_dir(object_name)
@@ -549,4 +551,4 @@ class GoogleCloudStorage(FS):
         path = os.path.join(self.cwd, file_path)
         norm_path = _normalize_key(path)
 
-        return f"gs://{self.hostname}/{self.bucket}/{norm_path}"
+        return f"gs://{self.bucket_name}/{norm_path}"
