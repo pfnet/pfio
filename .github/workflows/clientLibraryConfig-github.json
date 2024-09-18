@@ -1,0 +1,13 @@
+{
+  "universe_domain": "googleapis.com",
+  "type": "external_account",
+  "audience": "//iam.googleapis.com/projects/1097862457753/locations/global/workloadIdentityPools/github-actions-pfio-ci-tasks/providers/github",
+  "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+  "token_url": "https://sts.googleapis.com/v1/token",
+  "credential_source": {
+    "file": "oidc-token.txt",
+    "format": {
+      "type": "text"
+    }
+  }
+}
