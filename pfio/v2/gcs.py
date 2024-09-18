@@ -357,6 +357,7 @@ class GoogleCloudStorage(FS):
                 continue
 
             if detail:
+                print("_format_path(blob.name, path): ", _format_path(blob.name, path))
                 yield ObjectStat(blob, _format_path(blob.name, path))
             else:
                 yield _format_path(blob.name, path)
