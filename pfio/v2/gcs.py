@@ -344,14 +344,18 @@ class GoogleCloudStorage(FS):
         blobs = self.bucket.list_blobs(prefix=path, delimiter=('' if recursive else '/'), timeout=self.connect_time)
         # objects
         for blob in blobs:
+            if blob.name == path:
+                continue
+
             if detail:
+                print("_format_path(blob.name, path): ", _format_path(blob.name, path))
                 yield ObjectStat(blob, _format_path(blob.name, path))
             else:
                 yield _format_path(blob.name, path)
         # folders
         for prefix in blobs.prefixes:
             if detail:
-                yield PrefixStat(blob, _format_path(prefix, path))
+                yield PrefixStat(_format_path(prefix, path))
             else:
                 yield _format_path(prefix, path)
 
