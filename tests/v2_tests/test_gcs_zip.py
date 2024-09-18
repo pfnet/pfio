@@ -13,17 +13,14 @@ import pfio
 from pfio.testing import ZipForTest
 from pfio.v2 import GoogleCloudStorage, Zip, from_url
 
-# from moto import mock_aws, server
-
-# BUCKET='my-pfio-test'
-BUCKET = 'pfn-pfio-test-bucket'
-os.environ['CLOUDSDK_CORE_PROJECT'] = 'cloud-storage'
+os.environ['CLOUDSDK_CORE_PROJECT'] = os.environ['PFIO_TEST_PROJECT_ID']
+BUCKET_NAME = os.environ['PFIO_TEST_BUCKET_NAME']
 
 def test_gcs_zip():
     with tempfile.TemporaryDirectory() as d:
         zipfilename = os.path.join(d, "test.zip")
         zft = ZipForTest(zipfilename)
-        bucket = BUCKET
+        bucket = BUCKET_NAME
 
         with from_url(f'gs://{bucket}/',
                       create_bucket=True) as gcs:
@@ -69,7 +66,7 @@ def test_gcs_zip_mp(mp_start_method):
 
         zipfilename = os.path.join(d, "test.zip")
         _ = ZipForTest(zipfilename, data)
-        bucket = BUCKET
+        bucket = BUCKET_NAME
 
         mp_ctx = multiprocessing.get_context(mp_start_method)
         q = mp_ctx.Queue()
@@ -128,7 +125,7 @@ def test_force_type2():
     with tempfile.TemporaryDirectory() as d:
         zipfilename = os.path.join(d, "test.zip")
         z = ZipForTest(zipfilename)
-        bucket = BUCKET
+        bucket = BUCKET_NAME
 
         with from_url(f'gs://{bucket}/',
                       create_bucket=True) as gcs:
@@ -181,7 +178,7 @@ def test_gcs_zip_profiling():
     with tempfile.TemporaryDirectory() as tmpdir:
         zipfilename = os.path.join(tmpdir, "test.zip")
         zft = ZipForTest(zipfilename)
-        bucket = BUCKET
+        bucket = BUCKET_NAME
 
         with from_url(f'gs://{bucket}/',
                       create_bucket=True) as gcs:

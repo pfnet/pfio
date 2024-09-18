@@ -10,13 +10,10 @@ import pytest
 from pfio.v2 import GoogleCloudStorage, from_url, open_url
 from pfio.v2.gcs import _ObjectReader, ObjectStat, PrefixStat
 
-# BUCKET_NAME='my-pfio-test'
-BUCKET_NAME = 'pfn-pfio-test-bucket'
-URL = f'gs://{BUCKET_NAME}/base'
-
-os.environ['CLOUDSDK_CORE_PROJECT'] = 'cluster-storage'
-
-# KEY_PATH=os.environ["GOOGLE_APPLICATION_CREDENTIAL"]
+os.environ['CLOUDSDK_CORE_PROJECT'] = os.environ['PFIO_TEST_PROJECT_ID']
+BUCKET_NAME = os.environ['PFIO_TEST_BUCKET_NAME']
+BASE_URL = f'gs://{BUCKET_NAME}'
+URL = BASE_URL + '/base'
 
 @pytest.fixture
 def gcs_fixture():
@@ -39,19 +36,19 @@ def touch(gcs, path, content):
 
 
 def test_gcs_init(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         assert gcs_fixture.bucket_name == gcs.bucket_name
         assert 'base' == gcs.cwd
 
 
 def test_gcs_repr_str(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         repr(gcs)
         str(gcs)
 
 
 def test_gcs_files(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         with gcs.open('foo.txt', 'w') as fp:
             fp.write('bar')
             assert not fp.closed
@@ -98,12 +95,12 @@ def test_gcs_files(gcs_fixture):
         assert not gcs.isdir("/bas")
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
 def test_gcs_init_with_timeouts(gcs_fixture):
-    with from_url(URL,
+    with from_url(BASE_URL + '/base',
                   connect_timeout=300) as gcs:
         assert isinstance(gcs, GoogleCloudStorage)
         assert (gcs.connect_time == 300)
@@ -115,7 +112,7 @@ def test_gcs_init_with_timeouts(gcs_fixture):
                           (0, _ObjectReader),
                           (2, io.BufferedReader)])
 def test_gcs_read(gcs_fixture, buffering, reader_type):
-    with from_url(URL,
+    with from_url(BASE_URL + '/base',
                   buffering=buffering) as gcs:
         with gcs.open('foo.txt', 'w') as fp:
             fp.write('bar')
@@ -140,12 +137,12 @@ def test_gcs_read(gcs_fixture, buffering, reader_type):
             assert not fp.closed
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
 def test_empty_file(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         # Create an empty file
         with gcs.open('foo.dat', 'wb'):
             pass
@@ -155,12 +152,12 @@ def test_empty_file(gcs_fixture):
             assert len(f.read()) == 0
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
 def test_gcs_fork(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         with gcs.open('foo.txt', 'w') as fp:
             fp.write('bar')
             assert not fp.closed
@@ -185,7 +182,7 @@ def test_gcs_fork(gcs_fixture):
         assert p.exitcode == 0
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
@@ -229,25 +226,29 @@ def test_gcs_mpu(gcs_fixture):
 
 def test_gcs_recursive(gcs_fixture):
     # If the root folder has a folder other than base, this test will fail.
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         entries = list(gcs.list('/'))
         for e in entries:
             gcs.remove(e, recursive=True)
 
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         touch(gcs, 'foo.txt', 'bar')
         touch(gcs, 'bar.txt', 'baz')
         touch(gcs, 'baz/foo.txt', 'foo')
 
         expected = ['bar.txt', 'baz/', 'baz/foo.txt', 'foo.txt']
-        assert len(expected) == len(list(gcs.list(recursive=True)))
+        assert expected == list(gcs.list(recursive=True))
+        # assert len(expected) == len(list(gcs.list(recursive=True)))
+
+        expected = ['base/', 'base/bar.txt', 'base/baz/', 'base/baz/foo.txt', 'base/foo.txt']
         abspaths = list(gcs.list('/', recursive=True))
-        assert len(expected) == len(abspaths)
+        assert expected == list(gcs.list('/', recursive=True))
+        # assert len(expected) == len(abspaths)
         for p in abspaths:
             assert p.startswith('base/')
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
@@ -291,12 +292,12 @@ def _seek_check(f):
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_seek(gcs_fixture, buffering):
-    with from_url(URL,
+    with from_url(BASE_URL + '/base',
                   buffering=buffering) as gcs:
         # Make a 10-bytes test data
         touch(gcs, 'foo.data', '0123456789')
 
-    with open_url(f'gs://{BUCKET_NAME}/base/foo.data', 'rb') as f:
+    with open_url(BASE_URL + '/base/foo.data', 'rb') as f:
         _seek_check(f)
 
     # Make sure the seek behavior is same as normal file-like objects.
@@ -310,53 +311,53 @@ def test_gcs_seek(gcs_fixture, buffering):
             _seek_check(f)
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_pickle(gcs_fixture, buffering):
-    with from_url(URL, buffering=buffering) as gcs:
+    with from_url(BASE_URL + '/base', buffering=buffering) as gcs:
         with gcs.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
 
-    with open_url(f'gs://{BUCKET_NAME}/base/foo.pkl', 'rb') as f:
+    with open_url(BASE_URL + '/base/foo.pkl', 'rb') as f:
         assert pickle.load(f) == {'test': 'data'}
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_rename(gcs_fixture, buffering):
-    with from_url(URL,
+    with from_url(BASE_URL + '/base',
                   buffering=buffering) as gcs:
         with gcs.open('foo.pkl', 'wb') as fp:
             pickle.dump({'test': 'data'}, fp)
 
         gcs.rename('foo.pkl', 'bar.pkl')
 
-    with from_url(f'gs://{BUCKET_NAME}') as gcs:
+    with from_url(BASE_URL) as gcs:
         assert not gcs.exists('base/foo.pkl')
         assert gcs.exists('base/bar.pkl')
 
-    with open_url(f'gs://{BUCKET_NAME}/base/bar.pkl', 'rb') as f:
+    with open_url(BASE_URL + '/base/bar.pkl', 'rb') as f:
         assert pickle.load(f) == {'test': 'data'}
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_read_and_readall(gcs_fixture, buffering):
-    with from_url(f'gs://{BUCKET_NAME}/',
+    with from_url(BASE_URL,
                   buffering=buffering) as gcs:
         # Make a 10-bytes test data
         touch(gcs, 'foo.data', '0123456789')
 
-    with open_url(f'gs://{BUCKET_NAME}/foo.data', 'rb') as f:
+    with open_url(BASE_URL + '/foo.data', 'rb') as f:
         assert f.read() == b'0123456789'
 
         f.seek(5, os.SEEK_SET)
@@ -372,13 +373,13 @@ def test_gcs_read_and_readall(gcs_fixture, buffering):
         assert f.raw.readall() == b'56789'
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('foo.data')
 
 
 @pytest.mark.parametrize("buffering", [-1, 0])
 def test_gcs_readlines(gcs_fixture, buffering):
-    with from_url(f'gs://{BUCKET_NAME}/',
+    with from_url(BASE_URL,
                   buffering=buffering) as gcs:
         # Make a 10-bytes test data
         txt = '''first line
@@ -387,7 +388,7 @@ third line
 '''
         touch(gcs, 'foo.txt', txt)
 
-    with open_url(f'gs://{BUCKET_NAME}/foo.txt', 'r') as f:
+    with open_url(BASE_URL + '/foo.txt', 'r') as f:
         lines = f.readlines()
 
         assert "first line\n" == lines[0]
@@ -400,12 +401,12 @@ third line
         assert 233458 == f._CHUNK_SIZE
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('foo.txt')
 
 
 def test_mkdir(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         test_dir_name = "testmkdir"
         gcs.mkdir(test_dir_name)
         assert gcs.isdir(test_dir_name)
@@ -415,7 +416,7 @@ def test_mkdir(gcs_fixture):
 
 
 def test_makedirs(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         test_dir_name = "testmkdir"
         nested_dir_name = test_dir_name + '/' + "nested_dir"
         gcs.makedirs(nested_dir_name)
@@ -428,14 +429,14 @@ def test_makedirs(gcs_fixture):
 def test_exists(gcs_fixture):
     non_exist_file = "non_exist_file.txt"
 
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         assert gcs.exists('.')
         assert gcs.exists('/')
         assert not gcs.exists(non_exist_file)
 
 
 def test_remove(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         with pytest.raises(FileNotFoundError) as err:
             gcs.remove('non-existent-object')
         assert str(err.value) == "No such GCS object: 'non-existent-object'"
@@ -446,7 +447,7 @@ def test_remove(gcs_fixture):
         assert not gcs.exists('foo.data')
         
 def test_remove_folder(gcs_fixture):
-    with from_url(URL) as gcs:
+    with from_url(BASE_URL + '/base') as gcs:
         d = 'subdir'
         gcs.mkdir(d)
         
@@ -465,22 +466,22 @@ def test_fs_factory(gcs_fixture):
         with gcs.open('boom/baz.txt', 'r') as fp:
             assert 'bom' == fp.read()
 
-    assert isinstance(from_url(f'gs://{BUCKET_NAME}/'), GoogleCloudStorage)
-    assert isinstance(from_url(f'gs://{BUCKET_NAME}/boom'), GoogleCloudStorage)
+    assert isinstance(from_url(BASE_URL), GoogleCloudStorage)
+    assert isinstance(from_url(BASE_URL + '/boom'), GoogleCloudStorage)
 
-    with open_url(f'gs://{BUCKET_NAME}/boom/bom.txt', 'w') as fp:
+    with open_url(BASE_URL + '/boom/bom.txt', 'w') as fp:
         fp.write('hello')
 
-    with open_url(f'gs://{BUCKET_NAME}/boom/bom.txt', 'r') as fp:
+    with open_url(BASE_URL + '/boom/bom.txt', 'r') as fp:
         assert 'hello' == fp.read()
 
-    with from_url(f'gs://{BUCKET_NAME}/') as fs:
+    with from_url(BASE_URL) as fs:
         assert isinstance(fs, GoogleCloudStorage)
         assert fs.exists('boom/bom.txt')
         with fs.open('boom/bom.txt', 'rt') as f:
             assert f.read() == 'hello'
 
-    with from_url(f'gs://{BUCKET_NAME}/boom/') as fs:
+    with from_url(BASE_URL + '/boom/') as fs:
         assert isinstance(fs, GoogleCloudStorage)
         assert fs.exists('bom.txt')
         with fs.open('bom.txt', 'rt') as f:
@@ -505,7 +506,7 @@ def test_from_url_create_option(gcs_fixture):
 def test_gcs_rw_profiling(gcs_fixture):
     ppe = pytest.importorskip("pytorch_pfn_extras")
 
-    with from_url(URL, trace=True) as gcs:
+    with from_url(BASE_URL + '/base', trace=True) as gcs:
         ppe.profiler.clear_tracer()
 
         with gcs.open('foo.txt', 'w') as fp:
@@ -519,7 +520,7 @@ def test_gcs_rw_profiling(gcs_fixture):
         assert "pfio.boto3:put_object" in keys
         assert "pfio.v2.S3:exit-context" in keys
 
-    with from_url(URL, trace=True) as gcs:
+    with from_url(BASE_URL + '/base', trace=True) as gcs:
         ppe.profiler.clear_tracer()
 
         with gcs.open('foo.txt', 'r') as fp:
@@ -534,7 +535,7 @@ def test_gcs_rw_profiling(gcs_fixture):
         assert "pfio.boto3:get_object" in keys
         assert "pfio.v2.S3:exit-context" in keys
 
-    with from_url(URL, trace=True) as gcs:
+    with from_url(BASE_URL + '/base', trace=True) as gcs:
         ppe.profiler.clear_tracer()
 
         fp = gcs.open('foo.txt', 'rb')
@@ -551,5 +552,5 @@ def test_gcs_rw_profiling(gcs_fixture):
         assert "pfio.v2.S3:close" in keys
 
     # cleanup
-    with from_url(f'gs://{BUCKET_NAME}/') as gcs:
+    with from_url(BASE_URL) as gcs:
         gcs.remove('base', recursive=True)
