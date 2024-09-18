@@ -31,7 +31,7 @@ jobs:
       uses: 'google-github-actions/setup-gcloud@v2'
     - name: 'Check Bucket accessibility'
       run: |
-        gcloud storage buckets describe gs://pfn-pfio-test-bucket
+        gcloud storage ls gs://pfn-pfio-test-bucket/ --recursive
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
