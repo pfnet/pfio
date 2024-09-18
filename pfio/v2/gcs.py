@@ -245,7 +245,6 @@ class GoogleCloudStorage(FS):
             else:
                 raise e
 
-        # self.bucket = self.client.get_bucket(self.bucket_name, timeout=self.connect_time)
         assert self.bucket
 
     def __getstate__(self):
@@ -348,13 +347,13 @@ class GoogleCloudStorage(FS):
             if detail:
                 yield ObjectStat(blob, _format_path(blob.name, path))
             else:
-                yield self._format_path(blob.name, path)
+                yield _format_path(blob.name, path)
         # folders
         for prefix in blobs.prefixes:
             if detail:
-                yield PrefixStat(blob, self._format_path(prefix, path))
+                yield PrefixStat(blob, _format_path(prefix, path))
             else:
-                yield self._format_path(prefix, path)
+                yield _format_path(prefix, path)
 
 
     def stat(self, path):
@@ -456,7 +455,7 @@ class GoogleCloudStorage(FS):
                 object_name = f'{object_name}{part}/'
                 self.__make_simulated_dir(object_name)
 
-    def exists(self, path: str):
+    def exists(self, path: str) -> bool:
         """Returns whether an object exists or not
         """
         with record("pfio.v2.GoogleCloudStorage:exists", trace=self.trace):
