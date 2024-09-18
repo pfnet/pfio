@@ -27,8 +27,8 @@ jobs:
       with:
         project_id: 'cluster-storage'
         workload_identity_provider: 'projects/1097862457753/locations/global/workloadIdentityPools/github-actions-pfio-ci-tasks/providers/github'
-        service_account: 'pfio-github-actions'
-    - name: 'Set up Google Cloud SDK'
+        service_account: 'pfio-github-actions@cluster-storage.iam.gserviceaccount.com'
+    - Name: 'Set up Google Cloud SDK'
       uses: 'google-github-actions/setup-gcloud@v2'
     - name: 'Check Bucket accessibility'
       run: |
