@@ -482,7 +482,18 @@ def test_remove(gcs_fixture):
         assert gcs.exists('foo.data')
         gcs.remove('foo.data')
         assert not gcs.exists('foo.data')
-
+        
+def test_remove_folder(gcs_fixture):
+    with from_url(URL) as gcs:
+        d = 'subdir'
+        gcs.mkdir(d)
+        
+        with pytest.raises(io.UnsupportedOperation) as err:
+            gcs.remove(d)
+        assert str(err.value) == "Please add recursive=True to remove a directory"
+        
+        gcs.remove(d, recursive=True)
+        assert not gcs.exists(d)
 
 def test_remove_folder(gcs_fixture):
     with from_url(BASE_URL + '/base') as gcs:
