@@ -535,8 +535,8 @@ class GoogleCloudStorage(FS):
 
             if exists_as_folder:
                 if not recursive:
-                    raise io.UnsupportedOperation("Please add recursive=True \
-                                                  to remove a directory")
+                    raise io.UnsupportedOperation("Please add recursive=True "
+                                                  "to remove a directory")
                 blobs = self.bucket.list_blobs(prefix=object_name + '/',
                                                delimiter='',
                                                timeout=self.connect_time)
