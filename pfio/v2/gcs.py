@@ -376,7 +376,7 @@ class GoogleCloudStorage(FS):
             path = _normalize_key(os.path.join(self.cwd, path))
 
             blob = self.bucket.get_blob(path)
-            return ObjectStat(blob, self._get_relative_path(blob.name))
+            return ObjectStat(blob, _format_path(blob.name, path))
 
     def isdir(self, file_path):
         """
