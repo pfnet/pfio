@@ -380,7 +380,7 @@ def from_url(url: str, **kwargs) -> 'FS':
         scheme = 'file'  # Default is local
 
     # When ``force_type`` is defined, it must be equal with given one.
-    force_type = kwargs.get('force_type', None)
+    force_type = kwargs.pop('force_type', None)
     if force_type is not None and force_type != "zip":
         if force_type != scheme:
             raise ValueError("URL scheme mismatch with forced type")
