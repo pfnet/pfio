@@ -232,9 +232,9 @@ class MultiprocessFileCache(cache.Cache):
         self._open_fds()
         offset = self.buflen * i
 
+        fcntl.flock(self.cache_fd, fcntl.LOCK_SH)
         with record(f"pfio.cache.multiprocessfile:get:lock-{self.cache_fd}",
                     trace=self.trace):
-            fcntl.flock(self.cache_fd, fcntl.LOCK_SH)
             index_entry = os.pread(self.cache_fd, self.buflen, offset)
             (o, l) = unpack('Qq', index_entry)
             if l < 0 or o < 0:
@@ -277,9 +277,9 @@ class MultiprocessFileCache(cache.Cache):
 
         index_ofst = self.buflen * i
 
+        fcntl.flock(self.cache_fd, fcntl.LOCK_EX)
         with record(f"pfio.cache.multiprocessfile:put:lock-{self.cache_fd}",
                     trace=self.trace):
-            fcntl.flock(self.cache_fd, fcntl.LOCK_EX)
             buf = os.pread(self.cache_fd, self.buflen, index_ofst)
             (o, l) = unpack('Qq', buf)
 
