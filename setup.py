@@ -60,7 +60,7 @@ setup(
         'trace': ['pytorch-pfn-extras'],
     },
     # When updating install requires, docs/requirements.txt should be updated too
-    install_requires=['boto3', 'deprecation', 'urllib3'],
+    install_requires=['boto3', 'deprecation', 'urllib3', 'google-cloud-storage'],
     include_package_data=True,
     zip_safe=False,
 

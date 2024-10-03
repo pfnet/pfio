@@ -30,6 +30,9 @@ jobs:
     - name: Test with tox
       run: |
         tox run --skip-env doc
+      env:
+        PFIO_TEST_PROJECT_ID: 'cluster-storage'
+        PFIO_TEST_BUCKET_NAME: 'pfn-pfio-test-bucket'
 
   doc:
     runs-on: ubuntu-latest
