@@ -241,7 +241,9 @@ class MultiprocessFileCache(cache.Cache):
                 fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
                 return None
 
-            data = os.pread(self.cache_fd, l, o)
+            with record("pfio.cache.multiprocessfile:get:read",
+                        trace=self.trace):
+                data = os.pread(self.cache_fd, l, o)
             assert len(data) == l
             fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
 
@@ -298,7 +300,9 @@ class MultiprocessFileCache(cache.Cache):
             index_entry = pack('Qq', data_pos, len(data))
             assert os.pwrite(self.cache_fd,
                              index_entry, index_ofst) == self.buflen
-            assert os.pwrite(self.cache_fd, data, data_pos) == len(data)
+            with record("pfio.cache.multiprocessfile:put:write",
+                        trace=self.trace):
+                assert os.pwrite(self.cache_fd, data, data_pos) == len(data)
             os.fsync(self.cache_fd)
             fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
 
