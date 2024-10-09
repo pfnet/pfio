@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import pickle
 import random
@@ -438,3 +439,33 @@ def test_default_cache_path(test_class):
     finally:
         if orig is not None:
             os.environ['XDG_CACHE_HOME'] = orig
+
+
+def test_filecache_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+
+    with tempfile.TemporaryDirectory() as d:
+        ppe.profiler.clear_tracer()
+
+        cache = FileCache(1, dir=d, do_pickle=True, trace=True)
+        cache.put(0, b"foo")
+        assert b"foo" == cache.get(0)
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.cache.file:put" in keys
+        assert "pfio.cache.file:get" in keys
+
+    with tempfile.TemporaryDirectory() as d:
+        ppe.profiler.clear_tracer()
+
+        cache = MultiprocessFileCache(1, dir=d, do_pickle=True, trace=True)
+        cache.put(0, b"foo")
+        assert b"foo" == cache.get(0)
+
+        dict = ppe.profiler.get_tracer().state_dict()
+        keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+        assert "pfio.cache.multiprocessfile:put" in keys
+        assert "pfio.cache.multiprocessfile:get" in keys

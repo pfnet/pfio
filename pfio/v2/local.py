@@ -4,7 +4,8 @@ import pathlib
 import shutil
 from typing import Optional
 
-from ._profiler import record, record_iterable
+from pfio._profiler import record, record_iterable
+
 from .fs import FS, FileStat, format_repr
 
 

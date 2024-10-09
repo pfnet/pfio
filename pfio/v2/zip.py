@@ -5,7 +5,8 @@ import zipfile
 from datetime import datetime
 from typing import Optional, Set
 
-from ._profiler import record, record_iterable
+from pfio._profiler import record, record_iterable
+
 from .fs import FS, FileStat, format_repr
 
 logger = logging.getLogger(__name__)
