@@ -9,6 +9,7 @@ import warnings
 from struct import calcsize, pack, unpack
 
 from pfio import cache
+from pfio._profiler import record
 
 # Deprecated, but leaving for backward compatibility just in case any
 # system directly using this value
@@ -152,10 +153,11 @@ class FileCache(cache.Cache):
     '''
 
     def __init__(self, length, multithread_safe=False, do_pickle=False,
-                 dir=None, cache_size_limit=None, verbose=False):
+                 dir=None, cache_size_limit=None, verbose=False, trace=False):
         self._multithread_safe = multithread_safe
         self.length = length
         self.do_pickle = do_pickle
+        self.trace = trace
         if self.length <= 0 or (2 ** 64) <= self.length:
             raise ValueError("length has to be between 0 and 2^64")
 
@@ -217,12 +219,13 @@ class FileCache(cache.Cache):
         return self._multithread_safe
 
     def get(self, i):
-        if self.closed:
-            return
-        data = self._get(i)
-        if self.do_pickle and data:
-            data = pickle.loads(data)
-        return data
+        with record("pfio.cache.file:get", trace=self.trace):
+            if self.closed:
+                return
+            data = self._get(i)
+            if self.do_pickle and data:
+                data = pickle.loads(data)
+            return data
 
     def _get(self, i):
         if i < 0 or self.length <= i:
@@ -230,32 +233,36 @@ class FileCache(cache.Cache):
                              .format(i, self.length - 1))
 
         offset = self.buflen * i
-        with self.lock.rdlock():
-            buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
+        with self.lock.rdlock(), record("pfio.cache.file:get:lock", trace=self.trace):
+            with record("pfio.cache.file:get:read_index", trace=self.trace):
+                buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
             (o, l) = unpack('Qq', buf)
             if l < 0 or o < 0:
                 return None
 
-            data = os.pread(self.cachefp.fileno(), l, o)
+            with record("pfio.cache.file:get:read_data", trace=self.trace):
+                data = os.pread(self.cachefp.fileno(), l, o)
             assert len(data) == l
             return data
 
     def put(self, i, data):
-        if self._frozen or self.closed:
-            return False
-
-        try:
-            if self.do_pickle:
-                data = pickle.dumps(data)
-            return self._put(i, data)
-
-        except OSError as ose:
-            # Disk full (ENOSPC) possibly by cache; just warn and keep running
-            if ose.errno == errno.ENOSPC:
-                warnings.warn(ose.strerror, RuntimeWarning)
+        with record("pfio.cache.file:put", trace=self.trace):
+            if self._frozen or self.closed:
                 return False
-            else:
-                raise ose
+
+            try:
+                if self.do_pickle:
+                    data = pickle.dumps(data)
+                return self._put(i, data)
+
+            except OSError as ose:
+                # Disk full (ENOSPC) possibly by cache;
+                # just warn and keep running
+                if ose.errno == errno.ENOSPC:
+                    warnings.warn(ose.strerror, RuntimeWarning)
+                    return False
+                else:
+                    raise ose
 
     def _put(self, i, data):
         if self.closed:
@@ -270,8 +277,9 @@ class FileCache(cache.Cache):
                 return False
 
         offset = self.buflen * i
-        with self.lock.wrlock():
-            buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
+        with self.lock.wrlock(), record("pfio.cache.file:put:lock", trace=self.trace):
+            with record("pfio.cache.file:put:read_index", trace=self.trace):
+                buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
             (o, l) = unpack('Qq', buf)
             if l >= 0 and o >= 0:
                 # Already data exists
@@ -296,13 +304,15 @@ class FileCache(cache.Cache):
 
             '''
             buf = pack('Qq', pos, len(data))
-            r = os.pwrite(self.cachefp.fileno(), buf, offset)
+            with record("pfio.cache.file:put:write_index", trace=self.trace):
+                r = os.pwrite(self.cachefp.fileno(), buf, offset)
             assert r == self.buflen
 
             current_pos = pos
             while current_pos - pos < len(data):
-                r = os.pwrite(self.cachefp.fileno(),
-                              data[current_pos-pos:], current_pos)
+                with record("pfio.cache.file:put:write_data", trace=self.trace):
+                    r = os.pwrite(self.cachefp.fileno(),
+                                  data[current_pos-pos:], current_pos)
                 assert r > 0
                 current_pos += r
             assert current_pos - pos == len(data)

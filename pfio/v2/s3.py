@@ -10,7 +10,8 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
-from ._profiler import record, record_iterable
+from pfio._profiler import record, record_iterable
+
 from .fs import FS, FileStat, format_repr
 
 DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024
