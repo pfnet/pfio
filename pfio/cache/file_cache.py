@@ -233,8 +233,7 @@ class FileCache(cache.Cache):
                              .format(i, self.length - 1))
 
         offset = self.buflen * i
-        with record("pfio.cache.file:get:lock", trace=self.trace), \
-                self.lock.rdlock():
+        with self.lock.rdlock(), record("pfio.cache.file:get:lock", trace=self.trace):
             buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
             (o, l) = unpack('Qq', buf)
             if l < 0 or o < 0:
@@ -276,8 +275,7 @@ class FileCache(cache.Cache):
                 return False
 
         offset = self.buflen * i
-        with record("pfio.cache.file:put:lock", trace=self.trace), \
-                self.lock.wrlock():
+        with self.lock.wrlock(), record("pfio.cache.file:put:lock", trace=self.trace):
             buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
             (o, l) = unpack('Qq', buf)
             if l >= 0 and o >= 0:

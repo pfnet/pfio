@@ -233,16 +233,14 @@ class MultiprocessFileCache(cache.Cache):
         offset = self.buflen * i
 
         fcntl.flock(self.cache_fd, fcntl.LOCK_SH)
-        with record(f"pfio.cache.multiprocessfile:get:lock-{self.cache_fd}",
-                    trace=self.trace):
+        with record(f"pfio.cache.multiprocessfile:get:lock-{self.cache_fd}", trace=self.trace):
             index_entry = os.pread(self.cache_fd, self.buflen, offset)
             (o, l) = unpack('Qq', index_entry)
             if l < 0 or o < 0:
                 fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
                 return None
 
-            with record("pfio.cache.multiprocessfile:get:read",
-                        trace=self.trace):
+            with record("pfio.cache.multiprocessfile:get:read", trace=self.trace):
                 data = os.pread(self.cache_fd, l, o)
             assert len(data) == l
             fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
@@ -280,8 +278,7 @@ class MultiprocessFileCache(cache.Cache):
         index_ofst = self.buflen * i
 
         fcntl.flock(self.cache_fd, fcntl.LOCK_EX)
-        with record(f"pfio.cache.multiprocessfile:put:lock-{self.cache_fd}",
-                    trace=self.trace):
+        with record(f"pfio.cache.multiprocessfile:put:lock-{self.cache_fd}", trace=self.trace):
             buf = os.pread(self.cache_fd, self.buflen, index_ofst)
             (o, l) = unpack('Qq', buf)
 
@@ -298,10 +295,8 @@ class MultiprocessFileCache(cache.Cache):
                     return False
 
             index_entry = pack('Qq', data_pos, len(data))
-            assert os.pwrite(self.cache_fd,
-                             index_entry, index_ofst) == self.buflen
-            with record("pfio.cache.multiprocessfile:put:write",
-                        trace=self.trace):
+            assert os.pwrite(self.cache_fd, index_entry, index_ofst) == self.buflen
+            with record("pfio.cache.multiprocessfile:put:write", trace=self.trace):
                 assert os.pwrite(self.cache_fd, data, data_pos) == len(data)
             os.fsync(self.cache_fd)
             fcntl.flock(self.cache_fd, fcntl.LOCK_UN)
