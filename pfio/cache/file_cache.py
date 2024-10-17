@@ -234,12 +234,14 @@ class FileCache(cache.Cache):
 
         offset = self.buflen * i
         with self.lock.rdlock(), record("pfio.cache.file:get:lock", trace=self.trace):
-            buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
+            with record("pfio.cache.file:get:read_index", trace=self.trace):
+                buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
             (o, l) = unpack('Qq', buf)
             if l < 0 or o < 0:
                 return None
 
-            data = os.pread(self.cachefp.fileno(), l, o)
+            with record("pfio.cache.file:get:read_data", trace=self.trace):
+                data = os.pread(self.cachefp.fileno(), l, o)
             assert len(data) == l
             return data
 
@@ -276,7 +278,8 @@ class FileCache(cache.Cache):
 
         offset = self.buflen * i
         with self.lock.wrlock(), record("pfio.cache.file:put:lock", trace=self.trace):
-            buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
+            with record("pfio.cache.file:put:read_index", trace=self.trace):
+                buf = os.pread(self.cachefp.fileno(), self.buflen, offset)
             (o, l) = unpack('Qq', buf)
             if l >= 0 and o >= 0:
                 # Already data exists
@@ -301,13 +304,15 @@ class FileCache(cache.Cache):
 
             '''
             buf = pack('Qq', pos, len(data))
-            r = os.pwrite(self.cachefp.fileno(), buf, offset)
+            with record("pfio.cache.file:put:write_index", trace=self.trace):
+                r = os.pwrite(self.cachefp.fileno(), buf, offset)
             assert r == self.buflen
 
             current_pos = pos
             while current_pos - pos < len(data):
-                r = os.pwrite(self.cachefp.fileno(),
-                              data[current_pos-pos:], current_pos)
+                with record("pfio.cache.file:put:write_data", trace=self.trace):
+                    r = os.pwrite(self.cachefp.fileno(),
+                                  data[current_pos-pos:], current_pos)
                 assert r > 0
                 current_pos += r
             assert current_pos - pos == len(data)
