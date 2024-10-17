@@ -8,6 +8,7 @@ import time
 import urllib.parse
 from typing import Any, Dict, Generator, List, Optional
 
+from pfio._profiler import record
 from pfio.cache import Cache
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,8 @@ class HTTPConnector(object):
     def __init__(self,
                  url: str,
                  bearer_token_path: Optional[str] = None,
-                 timeout: int = 3):
+                 timeout: int = 3,
+                 trace: bool = False):
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme == "":
             url = "http://" + url
@@ -105,57 +107,63 @@ class HTTPConnector(object):
         if self.bearer_token_path is not None:
             self._token_read_now()
 
-    def put(self, suffix: str, data: bytes) -> bool:
-        conn: http.client.HTTPConnection
-        with self.conn.get(self.host) as conn:
-            try:
-                conn.request(
-                    "PUT",
-                    url=self.path + suffix,
-                    body=data,
-                    headers=self._header_with_token()
-                )
-                res = conn.getresponse()
-                res.read()
+        self.trace = trace
 
-                if res.status == 201:
-                    return True
-                else:
-                    logger.warning(
-                        "put: unexpected status code {}".format(res.status)
-                    )
+    def put(self, suffix: str, data: bytes) -> bool:
+        with record("pfio.cache.http.conn:put", trace=self.trace):
+            conn: http.client.HTTPConnection
+            with self.conn.get(self.host) as conn:
+                try:
+                    with record("pfio.cache.http.conn:put:request", trace=self.trace):
+                        conn.request(
+                            "PUT",
+                            url=self.path + suffix,
+                            body=data,
+                            headers=self._header_with_token()
+                        )
+                        res = conn.getresponse()
+                    res.read()
+
+                    if res.status == 201:
+                        return True
+                    else:
+                        logger.warning(
+                            "put: unexpected status code {}".format(res.status)
+                        )
+                        return False
+
+                except (http.client.HTTPException, OSError) as e:
+                    logger.warning("put: {} {}".format(e, type(e)))
+                    conn.close()  # fix error state
                     return False
 
-            except (http.client.HTTPException, OSError) as e:
-                logger.warning("put: {} {}".format(e, type(e)))
-                conn.close()  # fix error state
-                return False
-
     def get(self, suffix: str) -> Optional[bytes]:
-        conn: http.client.HTTPConnection
-        with self.conn.get(self.host) as conn:
-            try:
-                conn.request(
-                    "GET",
-                    url=self.path + suffix,
-                    headers=self._header_with_token()
-                )
-                res = conn.getresponse()
-                data = res.read()
+        with record("pfio.cache.http.conn:get", trace=self.trace):
+            conn: http.client.HTTPConnection
+            with self.conn.get(self.host) as conn:
+                try:
+                    with record("pfio.cache.http.conn:get:request", trace=self.trace):
+                        conn.request(
+                            "GET",
+                            url=self.path + suffix,
+                            headers=self._header_with_token()
+                        )
+                        res = conn.getresponse()
+                    data = res.read()
 
-                if res.status == 200:
-                    return data
-                elif res.status == 404:
+                    if res.status == 200:
+                        return data
+                    elif res.status == 404:
+                        return None
+                    else:
+                        logger.warning(
+                            "get: unexpected status code {}".format(res.status)
+                        )
+                        return None
+                except (http.client.HTTPException, OSError) as e:
+                    logger.warning("get: {} {}".format(e, type(e)))
+                    conn.close()  # fix error state
                     return None
-                else:
-                    logger.warning(
-                        "get: unexpected status code {}".format(res.status)
-                    )
-                    return None
-            except (http.client.HTTPException, OSError) as e:
-                logger.warning("get: {} {}".format(e, type(e)))
-                conn.close()  # fix error state
-                return None
 
     def _header_with_token(self) -> dict:
         if self.bearer_token_path is None:
@@ -203,6 +211,9 @@ class HTTPCache(Cache):
         do_pickle (bool):
             Do automatic pickle and unpickle inside the cache.
 
+        trace (bool):
+            Enable PPE Profiler.
+
     .. note:: This feature is experimental.
 
     """
@@ -211,13 +222,15 @@ class HTTPCache(Cache):
                  length: int,
                  url: str,
                  bearer_token_path=None,
-                 do_pickle=False):
+                 do_pickle=False, trace=False):
         super().__init__()
 
         self.length = length
         assert self.length > 0
 
-        self.connector = HTTPConnector(url, bearer_token_path)
+        self.trace = trace
+        self.connector = HTTPConnector(
+            url, bearer_token_path, trace=self.trace)
         self.do_pickle = do_pickle
 
     def __len__(self):
@@ -232,22 +245,24 @@ class HTTPCache(Cache):
         return True
 
     def put(self, i: int, data: Any):
-        if i < 0 or self.length <= i:
-            raise IndexError("index {} out of range ([0, {}])"
-                             .format(i, self.length - 1))
-        if self.do_pickle:
-            data = pickle.dumps(data)
+        with record("pfio.cache.http:put", trace=self.trace):
+            if i < 0 or self.length <= i:
+                raise IndexError("index {} out of range ([0, {}])"
+                                 .format(i, self.length - 1))
+            if self.do_pickle:
+                data = pickle.dumps(data)
 
-        return self.connector.put(str(i), data)
+            return self.connector.put(str(i), data)
 
     def get(self, i: int) -> Any:
-        if i < 0 or self.length <= i:
-            raise IndexError("index {} out of range ([0, {}])"
-                             .format(i, self.length - 1))
+        with record("pfio.cache.http:get", trace=self.trace):
+            if i < 0 or self.length <= i:
+                raise IndexError("index {} out of range ([0, {}])"
+                                 .format(i, self.length - 1))
 
-        data = self.connector.get(str(i))
+            data = self.connector.get(str(i))
 
-        if self.do_pickle and data is not None:
-            return pickle.loads(data)
-        else:
-            return data
+            if self.do_pickle and data is not None:
+                return pickle.loads(data)
+            else:
+                return data

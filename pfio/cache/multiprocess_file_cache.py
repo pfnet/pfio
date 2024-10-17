@@ -299,7 +299,8 @@ class MultiprocessFileCache(cache.Cache):
 
             index_entry = pack('Qq', data_pos, len(data))
             with record("pfio.cache.multiprocessfile:put:write_index", trace=self.trace):
-                assert os.pwrite(self.cache_fd, index_entry, index_ofst) == self.buflen
+                assert os.pwrite(self.cache_fd, index_entry,
+                                 index_ofst) == self.buflen
             with record("pfio.cache.multiprocessfile:put:write_data", trace=self.trace):
                 assert os.pwrite(self.cache_fd, data, data_pos) == len(data)
             with record("pfio.cache.multiprocessfile:put:sync", trace=self.trace):
