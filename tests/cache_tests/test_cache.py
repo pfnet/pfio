@@ -469,3 +469,26 @@ def test_filecache_profiling():
 
         assert "pfio.cache.multiprocessfile:put" in keys
         assert "pfio.cache.multiprocessfile:get" in keys
+
+
+def test_httpcache_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+    ppe.profiler.clear_tracer()
+
+    with make_http_server() as (httpd, port):
+        cache = HTTPCache(1,
+                          f"http://localhost:{port}/",
+                          do_pickle=True, trace=True)
+
+        cache.put(0, b"foo")
+        assert b"foo" == cache.get(0)
+
+    dict = ppe.profiler.get_tracer().state_dict()
+    keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+    assert "pfio.cache.http:put" in keys
+    assert "pfio.cache.http:get" in keys
+    assert "pfio.cache.http.conn:put" in keys
+    assert "pfio.cache.http.conn:put:request" in keys
+    assert "pfio.cache.http.conn:get" in keys
+    assert "pfio.cache.http.conn:get:request" in keys
