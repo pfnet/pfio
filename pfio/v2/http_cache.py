@@ -54,7 +54,7 @@ class HTTPCachedFS(FS):
         super().__init__()
 
         self.fs = fs
-        self.trace = self.fs.is_trace
+        self.trace = self.fs.is_traced
         self.max_cache_size = max_cache_size
         self.conn = HTTPConnector(url, bearer_token_path, trace=self.trace)
         if url.endswith("/"):
@@ -129,7 +129,7 @@ class _HTTPCacheIOBase(io.RawIOBase):
         self.whole_file: Optional[bytes] = None
         self.pos: Optional[int] = None
         self.fp: Optional[io.RawIOBase] = None
-        self.trace = self.fs.is_trace
+        self.trace = self.fs.is_traced
 
         self._closed = False
 

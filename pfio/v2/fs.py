@@ -156,7 +156,7 @@ class FS(abc.ABC):
         return self.pid != os.getpid()
 
     @property
-    def is_trace(self):
+    def is_traced(self):
         assert hasattr(self, 'trace')
         return self.trace
 
