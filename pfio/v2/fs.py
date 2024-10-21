@@ -90,6 +90,7 @@ class FS(abc.ABC):
 
     def __init__(self):
         self.pid = os.getpid()
+        self.trace = False
 
     @property
     def cwd(self):
@@ -153,6 +154,11 @@ class FS(abc.ABC):
     def is_forked(self):
         assert hasattr(self, 'pid')
         return self.pid != os.getpid()
+
+    @property
+    def is_traced(self):
+        assert hasattr(self, 'trace')
+        return self.trace
 
     def close(self) -> None:
         pass

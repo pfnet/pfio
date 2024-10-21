@@ -2,15 +2,17 @@
 # TODO: test with hdfs?
 
 import io
+import json
 import tempfile
 import zipfile
 
+import pytest
 from moto import mock_aws
 from parameterized import parameterized
 from test_fs import gen_fs
 
 from pfio.testing import make_http_server
-from pfio.v2 import HTTPCachedFS, from_url
+from pfio.v2 import HTTPCachedFS, Local, from_url
 
 
 def test_normpath_local():
@@ -201,3 +203,60 @@ def test_httpcache_zipfile_archived(target):
                     assert fp.read(-1) == filecontent1
                 with archive.open(filename2) as fp:
                     assert fp.read(-1) == filecontent2
+
+
+def test_httpcache_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+    ppe.profiler.clear_tracer()
+
+    filename = "testfile"
+    content = b"abcdabcd"
+
+    with make_http_server() as (httpd, port), tempfile.TemporaryDirectory() as tmpdir:
+        http_cache = f"http://localhost:{port}/"
+
+        with Local(tmpdir, trace=True) as local_fs:
+            fs = HTTPCachedFS(http_cache, local_fs)
+
+            with fs.open(filename, mode="wb") as fp:
+                fp.write(content)
+            with fs.open(filename, mode="rb") as fp:
+                assert fp.read(-1) == content
+
+    dict = ppe.profiler.get_tracer().state_dict()
+    keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+    assert "pfio.v2.http_cache:open" in keys
+    assert "pfio.v2.Local:open" in keys
+
+    assert "pfio.v2.http_cache:read" in keys
+    assert "pfio.v2.http_cache:load_file" in keys
+    assert "pfio.cache.http.conn:get" in keys
+    assert "pfio.cache.http.conn:get:request" in keys
+    assert "pfio.cache.http.conn:put" in keys
+    assert "pfio.cache.http.conn:put:request" in keys
+    assert "pfio.v2.Local:read" in keys
+
+
+def test_httpcache_no_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+    ppe.profiler.clear_tracer()
+
+    filename = "testfile"
+    content = b"abcdabcd"
+
+    with make_http_server() as (httpd, port), tempfile.TemporaryDirectory() as tmpdir:
+        http_cache = f"http://localhost:{port}/"
+
+        with Local(tmpdir, trace=False) as local_fs:
+            fs = HTTPCachedFS(http_cache, local_fs)
+
+            with fs.open(filename, mode="wb") as fp:
+                fp.write(content)
+            with fs.open(filename, mode="rb") as fp:
+                assert fp.read(-1) == content
+
+    dict = ppe.profiler.get_tracer().state_dict()
+    keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+    assert len(keys) == 0
