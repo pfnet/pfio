@@ -492,3 +492,21 @@ def test_httpcache_profiling():
     assert "pfio.cache.http.conn:put:request" in keys
     assert "pfio.cache.http.conn:get" in keys
     assert "pfio.cache.http.conn:get:request" in keys
+
+
+def test_httpcache_no_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+    ppe.profiler.clear_tracer()
+
+    with make_http_server() as (httpd, port):
+        cache = HTTPCache(1,
+                          f"http://localhost:{port}/",
+                          do_pickle=True, trace=False)
+
+        cache.put(0, b"foo")
+        assert b"foo" == cache.get(0)
+
+    dict = ppe.profiler.get_tracer().state_dict()
+    keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+    assert len(keys) == 0

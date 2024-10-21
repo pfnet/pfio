@@ -236,3 +236,27 @@ def test_httpcache_profiling():
     assert "pfio.cache.http.conn:put" in keys
     assert "pfio.cache.http.conn:put:request" in keys
     assert "pfio.v2.Local:read" in keys
+
+
+def test_httpcache_no_profiling():
+    ppe = pytest.importorskip("pytorch_pfn_extras")
+    ppe.profiler.clear_tracer()
+
+    filename = "testfile"
+    content = b"abcdabcd"
+
+    with make_http_server() as (httpd, port), tempfile.TemporaryDirectory() as tmpdir:
+        http_cache = f"http://localhost:{port}/"
+
+        with Local(tmpdir, trace=False) as local_fs:
+            fs = HTTPCachedFS(http_cache, local_fs)
+
+            with fs.open(filename, mode="wb") as fp:
+                fp.write(content)
+            with fs.open(filename, mode="rb") as fp:
+                assert fp.read(-1) == content
+
+    dict = ppe.profiler.get_tracer().state_dict()
+    keys = [event["name"] for event in json.loads(dict['_event_list'])]
+
+    assert len(keys) == 0
