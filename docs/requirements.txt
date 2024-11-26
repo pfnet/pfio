@@ -1,5 +1,6 @@
 pyarrow
 boto3
+google-cloud-storage
 deprecation
 sphinx-rtd-theme
 sphinx
