@@ -428,7 +428,8 @@ class S3(FS):
         else:
             # self.endpoint is not defined in moto3 environment
             self.hostname = "undefined"
-            print("S3 endpoint is not defined")
+            if self.verbose:
+                print("S3 endpoint is not defined")
 
     def _reset(self):
         self._connect()
@@ -447,7 +448,8 @@ class S3(FS):
         except ClientError as e:
             if e.response['Error']['Code'] == '404' and self.create_bucket:
                 res = self.client.create_bucket(Bucket=self.bucket)
-                print("Bucket", self.bucket, "created:", res)
+                if self.verbose:
+                    print("Bucket", self.bucket, "created:", res)
             else:
                 raise e
 
