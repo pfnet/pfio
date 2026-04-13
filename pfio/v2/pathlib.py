@@ -48,10 +48,7 @@ def _has_directory_feature(fs: FS) -> bool:
 
 
 def _removeprefix(text: str, prefix: str) -> str:
-    # NOTE: `str.removeprefix` supports version 3.9 or higher.
-    if text.startswith(prefix):
-        return text[len(prefix):]
-    return text
+    return text.removeprefix(prefix)
 
 
 def _compare_fs(lhs: FS, rhs: FS) -> bool:
@@ -273,11 +270,6 @@ class PurePath(PathLike):
         return self._pure.is_absolute()
 
     def is_relative_to(self, *other: Union[str, PathLike]) -> bool:
-        if python_version_info.minor < 9:
-            raise NotImplementedError(
-                "`is_relative_to()` supports python 3.9 or higher"
-            )
-
         # Same rationale as `relative_to`: unwrap pfio PurePath so
         # 3.14's stdlib does not skip its `PurePosixPath` coercion,
         # and shim the multi-arg form that stdlib removed in 3.14.
@@ -375,14 +367,7 @@ class PurePath(PathLike):
         return self.with_segments(self._pure.with_name(name))
 
     def with_stem(self: SelfPurePathType, stem: str) -> SelfPurePathType:
-        if python_version_info.minor < 9:
-            raise NotImplementedError(
-                "`with_stem()` supports python 3.9 or higher"
-            )
-        else:
-            return self.with_segments(
-                self._pure.with_stem(stem)  # type: ignore
-            )
+        return self.with_segments(self._pure.with_stem(stem))
 
     def with_suffix(self: SelfPurePathType, suffix: str) -> SelfPurePathType:
         return self.with_segments(self._pure.with_suffix(suffix))

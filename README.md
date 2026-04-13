@@ -14,7 +14,7 @@ learning training with batteries included. It supports
 ## Dependency
 
 - HDFS client and libhdfs for HDFS access
-- CPython >= 3.9
+- CPython >= 3.10
 
 ## Installation and Document build
 
