@@ -47,10 +47,6 @@ def _has_directory_feature(fs: FS) -> bool:
         return True
 
 
-def _removeprefix(text: str, prefix: str) -> str:
-    return text.removeprefix(prefix)
-
-
 def _compare_fs(lhs: FS, rhs: FS) -> bool:
     if type(lhs) is type(rhs):
         assert isinstance(lhs.cwd, str)
@@ -251,7 +247,7 @@ class PurePath(PathLike):
 
             prefix = self._fs.cwd
             assert isinstance(prefix, str)
-            key = _removeprefix(self.as_posix(), self.sep)
+            key = self.as_posix().removeprefix(self.sep)
 
             parsed = ParseResult(
                 scheme=self.scheme,
@@ -406,7 +402,7 @@ class Path(PurePath):
         super().__init__(*args, fs=fs, scheme=scheme)
 
     def _as_relative_to_fs(self) -> str:
-        return _removeprefix(self.as_posix(), self.anchor)
+        return self.as_posix().removeprefix(self.anchor)
 
     # ---------------------------------------
     # pathlib.Path compatible classmethods
@@ -607,13 +603,13 @@ class Path(PurePath):
             #       we implemented by `copy` + `remove`.
             #       it is generic but poor performance...
             target = self.with_segments(
-                _removeprefix(str(target), self.anchor)
+                str(target).removeprefix(self.anchor)
             )
             copy(self, target)
             unlink(self)
         else:
             target = (
-                _removeprefix(target.as_posix(), self.anchor)
+                target.as_posix().removeprefix(self.anchor)
                 if isinstance(target, PurePath)
                 else target
             )
@@ -645,7 +641,7 @@ class Path(PurePath):
         case_sensitive: Optional[bool] = None,
     ) -> Iterator[SelfPathType]:
         return self.glob(
-            joinpath("**", _removeprefix(pattern, self.sep)),
+            joinpath("**", pattern.removeprefix(self.sep)),
             case_sensitive=case_sensitive,
         )
 

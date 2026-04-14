@@ -12,8 +12,7 @@ import pytest
 from moto import mock_aws
 
 from pfio.v2 import Local, from_url
-from pfio.v2.pathlib import (Path, PurePath, _has_directory_feature,
-                             _removeprefix, unlink)
+from pfio.v2.pathlib import Path, PurePath, _has_directory_feature, unlink
 
 
 class TemporaryS3Bucket:
@@ -423,7 +422,7 @@ def test_purepath_compatible_methods(
             unparsed = ParseResult(
                 parsed.scheme,
                 parsed.netloc,
-                os.path.join(parsed.path, _removeprefix(path, "/")),
+                os.path.join(parsed.path, path.removeprefix("/")),
                 parsed.params,
                 parsed.query,
                 parsed.fragment,
@@ -476,7 +475,7 @@ def test_purepath_compatible_methods(
 )
 def test_path_stat(storage: str, path: str) -> None:
     with from_url(url=storage) as fs:
-        p = Path(_removeprefix(path, "/"), fs=fs)
+        p = Path(path.removeprefix("/"), fs=fs)
         if p.is_file():
             stat = p.stat()
             assert stat.size > 0 or stat.last_modified is not None
