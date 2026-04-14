@@ -34,7 +34,10 @@ class _NoOpenNamedTemporaryFile(object):
 
     def close(self, unlink=os.unlink, getpid=os.getpid):
         if self.name and self.master_pid == getpid():
-            unlink(self.name)
+            try:
+                unlink(self.name)
+            except FileNotFoundError:
+                pass
             self.name = None
 
     def __del__(self):
