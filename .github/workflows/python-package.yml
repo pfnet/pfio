@@ -8,16 +8,33 @@ on:
   - pull_request
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - python-version: "3.9"
+            tox-env: py39
+          - python-version: "3.10"
+            tox-env: py310
+          - python-version: "3.11"
+            tox-env: py311
+          - python-version: "3.12"
+            tox-env: py312
+          - python-version: "3.13"
+            tox-env: py313
     steps:
     - uses: actions/checkout@v4
     - name: Install uv
       uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
+    - name: Install Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
     - name: Test with tox
-      run: sh run-test.sh
+      run: |
+        uv sync
+        uv run tox -e ${{ matrix.tox-env }}
 
   doc:
     runs-on: ubuntu-latest
