@@ -564,6 +564,7 @@ class TestZipWithLargeData(unittest.TestCase):
 
         # nested zip and nested file
         self.tmpdir = tempfile.TemporaryDirectory()
+        self.zipdir = tempfile.TemporaryDirectory()
 
         # test file
         self.testfile_name = "testfile1"
@@ -572,19 +573,18 @@ class TestZipWithLargeData(unittest.TestCase):
         testfile_path = os.path.join(self.tmpdir.name, self.testfile_name)
 
         # paths used in tests
-        self.zip_file_path = self.zip_file_name + ".zip"
+        self.zip_file_path = os.path.join(self.zipdir.name, self.zip_file_name + ".zip")
 
         with open(testfile_path, "w") as tmpfile:
             tmpfile.write(self.test_string)
 
-        # this will include outside.zip itself into the zip
         make_zip(self.zip_file_path,
                  root_dir=self.tmpdir.name,
                  base_dir=".")
 
     def tearDown(self):
         self.tmpdir.cleanup()
-        local.remove(self.zip_file_path)
+        self.zipdir.cleanup()
 
     def test_read_multi_processes(self):
         barrier = multiprocessing.Barrier(2)

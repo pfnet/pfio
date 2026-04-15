@@ -100,7 +100,6 @@ def _check_local(path: str):
     Raises an error if the ``stat(1)`` answers it as NFS.
 
     '''
-    global _FORCE_LOCAL
     if not _FORCE_LOCAL:
         return
 
