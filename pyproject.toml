@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "docs"]
+python_files = ["test_*.py"]
+python_classes = ["Test"]
+python_functions = ["test"]
+minversion = "2.9"
+addopts = "--doctest-modules --doctest-glob='*.rst'"
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = [
+    "deprecation",
+    "urllib3",
+    "urllib3.*",
+    "boto3",
+    "botocore.*",
+    "pyarrow",
+    "pyarrow.*",
+    "pytorch_pfn_extras.*",
+]
+ignore_missing_imports = true
+
+[tool.tox]
+env_list = ["py39", "py310", "py311", "py312", "py313", "doc"]
+
+[tool.tox.env_run_base]
+deps = [".[test,trace]"]
+package = "skip"
+commands = [
+    ["flake8", "pfio", "tests"],
+    ["autopep8", "-r", "pfio", "tests", "--diff"],
+    ["isort", ".", "--check", "--diff"],
+    ["mypy", "pfio"],
+    ["pytest", "-W", "error::deprecation.UnsupportedWarning", "tests", "-s", "-v"],
+]
+
+[tool.tox.env.doc]
+deps = [".[doc]"]
+package = "skip"
+change_dir = "docs"
+commands = [["make", "html"]]
+allowlist_externals = ["make"]
