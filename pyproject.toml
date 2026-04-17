@@ -43,6 +43,9 @@ trace = ["pytorch-pfn-extras"]
 [project.urls]
 Homepage = "https://github.com/pfnet/pfio"
 
+[dependency-groups]
+dev = ["tox", "tox-uv"]
+
 [tool.setuptools.dynamic]
 version = {attr = "pfio.version.__version__"}
 
@@ -77,8 +80,8 @@ ignore_missing_imports = true
 env_list = ["py39", "py310", "py311", "py312", "py313", "doc"]
 
 [tool.tox.env_run_base]
-deps = [".[test,trace]"]
-package = "skip"
+runner = "uv-venv-runner"
+extras = ["test", "trace"]
 commands = [
     ["flake8", "pfio", "tests"],
     ["autopep8", "-r", "pfio", "tests", "--diff"],
@@ -88,8 +91,8 @@ commands = [
 ]
 
 [tool.tox.env.doc]
-deps = [".[doc]"]
-package = "skip"
+runner = "uv-venv-runner"
+extras = ["doc"]
 change_dir = "docs"
 commands = [["make", "html"]]
 allowlist_externals = ["make"]
