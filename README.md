@@ -62,8 +62,7 @@ Build:
 
 ```sh
 $ rm -rf dist
-$ pip3 install --user build
-$ python3 -m build
+$ uv build
 ```
 
 Release to PyPI:
