@@ -407,7 +407,7 @@ def test_purepath_compatible_methods(
             assert actual.as_uri() == urlunparse(unparsed)
         else:
             with pytest.raises(ValueError):
-                expected.as_uri()
+                pathlib.Path(expected).as_uri()
 
             with pytest.raises(ValueError):
                 actual.as_uri()
