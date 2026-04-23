@@ -5,7 +5,7 @@ import os
 import tempfile
 
 import pytest
-from moto import mock_aws
+from moto import mock_aws, server
 from parameterized import parameterized
 
 from pfio.testing import ZipForTest, randstring
@@ -173,8 +173,8 @@ def test_seekeable_read(target):
 
 
 class DummyLoader:
-    def __init__(self, dirname, content):
-        self.s3 = from_url(dirname)
+    def __init__(self, dirname, content, kwargs):
+        self.s3 = from_url(dirname, **kwargs)
         self.content = content
 
     def __call__(self):
@@ -185,22 +185,31 @@ class DummyLoader:
             assert self.content == fp.read()
 
 
-@mock_aws
-def test_recreate():
+@pytest.mark.parametrize("mp_start_method", ["fork", "forkserver"])
+def test_recreate(mp_start_method):
     content = b'deadbeef'
-    # TODO: test with hdfs?
-    with gen_fs("s3") as fs:
-        with fs.open('file', 'wb') as fp:
-            fp.write(content)
+    address = "127.0.0.1"
+    moto_server = server.ThreadedMotoServer(ip_address=address, port=0)
+    moto_server.start()
+    try:
+        port = moto_server._server.port
+        kwargs = {
+            "endpoint": f"http://{address}:{port}",
+            "aws_access_key_id": "",
+            "aws_secret_access_key": "",
+        }
 
-    dirname = "s3://test-dummy-bucket/"
+        with S3("test-dummy-bucket", create_bucket=True, **kwargs) as fs:
+            with fs.open('file', 'wb') as fp:
+                fp.write(content)
 
-    # With forkserver set, it hangs
-    # mp.set_start_method('forkserver', force=True)
+        dirname = "s3://test-dummy-bucket/"
+        loader = DummyLoader(dirname, content, kwargs)
 
-    loader = DummyLoader(dirname, content)
-
-    p = mp.Process(target=loader)
-    p.start()
-    p.join(timeout=1)
-    assert p.exitcode == 0
+        mp_ctx = mp.get_context(mp_start_method)
+        p = mp_ctx.Process(target=loader)
+        p.start()
+        p.join(timeout=5)
+        assert p.exitcode == 0
+    finally:
+        moto_server.stop()

@@ -19,6 +19,14 @@ from pfio.testing import ZipForTest, make_random_str, make_zip
 from pfio.v2 import ZipFileStat, from_url, local
 from pfio.v2.zip import Zip
 
+
+def _zip_read_worker(z, testfile_name, barrier):
+    # accessing the shared container is supported by reset
+    with z.open(testfile_name) as f:
+        barrier.wait()
+        assert f.read()
+
+
 ZIP_TEST_FILENAME_LIST = {
     "dir_name1": "testdir1",
     "dir_name2": "testdir2",
@@ -587,28 +595,27 @@ class TestZipWithLargeData(unittest.TestCase):
         self.zipdir.cleanup()
 
     def test_read_multi_processes(self):
-        barrier = multiprocessing.Barrier(2)
         with local.open_zip(
                 os.path.abspath(self.zip_file_path)) as z:
             with z.open(self.testfile_name) as f:
                 f.read()
 
-            def func():
-                # accessing the shared container is supported by reset
-                with z.open(self.testfile_name) as f:
-                    barrier.wait()
-                    assert f.read()
+            # Use Manager().Barrier() so the barrier can be shared
+            # across processes regardless of start method (fork or forkserver).
+            with multiprocessing.Manager() as manager:
+                barrier = manager.Barrier(2)
+                p1 = multiprocessing.Process(
+                    target=_zip_read_worker, args=(z, self.testfile_name, barrier))
+                p2 = multiprocessing.Process(
+                    target=_zip_read_worker, args=(z, self.testfile_name, barrier))
+                p1.start()
+                p2.start()
 
-            p1 = multiprocessing.Process(target=func)
-            p2 = multiprocessing.Process(target=func)
-            p1.start()
-            p2.start()
+                p1.join(timeout=10)
+                p2.join(timeout=10)
 
-            p1.join(timeout=3)
-            p2.join(timeout=3)
-
-            self.assertEqual(p1.exitcode, 0)
-            self.assertEqual(p2.exitcode, 0)
+                self.assertEqual(p1.exitcode, 0)
+                self.assertEqual(p2.exitcode, 0)
 
 
 NO_DIRECTORY_FILENAME_LIST = {

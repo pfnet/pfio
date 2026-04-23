@@ -6,7 +6,7 @@ import pickle
 import tempfile
 
 import pytest
-from moto import mock_aws
+from moto import mock_aws, server
 
 from pfio.v2 import S3, from_url, open_url
 from pfio.v2.s3 import _ObjectReader
@@ -140,32 +140,49 @@ def test_empty_file(s3_fixture):
             assert len(f.read()) == 0
 
 
-def test_s3_fork(s3_fixture):
-    with from_url('s3://test-bucket/base',
-                  **s3_fixture.aws_kwargs) as s3:
+def _s3_fork_child_read(s3):
+    with s3.open('foo.txt', 'r') as fp:
+        assert fp.read()
 
-        with s3.open('foo.txt', 'w') as fp:
-            fp.write('bar')
-            assert not fp.closed
 
-        def f(s3):
-            with s3.open('foo.txt', 'r') as fp:
-                assert fp.read()
+def _s3_fork_child_new_s3(kwargs):
+    with S3(bucket='test-bucket', **kwargs) as s4:
+        with s4.open('base/foo.txt', 'r') as fp:
+            assert fp.read()
 
-        p = mp.Process(target=f, args=(s3,))
-        p.start()
-        p.join()
-        assert p.exitcode == 0
 
-        def g(s3):
-            with S3(bucket='test-bucket', **s3_fixture.aws_kwargs) as s4:
-                with s4.open('base/foo.txt', 'r') as fp:
-                    assert fp.read()
+@pytest.mark.parametrize("mp_start_method", ["fork", "forkserver"])
+def test_s3_fork(mp_start_method):
+    address = "127.0.0.1"
+    moto_server = server.ThreadedMotoServer(ip_address=address, port=0)
+    moto_server.start()
+    try:
+        port = moto_server._server.port
+        kwargs = {
+            "endpoint": f"http://{address}:{port}",
+            "aws_access_key_id": "",
+            "aws_secret_access_key": "",
+        }
 
-        p = mp.Process(target=g, args=(s3,))
-        p.start()
-        p.join()
-        assert p.exitcode == 0
+        with from_url('s3://test-bucket/base',
+                      create_bucket=True, **kwargs) as s3:
+            with s3.open('foo.txt', 'w') as fp:
+                fp.write('bar')
+                assert not fp.closed
+
+        with from_url('s3://test-bucket/base', **kwargs) as s3:
+            mp_ctx = mp.get_context(mp_start_method)
+            p = mp_ctx.Process(target=_s3_fork_child_read, args=(s3,))
+            p.start()
+            p.join()
+            assert p.exitcode == 0
+
+            p = mp_ctx.Process(target=_s3_fork_child_new_s3, args=(kwargs,))
+            p.start()
+            p.join()
+            assert p.exitcode == 0
+    finally:
+        moto_server.stop()
 
 
 def test_s3_mpu(s3_fixture):

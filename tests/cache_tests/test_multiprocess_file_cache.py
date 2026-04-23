@@ -8,6 +8,20 @@ import pytest
 
 from pfio.cache import FileCache, MultiprocessFileCache
 
+_CONSISTENCY_N_SAMPLES_PER_WORKER = 1024
+_CONSISTENCY_SAMPLE_SIZE = 8192
+
+
+def _cleanup_subprocess_child(c):
+    c.close()
+
+
+def _consistency_child(cache, worker_idx):
+    for i in range(_CONSISTENCY_N_SAMPLES_PER_WORKER):
+        sample_idx = worker_idx * _CONSISTENCY_N_SAMPLES_PER_WORKER + i
+        data = np.array([sample_idx] * _CONSISTENCY_SAMPLE_SIZE, dtype=np.int32)
+        cache.put(sample_idx, data)
+
 
 def test_pickable():
     with tempfile.TemporaryDirectory() as d:
@@ -35,12 +49,9 @@ def test_cleanup():
 
 
 def test_cleanup_subprocess():
-    def child(c):
-        c.close()
-
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
-        p = multiprocessing.Process(target=child, args=(cache,))
+        p = multiprocessing.Process(target=_cleanup_subprocess_child, args=(cache,))
         p.start()
         p.join()
 
@@ -60,21 +71,13 @@ def test_multiprocess_consistency():
     # 32 worker processes simultaneously create such data and insert them into
     # a single cache, and we check if the data can be correctly recovered.
     n_workers = 32
-    n_samples_per_worker = 1024
-    sample_size = 8192
-
-    def child(cache, worker_idx):
-        for i in range(n_samples_per_worker):
-            sample_idx = worker_idx * n_samples_per_worker + i
-            data = np.array([sample_idx] * sample_size, dtype=np.int32)
-            cache.put(sample_idx, data)
 
     with tempfile.TemporaryDirectory() as d:
-        with MultiprocessFileCache(n_samples_per_worker * n_workers,
+        with MultiprocessFileCache(_CONSISTENCY_N_SAMPLES_PER_WORKER * n_workers,
                                    dir=d, do_pickle=True) as cache:
 
             # Add tons of data into the cache in parallel
-            ps = [multiprocessing.Process(target=child, args=(cache, worker_idx))  # NOQA
+            ps = [multiprocessing.Process(target=_consistency_child, args=(cache, worker_idx))  # NOQA
                   for worker_idx in range(n_workers)]
             for p in ps:
                 p.start()
@@ -82,9 +85,9 @@ def test_multiprocess_consistency():
                 p.join()
 
             # Get each sample from the cache and check the content
-            for sample_idx in range(n_workers * n_samples_per_worker):
+            for sample_idx in range(n_workers * _CONSISTENCY_N_SAMPLES_PER_WORKER):
                 data = cache.get(sample_idx)
-                expected = np.array([sample_idx] * sample_size, dtype=np.int32)
+                expected = np.array([sample_idx] * _CONSISTENCY_SAMPLE_SIZE, dtype=np.int32)
                 assert (data == expected).all()
 
 
@@ -108,16 +111,17 @@ def test_preservation_interoperability():
         cache2.close()
 
 
+def _preserve_error_subprocess_child(c, pipe):
+    try:
+        c.preserve('preserved')
+    except Exception as e:
+        pipe.send(pickle.dumps(e))
+    finally:
+        pipe.close()
+
+
 def test_preserve_error_subprocess():
     pipe_recv, pipe_send = multiprocessing.Pipe(False)
-
-    def child(c, pipe):
-        try:
-            c.preserve('preserved')
-        except Exception as e:
-            pipe.send(pickle.dumps(e))
-        finally:
-            pipe.close()
 
     with tempfile.TemporaryDirectory() as d:
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
@@ -126,7 +130,7 @@ def test_preserve_error_subprocess():
             cache.put(i, str(i))
 
         # Run preservation in the subprocess
-        p = multiprocessing.Process(target=child, args=(cache, pipe_send))
+        p = multiprocessing.Process(target=_preserve_error_subprocess_child, args=(cache, pipe_send))
         p.start()
         p.join()
         cache.close()
@@ -144,21 +148,22 @@ def test_preload_error_not_found():
         cache.close()
 
 
+def _preload_error_subprocess_child(c, pipe):
+    try:
+        c.preload('preserved')
+    except Exception as e:
+        pipe.send(pickle.dumps(e))
+    finally:
+        pipe.close()
+
+
 def test_preload_error_subprocess():
     pipe_recv, pipe_send = multiprocessing.Pipe(False)
-
-    def child(c, pipe):
-        try:
-            c.preload('preserved')
-        except Exception as e:
-            pipe.send(pickle.dumps(e))
-        finally:
-            pipe.close()
 
     with tempfile.TemporaryDirectory() as d:
         # Run preload in the subprocess
         cache = MultiprocessFileCache(10, dir=d, do_pickle=True)
-        p = multiprocessing.Process(target=child, args=(cache, pipe_send))
+        p = multiprocessing.Process(target=_preload_error_subprocess_child, args=(cache, pipe_send))
         p.start()
         p.join()
         cache.close()
