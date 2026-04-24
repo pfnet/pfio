@@ -1,4 +1,5 @@
 import functools
+import os.path
 import uuid
 from fnmatch import fnmatch, fnmatchcase
 from io import IOBase
@@ -279,7 +280,14 @@ class PurePath(PathLike):
             return self._pure.is_relative_to(*other)  # type: ignore
 
     def is_reserved(self) -> bool:
-        return self._pure.is_reserved()
+        # `pathlib.PurePath.is_reserved` was deprecated in 3.13 and is
+        # removed in 3.15; the replacement `os.path.isreserved` (added
+        # in 3.14) lives only in `ntpath`, so POSIX has no successor.
+        if python_version_info.minor < 14:
+            return self._pure.is_reserved()
+        if os.name == "nt":
+            return os.path.isreserved(self._pure)  # type: ignore[attr-defined]
+        return False
 
     def joinpath(
         self: SelfPurePathType,

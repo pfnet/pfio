@@ -386,7 +386,12 @@ def test_purepath_compatible_methods(
 
         assert actual.as_posix() == expected.as_posix()
         assert actual.is_absolute() == expected.is_absolute()
-        assert actual.is_reserved() == expected.is_reserved()
+        if python_version_info.minor < 14:
+            assert actual.is_reserved() == expected.is_reserved()
+        elif os.name == "nt":
+            assert actual.is_reserved() == os.path.isreserved(expected)
+        else:
+            assert actual.is_reserved() is False
 
         if python_version_info.minor > 8:
             assert expected.is_relative_to(str(actual))
