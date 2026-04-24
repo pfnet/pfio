@@ -336,10 +336,10 @@ def test_purepath_relative_to(temporary_storage: str) -> None:
         assert excepted.relative_to("/") == pathlib.PurePosixPath("etc/passwd")
         assert actual.relative_to("/") == PurePath("etc/passwd", fs=fs)
 
-        assert excepted.relative_to("/", "etc") == pathlib.PurePosixPath(
+        assert excepted.relative_to("/etc") == pathlib.PurePosixPath(
             "passwd"
         )
-        assert actual.relative_to("/", "etc") == PurePath("passwd", fs=fs)
+        assert actual.relative_to("/etc") == PurePath("passwd", fs=fs)
 
         excepted = pathlib.PurePosixPath("usr/local/lib")
         actual = PurePath("usr/local/lib", fs=fs)
@@ -362,6 +362,25 @@ def test_purepath_relative_to(temporary_storage: str) -> None:
             "lib/"
         )
         assert actual.relative_to("usr/local/") == PurePath("lib/", fs=fs)
+
+
+def test_purepath_relative_to_multi_arg_deprecated(
+    temporary_storage: str,
+) -> None:
+    with from_url(temporary_storage) as fs:
+        actual = PurePath("/etc/passwd", fs=fs)
+        with pytest.warns(DeprecationWarning, match="multiple positional"):
+            result = actual.relative_to("/", "etc")
+        assert result == PurePath("passwd", fs=fs)
+
+
+def test_purepath_is_relative_to_multi_arg_deprecated(
+    temporary_storage: str,
+) -> None:
+    with from_url(temporary_storage) as fs:
+        actual = PurePath("/etc/passwd", fs=fs)
+        with pytest.warns(DeprecationWarning, match="multiple positional"):
+            assert actual.is_relative_to("/", "etc")
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,6 @@
 import functools
 import uuid
+import warnings
 from fnmatch import fnmatch, fnmatchcase
 from io import IOBase
 from os import PathLike
@@ -275,8 +276,27 @@ class PurePath(PathLike):
             raise NotImplementedError(
                 "`is_relative_to()` supports python 3.9 or higher"
             )
-        else:
-            return self._pure.is_relative_to(*other)  # type: ignore
+
+        # Same rationale as `relative_to`: unwrap pfio PurePath so
+        # 3.14's stdlib does not skip its `PurePosixPath` coercion,
+        # and shim the multi-arg form that stdlib removed in 3.14.
+        parts = tuple(
+            o._pure if isinstance(o, PurePath) else o for o in other
+        )
+
+        if len(parts) > 1:
+            # NOTE: drop this shim (and the `*other` signature) once
+            # downstream callers have moved to a single joined path.
+            warnings.warn(
+                "passing multiple positional arguments to "
+                "pfio.v2.pathlib.PurePath.is_relative_to is deprecated; "
+                "pass a single joined path instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            parts = (PurePosixPath(*parts),)
+
+        return self._pure.is_relative_to(*parts)  # type: ignore
 
     def is_reserved(self) -> bool:
         return self._pure.is_reserved()
@@ -309,13 +329,37 @@ class PurePath(PathLike):
                 "`walk_up=True` supports python version 3.12 or higher"
             )
 
+        # Python 3.14 stdlib skips PurePosixPath coercion for objects
+        # exposing `with_segments`, which pfio's PurePath does. Unwrap
+        # to the inner stdlib path so subpath checks compare like-typed
+        # values.
+        parts = tuple(
+            o._pure if isinstance(o, PurePath) else o for o in other
+        )
+
+        if len(parts) > 1:
+            # NOTE: Python 3.14 removed the multi-arg form of
+            # PurePath.relative_to from stdlib. pfio keeps the shape
+            # here for now and joins the parts before delegating, with
+            # a DeprecationWarning so callers can migrate. Drop this
+            # shim (and the `*other` signature) once downstream has
+            # moved to a single joined path argument.
+            warnings.warn(
+                "passing multiple positional arguments to "
+                "pfio.v2.pathlib.PurePath.relative_to is deprecated; "
+                "pass a single joined path instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            parts = (PurePosixPath(*parts),)
+
         if python_version_info.minor >= 12:
             rel = self._pure.relative_to(
-                *other,
+                *parts,
                 walk_up=walk_up,  # type: ignore
             )
         else:
-            rel = self._pure.relative_to(*other)
+            rel = self._pure.relative_to(*parts)
 
         return self.with_segments(rel)
 
