@@ -77,7 +77,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.tox]
-env_list = ["py39", "py310", "py311", "py312", "py313", "doc"]
+env_list = ["py39", "py310", "py311", "py312", "py313", "py314", "doc"]
 
 [tool.tox.env_run_base]
 runner = "uv-venv-runner"
