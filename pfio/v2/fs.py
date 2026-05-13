@@ -97,6 +97,11 @@ class FS(abc.ABC):
 
     @property
     def scheme(self):
+        '''This property is used to identify the _nominal_ scheme.
+
+        If the scheme is a custom scheme, this property returns the custom scheme name.
+        If the scheme is a standard scheme (hdfs, s3, fs, etc...), this property returns the standard scheme name.
+        '''
         return self._scheme
 
     @property
