@@ -618,14 +618,11 @@ class S3(FS):
 
             res = self.client.list_objects_v2(
                 Bucket=self.bucket,
-                Prefix=key,
+                Prefix=f"{key}/",
                 Delimiter="/",
                 MaxKeys=1,
             )
-            for common_prefix in res.get('CommonPrefixes', []):
-                if common_prefix['Prefix'] == key + "/":
-                    return True
-            return False
+            return bool(res.get('Contents') or res.get('CommonPrefixes'))
 
     def mkdir(self, file_path: str, mode=0o777, *args, dir_fd=None):
         '''Does nothing

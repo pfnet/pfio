@@ -85,6 +85,29 @@ def test_s3_files(s3_fixture):
         assert not s3.isdir("/bas")
 
 
+def test_s3_isdir_prefix_collision(s3_fixture):
+    # Regression test: abc is a string prefix of abcde, so Prefix="abc" in
+    # list_objects_v2 would also match abcde/bar.txt. The fix uses Prefix="abc/"
+    # to ensure only keys inside abc/ are considered.
+    with S3(s3_fixture.bucket, create_bucket=False) as s3:
+        touch(s3, 'abc/foo.txt', 'hello')
+        touch(s3, 'abcde/bar.txt', 'world')
+
+        assert s3.isdir('abc')
+        assert s3.isdir('abcde')
+        assert not s3.isdir('abcd')
+        assert not s3.isdir('ab')
+        assert not s3.isdir('abcde/bar.txt')
+
+    # Also verify: when only abcde/ exists, abc should NOT be a directory
+    with S3(s3_fixture.bucket, create_bucket=False) as s32:
+        touch(s32, 'xyz/abcde/bar.txt', 'world')
+
+        assert not s32.isdir('xyz/abc')
+        assert s32.isdir('xyz/abcde')
+        assert not s32.isdir('xyz/abcd')
+
+
 def test_s3_init_with_timeouts(s3_fixture):
     with from_url('s3://test-bucket/base',
                   connect_timeout=300,
