@@ -2,6 +2,7 @@ import base64
 import hashlib
 import io
 import os
+import sys
 import urllib.parse
 from types import TracebackType
 from typing import Optional, Type
@@ -428,14 +429,12 @@ class S3(FS):
         else:
             # self.endpoint is not defined in moto3 environment
             self.hostname = "undefined"
-            if self.verbose:
-                print("S3 endpoint is not defined")
+            print("S3 endpoint is not defined", file=sys.stderr)
 
     def _reset(self):
         self._connect()
 
     def _connect(self):
-        # print('boto3.client options:', kwargs)
         config = Config(**self.botocore_config)
         obj = boto3.client('s3', config=config, **self.kwargs)
         if self.trace:
@@ -448,8 +447,7 @@ class S3(FS):
         except ClientError as e:
             if e.response['Error']['Code'] == '404' and self.create_bucket:
                 res = self.client.create_bucket(Bucket=self.bucket)
-                if self.verbose:
-                    print("Bucket", self.bucket, "created:", res)
+                print("Bucket", self.bucket, "created:", res, file=sys.stderr)
             else:
                 raise e
 
