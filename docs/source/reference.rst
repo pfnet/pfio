@@ -78,6 +78,46 @@ but several methods are not yet implemented.
 .. autoclass:: pfio.v2.pathlib.Path
    :members:
 
+fsspec integration
+------------------
+
+PFIO backends can be used through the `fsspec
+<https://filesystem-spec.readthedocs.io/>`_ ``AbstractFileSystem``
+interface, which lets fsspec-aware libraries (pandas, pyarrow, dask,
+zarr, ...) read and write data via PFIO. Install the optional
+dependency with ``pip install pfio[fsspec]``.
+
+Each PFIO backend is registered under its own protocol so that it does
+not clobber fsspec's built-in implementations (such as ``s3`` provided
+by ``s3fs``):
+
+* ``pfio-file://`` -> :class:`pfio.v2.Local`
+* ``pfio-s3://`` -> :class:`pfio.v2.S3`
+* ``pfio-hdfs://`` -> :class:`pfio.v2.Hdfs`
+
+These protocols are registered automatically through entry points, so
+they are available as soon as both ``pfio`` and ``fsspec`` are
+installed::
+
+  import fsspec
+
+  with fsspec.open("pfio-s3://your-bucket/foo/bar.txt", "rb") as fp:
+      data = fp.read()
+
+  fs = fsspec.filesystem("pfio-s3", endpoint="https://s3.example.com")
+  fs.ls("your-bucket/foo")
+
+Connection parameters (e.g. ``endpoint``, ``aws_access_key_id``) are
+passed as keyword arguments to :func:`fsspec.filesystem`; the bucket is
+taken from the path. To make PFIO handle a standard protocol such as
+``s3://`` instead of ``pfio-s3://``, call :func:`pfio.fsspec.register`::
+
+  import pfio.fsspec
+
+  pfio.fsspec.register(s3=True)   # now "s3://..." is served by PFIO
+
+.. autofunction:: pfio.fsspec.register
+
 Sparse File Cache
 -----------------
 
