@@ -41,6 +41,7 @@ def add_custom_scheme(
     """
     if _config is None:
         _load_config()
+    assert _config is not None
     if data is None:
         data = {}
     else:
@@ -64,6 +65,7 @@ def get_custom_scheme(name: str) -> Optional[Dict[str, str]]:
     """
     if _config is None:
         _load_config()
+    assert _config is not None
     if name not in _config:
         return None
     return dict(_config[name])
