@@ -280,21 +280,25 @@ class _ObjectWriter:
             self._flush()
             # DO: MPU
             c = self.client
-            max_parts = len(self.parts) + 1
-            res = c.list_parts(Bucket=self.bucket,
-                               Key=self.key,
-                               UploadId=self.mpu_id, MaxParts=max_parts)
+            parts = sorted(self.parts, key=lambda x: int(x['PartNumber']))
+            verify_parts = os.getenv('PFIO_S3_MPU_VERIFY_PARTS') == '1'
+            if verify_parts:
+                max_parts = len(self.parts) + 1
+                res = c.list_parts(Bucket=self.bucket,
+                                   Key=self.key,
+                                   UploadId=self.mpu_id, MaxParts=max_parts)
 
-            if res['IsTruncated']:
-                next_part = res['NextPartNumberMarker']
-                raise RuntimeError('Unexpectedly truncated: ' +
-                                   'next={}/maxparts={}'.format(next_part,
-                                                                max_parts))
+                if res['IsTruncated']:
+                    next_part = res['NextPartNumberMarker']
+                    raise RuntimeError('Unexpectedly truncated: ' +
+                                       'next={}/maxparts={}'.format(
+                                           next_part, max_parts))
 
-            parts = [{'ETag': part['ETag'], 'PartNumber': part['PartNumber']}
-                     for part in res.get('Parts', [])]
-            parts = sorted(parts, key=lambda x: int(x['PartNumber']))
-            assert self.parts == parts
+                parts = [{'ETag': part['ETag'],
+                          'PartNumber': part['PartNumber']}
+                         for part in res.get('Parts', [])]
+                parts = sorted(parts, key=lambda x: int(x['PartNumber']))
+                assert self.parts == parts
 
             res = c.complete_multipart_upload(Bucket=self.bucket,
                                               Key=self.key,
@@ -339,6 +343,10 @@ class S3(FS):
     - ``aws_access_key_id``, ``AWS_ACCESS_KEY_ID``
     - ``aws_secret_access_key``, ``AWS_SECRET_ACCESS_KEY``
     - ``endpoint``, ``S3_ENDPOINT``
+
+    Set ``PFIO_S3_MPU_VERIFY_PARTS`` to ``1`` to verify multipart upload
+    parts with ``ListParts`` before completing an upload. This verification
+    is disabled by default.
 
     It supports buffering when opening a file in binary read mode ("rb").
     When ``buffering`` is set to -1 (default), the buffer size will be
