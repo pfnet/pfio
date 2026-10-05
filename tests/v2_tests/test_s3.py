@@ -4,12 +4,13 @@ import multiprocessing as mp
 import os
 import pickle
 import tempfile
+from unittest.mock import Mock
 
 import pytest
 from moto import mock_aws, server
 
 from pfio.v2 import S3, from_url, open_url
-from pfio.v2.s3 import _ObjectReader
+from pfio.v2.s3 import _ObjectReader, _ObjectWriter
 
 
 @pytest.fixture
@@ -246,6 +247,61 @@ def test_s3_mpu(s3_fixture):
 
         assert 7 * 1024 * 1024 * 4 == len(data)
         assert "0123456" == data[7:14]
+
+
+def test_s3_mpu_complete_uses_uploaded_parts(monkeypatch):
+    monkeypatch.delenv('PFIO_S3_MPU_VERIFY_PARTS', raising=False)
+    client = Mock()
+    client.upload_part.side_effect = [
+        {'ETag': '"etag-1"'},
+        {'ETag': '"etag-2"'},
+    ]
+
+    writer = _ObjectWriter(client, 'bucket', 'key', 'wb',
+                           8 * 1024 * 1024, {})
+    writer.mpu_id = 'upload-id'
+    writer.buf.write(b'first')
+    writer._flush()
+    writer.buf.write(b'second')
+    writer.close()
+
+    parts = [
+        {'ETag': '"etag-1"', 'PartNumber': 1},
+        {'ETag': '"etag-2"', 'PartNumber': 2},
+    ]
+    client.list_parts.assert_not_called()
+    client.complete_multipart_upload.assert_called_once_with(
+        Bucket='bucket',
+        Key='key',
+        UploadId='upload-id',
+        MultipartUpload={'Parts': parts})
+
+
+def test_s3_mpu_part_verification(monkeypatch):
+    monkeypatch.setenv('PFIO_S3_MPU_VERIFY_PARTS', '1')
+    client = Mock()
+    client.upload_part.side_effect = [
+        {'ETag': '"etag-1"'},
+        {'ETag': '"etag-2"'},
+    ]
+    client.list_parts.return_value = {
+        'IsTruncated': False,
+        'Parts': [
+            {'ETag': '"etag-1"', 'PartNumber': 1},
+            {'ETag': '"etag-2"', 'PartNumber': 2},
+        ],
+    }
+
+    writer = _ObjectWriter(client, 'bucket', 'key', 'wb',
+                           8 * 1024 * 1024, {})
+    writer.mpu_id = 'upload-id'
+    writer.buf.write(b'first')
+    writer._flush()
+    writer.buf.write(b'second')
+    writer.close()
+
+    client.list_parts.assert_called_once_with(
+        Bucket='bucket', Key='key', UploadId='upload-id', MaxParts=3)
 
 
 def test_s3_recursive(s3_fixture):
