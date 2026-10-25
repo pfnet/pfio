@@ -1,5 +1,6 @@
 import functools
 import os.path
+import sys
 import uuid
 import warnings
 from fnmatch import fnmatch, fnmatchcase
@@ -8,7 +9,6 @@ from os import PathLike
 from pathlib import PurePosixPath
 from posixpath import join as joinpath
 from posixpath import normpath
-from sys import version_info as python_version_info
 from typing import (Callable, Iterator, List, Optional, Sequence, Set, Tuple,
                     Type, TypeVar, Union)
 from urllib.parse import ParseResult, urlunparse
@@ -274,7 +274,7 @@ class PurePath(PathLike):
         # `pathlib.PurePath.is_reserved` was deprecated in 3.13 and is
         # removed in 3.15; the replacement `os.path.isreserved` (added
         # in 3.14) lives only in `ntpath`, so POSIX has no successor.
-        if python_version_info.minor < 14:
+        if sys.version_info < (3, 14):
             return self._pure.is_reserved()
         if os.name == "nt":
             return os.path.isreserved(self._pure)  # type: ignore[attr-defined]
@@ -303,7 +303,7 @@ class PurePath(PathLike):
         *other: Union[str, PathLike],
         walk_up: bool = False,
     ) -> SelfPurePathType:
-        if python_version_info.minor < 12 and walk_up:
+        if sys.version_info < (3, 12) and walk_up:
             raise NotImplementedError(
                 "`walk_up=True` supports python version 3.12 or higher"
             )
@@ -332,7 +332,7 @@ class PurePath(PathLike):
             )
             parts = (PurePosixPath(*parts),)
 
-        if python_version_info.minor >= 12:
+        if sys.version_info >= (3, 12):
             rel = self._pure.relative_to(
                 *parts,
                 walk_up=walk_up,  # type: ignore
